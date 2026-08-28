@@ -1,13 +1,20 @@
 const mysql = require('mysql2/promise');
+require('dotenv').config();
 
-function crearConexionMySQL(env = process.env) {
+function crearConexionMySQL() {
   return mysql.createPool({
-    host: env.DB_HOST || 'localhost',
-    user: env.DB_USER || 'root',
-    password: env.DB_PASSWORD || '',
-    database: env.DB_NAME || 'control_combustible',
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'control_combustible',
+    port: Number(process.env.DB_PORT) || 4000,
     waitForConnections: true,
-    connectionLimit: 10
+    connectionLimit: 10,
+    queueLimit: 0,
+    ssl: process.env.DB_SSL === 'true' ? {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    } : undefined
   });
 }
 
