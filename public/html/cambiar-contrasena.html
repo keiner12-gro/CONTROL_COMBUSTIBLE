@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Cambiar contraseña</title>
+</head>
+<body class="pagina-login">
+  <main class="contenedor-login">
+    <section class="panel tarjeta-login">
+      <div class="marca-login">
+        <div><h1>Cambiar contraseña</h1></div>
+      </div>
+      <p>Por seguridad, debes cambiar la contraseña temporal <strong>123456</strong> antes de continuar.</p>
+      <form id="formulario-cambiar-contrasena" autocomplete="off">
+        <div>
+          <label for="contrasena-actual">Contraseña actual</label>
+          <input type="password" id="contrasena-actual" autocomplete="current-password" required>
+        </div>
+        <div>
+          <label for="nueva-contrasena">Nueva contraseña</label>
+          <input type="password" id="nueva-contrasena" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div>
+          <label for="confirmar-contrasena">Confirmar nueva contraseña</label>
+          <input type="password" id="confirmar-contrasena" autocomplete="new-password" minlength="6" required>
+        </div>
+        <p class="mensaje-login" id="mensaje-cambiar-contrasena"></p>
+        <button type="submit">Cambiar contraseña y continuar</button>
+        <button type="button" class="boton-sesion" onclick="cerrarSesion()">Cerrar sesión</button>
+      </form>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/cambiar-contrasena.js"></script>
+</body>
+</html>

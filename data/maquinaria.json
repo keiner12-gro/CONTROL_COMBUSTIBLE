@@ -1,0 +1,429 @@
+[
+  {
+    "item": 1,
+    "maquina": "MA65",
+    "descripcion": "TRACTOR KUBOTA M9000",
+    "centro_costo": "41001603",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 2,
+    "maquina": "MA69",
+    "descripcion": "TRACTOR KUBOTA M9000",
+    "centro_costo": "41001604",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 3,
+    "maquina": "MA71",
+    "descripcion": "TRACTOR KUBOTA M9000",
+    "centro_costo": "41001606",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 4,
+    "maquina": "MA72",
+    "descripcion": "TRACTOR KUBOTA L4400",
+    "centro_costo": "41001607",
+    "capacidad_galones": 13.2
+  },
+  {
+    "item": 5,
+    "maquina": "MA75",
+    "descripcion": "TRACTOR KUBOTA M9000",
+    "centro_costo": "41001608",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 6,
+    "maquina": "MA76",
+    "descripcion": "TRACTOR KUBOTA M9000",
+    "centro_costo": "41001609",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 7,
+    "maquina": "MA80",
+    "descripcion": "TRACTOR KUBOTA L4400",
+    "centro_costo": "41001610",
+    "capacidad_galones": 13.2
+  },
+  {
+    "item": 8,
+    "maquina": "MA81",
+    "descripcion": "TRACTOR KUBOTA L4400",
+    "centro_costo": "41001611",
+    "capacidad_galones": 13.2
+  },
+  {
+    "item": 9,
+    "maquina": "MA83",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001638",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 10,
+    "maquina": "MA86",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001614",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 11,
+    "maquina": "MA87",
+    "descripcion": "TRACTOR KUBOTA L4400",
+    "centro_costo": "41001615",
+    "capacidad_galones": 13.2
+  },
+  {
+    "item": 12,
+    "maquina": "MA88",
+    "descripcion": "TRACTOR KUBOTA L4400",
+    "centro_costo": "41001616",
+    "capacidad_galones": 13.2
+  },
+  {
+    "item": 13,
+    "maquina": "MA89",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001645",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 14,
+    "maquina": "MA90",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001617",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 15,
+    "maquina": "MA91",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001618",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 16,
+    "maquina": "MA92",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001619",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 17,
+    "maquina": "MA96",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001622",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 18,
+    "maquina": "MA97",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001623",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 19,
+    "maquina": "MA98",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001624",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 20,
+    "maquina": "MA99",
+    "descripcion": "TRACTOR KUBOTA M7040",
+    "centro_costo": "41001625",
+    "capacidad_galones": 18.5
+  },
+  {
+    "item": 21,
+    "maquina": "MA100",
+    "descripcion": "TRACTOR KUBOTA M7040",
+    "centro_costo": "41001626",
+    "capacidad_galones": 18.5
+  },
+  {
+    "item": 22,
+    "maquina": "MA101",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001627",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 23,
+    "maquina": "MA102",
+    "descripcion": "TRACTOR JOHN DEERE 6403",
+    "centro_costo": "41001628",
+    "capacidad_galones": 40.15
+  },
+  {
+    "item": 24,
+    "maquina": "MA103",
+    "descripcion": "TRACTOR KUBOTA M5100",
+    "centro_costo": "41001631",
+    "capacidad_galones": 21.7
+  },
+  {
+    "item": 25,
+    "maquina": "MA104",
+    "descripcion": "TRACTOR KUBOTA M5100",
+    "centro_costo": "41001632",
+    "capacidad_galones": 21.7
+  },
+  {
+    "item": 26,
+    "maquina": "MA105",
+    "descripcion": "TRACTOR KUBOTA M5100",
+    "centro_costo": "41001633",
+    "capacidad_galones": 21.7
+  },
+  {
+    "item": 27,
+    "maquina": "MA106",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001634",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 28,
+    "maquina": "MA107",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001635",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 29,
+    "maquina": "MA108",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001636",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 30,
+    "maquina": "MA109",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001634",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 31,
+    "maquina": "MA110",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001640",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 32,
+    "maquina": "MA111",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001641",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 33,
+    "maquina": "MA112",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001642",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 34,
+    "maquina": "MA113",
+    "descripcion": "TRACTOR KUBOTA M108",
+    "centro_costo": "41001643",
+    "capacidad_galones": 46.3
+  },
+  {
+    "item": 35,
+    "maquina": "MA114",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001644",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 36,
+    "maquina": "MA115",
+    "descripcion": "TRACTOR KUBOTA M5100",
+    "centro_costo": "41001646",
+    "capacidad_galones": 21.7
+  },
+  {
+    "item": 37,
+    "maquina": "MA116",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001647",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 38,
+    "maquina": "MA117",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001648",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 39,
+    "maquina": "MA118",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001649",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 40,
+    "maquina": "MA119",
+    "descripcion": "TRACTOR KUBOTA M9540",
+    "centro_costo": "41001650",
+    "capacidad_galones": 29.1
+  },
+  {
+    "item": 41,
+    "maquina": "WCU251",
+    "descripcion": "CAMION VOLKSWAGEN 31.310",
+    "centro_costo": "41000603",
+    "capacidad_galones": 72.67
+  },
+  {
+    "item": 42,
+    "maquina": "LZT936",
+    "descripcion": "CAMION VOLKSWAGEN 31.330",
+    "centro_costo": "41000606",
+    "capacidad_galones": 72.67
+  },
+  {
+    "item": 43,
+    "maquina": "LZT927",
+    "descripcion": "CAMION VOLKSWAGEN 31.330",
+    "centro_costo": "41000607",
+    "capacidad_galones": 72.67
+  },
+  {
+    "item": 44,
+    "maquina": "QTZ327",
+    "descripcion": "CAMION VOLKSWAGEN 31.330",
+    "centro_costo": "41000608",
+    "capacidad_galones": 72.67
+  },
+  {
+    "item": 45,
+    "maquina": "JUZ461",
+    "descripcion": "CAMION CHEVROLET NQR",
+    "centro_costo": "41000604",
+    "capacidad_galones": 36.99
+  },
+  {
+    "item": 46,
+    "maquina": "LLP934",
+    "descripcion": "CAMION CHEVROLET FVR",
+    "centro_costo": "41000605",
+    "capacidad_galones": 105.67
+  },
+  {
+    "item": 47,
+    "maquina": "D5NXL",
+    "descripcion": "BULLDOZER CATERPILLAR",
+    "centro_costo": "41000301",
+    "capacidad_galones": 79.25
+  },
+  {
+    "item": 48,
+    "maquina": "BW2011D-4",
+    "descripcion": "VIBROCOMPACTADOR BOMAG",
+    "centro_costo": "41002701",
+    "capacidad_galones": 89.82
+  },
+  {
+    "item": 49,
+    "maquina": "U50-5",
+    "descripcion": "MINIEXCAVADORA KUBOTA",
+    "centro_costo": "41001107",
+    "capacidad_galones": 16.91
+  },
+  {
+    "item": 50,
+    "maquina": "670CH",
+    "descripcion": "MOTONIVELADORA JOHN DEERE",
+    "centro_costo": "41002002",
+    "capacidad_galones": 100.0
+  },
+  {
+    "item": 51,
+    "maquina": "310L",
+    "descripcion": "RETROEXCAVADORA JOHN DEERE",
+    "centro_costo": "41002301",
+    "capacidad_galones": 34.0
+  },
+  {
+    "item": 52,
+    "maquina": "ZX200LC",
+    "descripcion": "EXCAVADORA HITACHI",
+    "centro_costo": "41001105",
+    "capacidad_galones": 105.67
+  },
+  {
+    "item": 53,
+    "maquina": "ZX210LC",
+    "descripcion": "EXCAVADORA HITACHI",
+    "centro_costo": "41001103",
+    "capacidad_galones": 105.67
+  },
+  {
+    "item": 54,
+    "maquina": "JD130G",
+    "descripcion": "EXCAVADORA JOHN DEERE",
+    "centro_costo": "41001104",
+    "capacidad_galones": 75.34
+  },
+  {
+    "item": 55,
+    "maquina": "313D2G",
+    "descripcion": "EXCAVADORA CATERPILLAR",
+    "centro_costo": "41001106",
+    "capacidad_galones": 66.04
+  },
+  {
+    "item": 56,
+    "maquina": "ZX120-3",
+    "descripcion": "EXCAVADORA HITACHI",
+    "centro_costo": "41001101",
+    "capacidad_galones": 66.04
+  },
+  {
+    "item": 57,
+    "maquina": "SY135C",
+    "descripcion": "EXCAVADORA SANY",
+    "centro_costo": "41001110",
+    "capacidad_galones": 63.4
+  },
+  {
+    "item": 58,
+    "maquina": "SY75C",
+    "descripcion": "EXCAVADORA SANY",
+    "centro_costo": "41001109",
+    "capacidad_galones": 39.63
+  },
+  {
+    "item": 59,
+    "maquina": "S300",
+    "descripcion": "MINICARGADOR BOBCAT",
+    "centro_costo": "41001701",
+    "capacidad_galones": 25.0
+  },
+  {
+    "item": 60,
+    "maquina": "SEM618D",
+    "descripcion": "CARGADOR SEM",
+    "centro_costo": "41001702",
+    "capacidad_galones": 52.8
+  },
+  {
+    "item": 61,
+    "maquina": "PC130",
+    "descripcion": "EXCAVADORA KOMATSU",
+    "centro_costo": "41001111",
+    "capacidad_galones": 65.26
+  }
+]

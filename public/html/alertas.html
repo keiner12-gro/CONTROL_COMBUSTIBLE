@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css"><title>Alertas de sobrecapacidad</title></head>
+<body>
+<main class="pantalla">
+<header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1>Alertas</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+<section class="panel registros alertas-panel"><div class="titulo-tabla"><div><span class="eyebrow">CONTROL Y REVISIÓN</span><h2>Alertas por sobrecapacidad</h2><p class="subtitulo-vista">Revisa los suministros que superaron la capacidad configurada de cada máquina.</p></div><button type="button" id="boton-actualizar-alertas">↻ Actualizar</button></div><div id="resumen-alertas" class="resumen-alertas"></div><div id="cuerpo-alertas" class="grid-alertas"></div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script><script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script><script>if(protegerVista('alertas')){aplicarPermisosEnlaces();}</script><script src="../js/alertas.js"></script>
+</body></html>

@@ -1,0 +1,1 @@
+class TractorService{constructor(repository){this.repository=repository;}list(){return this.repository.list()}create(d){return this.repository.create(d)}update(id,d){return this.repository.update(id,d)}remove(id){return this.repository.remove(id)}}module.exports={TractorService};

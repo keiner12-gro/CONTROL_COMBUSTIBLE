@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Detalle de reporte</title>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado de la tabla mensual seleccionada desde una carta de reportes -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1 id="titulo-reporte-mensual">Reporte mensual</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <!-- Busqueda por maquina u operario dentro del mes seleccionado -->
+    <section class="panel controles-reporte">
+      <div class="formulario-busqueda-reporte">
+        <!-- Rango usado por el reporte general para consultar periodos continuos -->
+        <div id="rango-fechas-reporte" hidden>
+          <label for="fecha-inicio-reporte">Desde</label>
+          <input type="date" id="fecha-inicio-reporte" autocomplete="off">
+
+          <label for="fecha-fin-reporte">Hasta</label>
+          <input type="date" id="fecha-fin-reporte" autocomplete="off">
+        </div>
+
+        <label for="buscar-maquina-reporte">Buscar maquina u operario</label>
+        <input type="search" id="buscar-maquina-reporte" placeholder="Escribe maquina u operario" autocomplete="off">
+        <button type="button" id="boton-buscar-maquina">Buscar</button>
+        <button type="button" id="boton-limpiar-busqueda">Limpiar</button>
+        <button type="button" id="boton-exportar-pdf-reporte">Exportar PDF</button>
+      </div>
+    </section>
+
+    <!-- Graficas automaticas del consumo -->
+    <details class="desplegable-reporte desplegable-graficas-reporte">
+      <summary>
+        <span class="icono-desplegable">📊</span>
+        <span class="texto-desplegable">
+          <strong>Graficas de consumo</strong>
+          <small id="subtitulo-graficas-reporte">Vista general de todos los registros</small>
+        </span>
+        <span class="flecha-desplegable" aria-hidden="true">⌄</span>
+      </summary>
+
+      <div class="contenido-desplegable">
+        <div class="titulo-tabla">
+          <div>
+            <h2>Graficas de consumo</h2>
+          </div>
+          <strong><span id="total-consumo-grafica">0.00</span> galones</strong>
+        </div>
+
+        <div class="resumen-graficas">
+          <div class="tarjeta-grafica-resumen">
+            <span>Registros</span>
+            <strong id="resumen-registros-grafica">0</strong>
+          </div>
+          <div class="tarjeta-grafica-resumen">
+            <span>Consumo total</span>
+            <strong><span id="resumen-consumo-grafica">0.00</span> gal</strong>
+          </div>
+          <div class="tarjeta-grafica-resumen">
+            <span>Máquina seleccionada</span>
+            <strong id="resumen-maquina-grafica">GENERAL</strong>
+          </div>
+        </div>
+
+        <div class="contenedor-graficas-reporte">
+          <article class="tarjeta-grafica">
+            <h3 id="titulo-grafica-consumo">Consumo de combustible por fecha</h3>
+            <div class="lienzo-grafica">
+              <canvas id="grafica-consumo-fecha"></canvas>
+            </div>
+          </article>
+
+          <article class="tarjeta-grafica">
+            <h3>Consumo M1 y M2</h3>
+            <div class="lienzo-grafica">
+              <canvas id="grafica-m1-m2"></canvas>
+            </div>
+          </article>
+
+          <article class="tarjeta-grafica tarjeta-grafica-general" id="bloque-grafica-maquinas">
+            <h3>Consumo acumulado por máquina</h3>
+            <div class="lienzo-grafica">
+              <canvas id="grafica-maquinas"></canvas>
+            </div>
+          </article>
+        </div>
+      </div>
+    </details>
+
+    <!-- Tres secciones del reporte en formato de botones desplegables -->
+    <section class="desplegables-reporte" aria-label="Secciones del reporte">
+      <!-- Chequeo del reporte -->
+      <details class="desplegable-reporte">
+        <summary>
+          <span class="icono-desplegable">🔍</span>
+          <span class="texto-desplegable">
+            <strong>Chequeo del reporte</strong>
+            <small>Inspecciones y estado del equipo</small>
+          </span>
+          <span class="flecha-desplegable" aria-hidden="true">⌄</span>
+        </summary>
+
+        <div class="contenido-desplegable">
+          <div class="titulo-tabla">
+            <h2 id="titulo-chequeo-reporte">Chequeo del mes</h2>
+          </div>
+
+          <table class="tabla-reportes">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Fuga biodiesel</th>
+                <th>Sistema electrico</th>
+                <th>Parada emergencia</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-chequeo-reporte"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- Cierre diario M1 y M2 -->
+      <details class="desplegable-reporte">
+        <summary>
+          <span class="icono-desplegable">⛽</span>
+          <span class="texto-desplegable">
+            <strong>Cierre del día M1 y M2</strong>
+            <small>Lecturas y galones despachados</small>
+          </span>
+          <span class="flecha-desplegable" aria-hidden="true">⌄</span>
+        </summary>
+
+        <div class="contenido-desplegable">
+          <div class="titulo-tabla">
+            <h2>Cierre del dia M1 y M2</h2>
+            <strong><span id="total-mangueras-reporte">0.00</span> galones</strong>
+          </div>
+
+          <table class="tabla-reportes">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>M1 inicial</th>
+                <th>M1 final</th>
+                <th>Galones M1</th>
+                <th>M2 inicial</th>
+                <th>M2 final</th>
+                <th>Galones M2</th>
+                <th>Total M1 + M2</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-mangueras-reporte"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- Registros del reporte -->
+      <details class="desplegable-reporte">
+        <summary>
+          <span class="icono-desplegable">📋</span>
+          <span class="texto-desplegable">
+            <strong>Registros del reporte</strong>
+            <small>Detalle de operarios, maquinas y cantidades</small>
+          </span>
+          <span class="flecha-desplegable" aria-hidden="true">⌄</span>
+        </summary>
+
+        <div class="contenido-desplegable">
+          <div class="titulo-tabla">
+            <h2 id="titulo-registros-reporte">Registros del mes</h2>
+            <strong><span id="cantidad-registros-mes">0</span> registros</strong>
+          </div>
+
+          <table class="tabla-reportes">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Operario</th>
+                <th>Cedula</th>
+                <th>Maquina</th>
+                <th>Horometro</th>
+                <th>Cantidad</th>
+                <th>No. SAI</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-registros-mes"></tbody>
+          </table>
+
+          <p class="tabla-vacia" id="mensaje-registros-mes">No hay registros en este mes.</p>
+        </div>
+      </details>
+      <details class="desplegable-reporte">
+        <summary><span class="icono-desplegable">⚠️</span><span class="texto-desplegable"><strong>Alertas de sobrecapacidad</strong><small>Excesos, justificaciones y reportes adjuntos</small></span><span class="flecha-desplegable" aria-hidden="true">⌄</span></summary>
+        <div class="contenido-desplegable"><table class="tabla-reportes"><thead><tr><th>Fecha</th><th>Máquina</th><th>Cantidad</th><th>Capacidad</th><th>Exceso</th><th>Estado</th><th>Justificación</th><th>Reporte</th></tr></thead><tbody id="cuerpo-alertas-reporte"></tbody></table></div>
+      </details>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (protegerVista('reportes')) {
+      aplicarPermisosEnlaces();
+    }
+  </script>
+  <script src="../js/reporte-detalle.js"></script>
+</body>
+</html>

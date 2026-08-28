@@ -1,0 +1,1 @@
+class ReportRepository{async list(){throw new Error('Not implemented')}async saveSummary(){throw new Error('Not implemented')}async removeWithoutRecordsExceptCurrent(){throw new Error('Not implemented')}}module.exports={ReportRepository};

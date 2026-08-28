@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Control diario tanque principal</title>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado principal de la pagina -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1>Control de suministro</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <section class="flujo-registro" id="flujo-registro">
+      <div class="pasos-registro" aria-label="Progreso del registro">
+        <span class="paso-registro activo" data-paso-indicador="1"><b>1</b><small>Máquina</small></span>
+        <span class="paso-registro" data-paso-indicador="2"><b>2</b><small>Operario</small></span>
+        <span class="paso-registro" data-paso-indicador="3"><b>3</b><small>Suministro</small></span>
+        <span class="paso-registro" data-paso-indicador="4"><b>4</b><small>Confirmar</small></span>
+      </div>
+
+      <form id="formulario-control" autocomplete="off">
+        <section class="paso-formulario activo" data-paso="1">
+          <div class="panel paso-cabecera"><span class="numero-paso">01</span><div><span class="eyebrow-dashboard">PRIMER PASO</span><h2>Selecciona la máquina</h2><p>Busca por código o descripción.</p></div></div>
+          <fieldset class="panel seleccion-card">
+            <div class="campo-voz-maquina">
+              <div class="busqueda-icono"><span>🔎</span><input id="maquina-busqueda" type="search" placeholder="Buscar máquina..." autocomplete="off"></div>
+              <button type="button" id="boton-voz" class="boton-voz" title="Comando de voz">🎙️ Voz</button>
+            </div>
+            <small id="estado-voz" class="estado-voz" aria-live="polite"></small>
+            <div id="selector-maquinas-cards" class="selector-cards"></div>
+            <input type="hidden" id="maquina" name="maquina" required>
+            <input type="text" id="tractor-descripcion" name="tractor-descripcion" class="campo-oculto-ui" readonly>
+            <input type="text" id="tractor-centro-costo" name="tractor-centro-costo" class="campo-oculto-ui" readonly>
+            <div id="resumen-maquina-seleccionada" class="seleccion-confirmada" hidden></div>
+          </fieldset>
+          <div class="acciones-paso"><button type="button" class="boton-principal boton-siguiente" data-next="2">Continuar →</button></div>
+        </section>
+
+        <section class="paso-formulario" data-paso="2">
+          <div class="panel paso-cabecera"><span class="numero-paso">02</span><div><span class="eyebrow-dashboard">SEGUNDO PASO</span><h2>¿Quién realiza el suministro?</h2><p>Selecciona el operario para completar automáticamente su cédula.</p></div></div>
+          <fieldset class="panel seleccion-card">
+            <div class="busqueda-icono"><span>🔎</span><input id="operario-busqueda" type="search" placeholder="Buscar operario..." autocomplete="off"></div>
+            <div id="selector-operarios-cards" class="selector-cards selector-operarios"></div>
+            <input type="hidden" id="nombre-operario" name="nombre-operario" required>
+            <input type="hidden" id="cedula-operario" name="cedula-operario" required>
+            <div id="resumen-operario-seleccionado" class="seleccion-confirmada" hidden></div>
+          </fieldset>
+          <div class="acciones-paso"><button type="button" class="boton-secundario boton-anterior" data-prev="1">← Atrás</button><button type="button" class="boton-principal boton-siguiente" data-next="3">Continuar →</button></div>
+        </section>
+
+        <section class="paso-formulario" data-paso="3">
+          <div class="panel paso-cabecera"><span class="numero-paso">03</span><div><span class="eyebrow-dashboard">TERCER PASO</span><h2>Datos del suministro</h2><p>Registra la cantidad, horómetro y soporte del suministro.</p></div></div>
+          <fieldset class="panel suministro suministro-wizard">
+            <div class="dato-seleccionado-grid"><div id="mini-maquina" class="mini-seleccion">🚜 Máquina</div><div id="mini-operario" class="mini-seleccion">👤 Operario</div></div>
+            <div><label for="horometro">Horómetro</label><input list="opciones-horometro" id="horometro" name="horometro" autocomplete="off"><datalist id="opciones-horometro"><option value="Horometro dañado"><option value="No marca"><option value="En revision"><option value="Problema con la maquina"></datalist></div>
+            <div class="cantidad-destacada"><label for="cantidad">Cantidad suministrada</label><div class="campo-galones"><input type="number" id="cantidad" name="cantidad" min="0" step="0.01" autocomplete="off" required><span>GAL</span></div><div id="indicador-capacidad" class="indicador-capacidad" hidden></div></div>
+            <div><label for="no-sai">No. SAI</label><input type="text" id="no-sai" name="no-sai" autocomplete="off"></div>
+            <div><label>Firma del operario</label><button type="button" id="boton-abrir-firma" class="boton-firma">✍ Firmar</button><input type="hidden" id="firma-operario" name="firma-operario" autocomplete="off"></div>
+            <div class="campo-ancho"><label for="observaciones">Observaciones</label><input type="text" id="observaciones" name="observaciones" autocomplete="off"></div>
+          </fieldset>
+          <div class="acciones-paso"><button type="button" class="boton-secundario boton-anterior" data-prev="2">← Atrás</button><button type="button" class="boton-principal boton-siguiente" data-next="4">Revisar registro →</button></div>
+        </section>
+
+        <section class="paso-formulario" data-paso="4">
+          <div class="panel paso-cabecera"><span class="numero-paso">04</span><div><span class="eyebrow-dashboard">CONFIRMACIÓN</span><h2>Verifica tu registro</h2><p>Revisa los datos antes de guardar.</p></div></div>
+          <section class="panel confirmacion-registro" id="confirmacion-registro"></section>
+          <div class="acciones-paso"><button type="button" class="boton-secundario boton-anterior" data-prev="3">← Corregir</button><button type="submit" class="boton-principal">✓ Guardar registro</button></div>
+        </section>
+      </form>
+    </section>
+
+    <section class="panel control-surtidor">
+      <div class="seccion-surtidor-titulo"><div><span class="eyebrow-dashboard">CONTROL DIARIO</span><h2>Cierre independiente del surtidor</h2><p>M1 y M2 funcionan de forma independiente. El inicial se carga automáticamente desde el último cierre.</p></div><span class="badge-estado-surtidor" id="estado-cierre-surtidor">Pendiente</span></div>
+      <div class="lecturas-independientes">
+        <fieldset class="manguera-card manguera-m1"><legend>🔵 MANGUERA M1</legend><label for="m1-inicial">Lectura inicial <span>🔒 Automática si existe cierre anterior</span></label><input type="number" id="m1-inicial" name="m1-inicial" min="0" step="0.01" autocomplete="off" readonly><label for="m1-final">Lectura final</label><input type="number" id="m1-final" name="m1-final" min="0" step="0.01" autocomplete="off"><div class="resultado-manguera"><small>Despachado</small><strong id="galones-m1">—</strong><span>GAL</span></div><p class="validacion-manguera" id="validacion-m1"></p></fieldset>
+        <fieldset class="manguera-card manguera-m2"><legend>🟢 MANGUERA M2</legend><label for="m2-inicial">Lectura inicial <span>🔒 Automática si existe cierre anterior</span></label><input type="number" id="m2-inicial" name="m2-inicial" min="0" step="0.01" autocomplete="off" readonly><label for="m2-final">Lectura final</label><input type="number" id="m2-final" name="m2-final" min="0" step="0.01" autocomplete="off"><div class="resultado-manguera"><small>Despachado</small><strong id="galones-m2">—</strong><span>GAL</span></div><p class="validacion-manguera" id="validacion-m2"></p></fieldset>
+      </div>
+      <div class="total-surtidor"><span>⛽ TOTAL DEL DÍA</span><strong id="galones-total">—</strong><small>GALONES</small><button type="button" id="boton-guardar-cierre-dia" class="boton-principal">Guardar cierre del día</button></div>
+      <div class="panel checklist-surtidor"><span class="eyebrow-dashboard">INSPECCIÓN</span><div class="checklist-grid"><label>Fuga de Biodiesel <span><input type="radio" name="fuga-biodiesel" value="SI"> Sí</span><span><input type="radio" name="fuga-biodiesel" value="NO"> No</span></label><label>Sistema eléctrico <span><input type="radio" name="sistema-electrico" value="Buen estado"> Bueno</span><span><input type="radio" name="sistema-electrico" value="Mal"> Mal</span></label><label>Parada de emergencia <span><input type="radio" name="parada-emergencia" value="Buen estado"> Bueno</span><span><input type="radio" name="parada-emergencia" value="Mal"> Mal</span></label><label>Fecha <input type="date" id="fecha" name="fecha" autocomplete="off" disabled aria-label="Fecha automática del día"></label><small class="fecha-automatica-ayuda">La fecha se asigna automáticamente según el día actual.</small></div></div>
+    </section>
+
+    <section class="panel registros">
+      <div class="titulo-tabla"><div><span class="eyebrow-dashboard">ACTIVIDAD</span><h2>Registros de hoy</h2></div><input type="search" placeholder="🔎 Buscar registro..." autocomplete="off"></div>
+      <table><thead><tr><th>Operario</th><th>Cédula</th><th>Máquina/tractor</th><th>Horómetro</th><th>Cantidad</th><th>No. SAI</th><th>Firma</th><th>Observaciones</th></tr></thead><tbody id="tabla-registros"></tbody></table>
+      <div class="resumen">Total suministrado hoy: <strong><span id="resumen-total">0.00</span> galones</strong></div>
+    </section>
+  </main>
+
+  <!-- Hoja para firmar con mouse, lapiz digital o dedo -->
+  <section class="fondo-firma" id="fondo-firma" hidden>
+    <div class="hoja-firma">
+      <h2>Firma del operario</h2>
+      <canvas id="lienzo-firma" width="720" height="320"></canvas>
+      <div class="linea-firma"></div>
+
+      <div class="acciones-firma">
+        <button type="button" id="boton-limpiar-firma">Limpiar</button>
+        <button type="button" id="boton-cerrar-firma">Cancelar</button>
+        <button type="button" id="boton-guardar-firma">Guardar firma</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (protegerVista('registro')) {
+      aplicarPermisosEnlaces();
+    }
+  </script>
+  <script src="../js/app.js?v=20260825-1"></script>
+</body>
+</html>

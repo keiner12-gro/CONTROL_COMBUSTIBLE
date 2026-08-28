@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Registros de combustible</title>
+</head>
+<body>
+  <main class="pantalla">
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <div><span class="eyebrow-dashboard">CONTROL DE COMBUSTIBLE</span><h1>Registros de suministros</h1></div>
+      </div>
+      <div class="ubicacion ubicacion-compacta"><strong>Barranca de Upía, Meta</strong><span data-fecha-encabezado></span></div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+
+    <section class="panel controles-tabla tarjetas-controles">
+      <div class="control-busqueda"><label for="buscar-registro">Buscar registro</label><input type="search" id="buscar-registro" placeholder="Operario, máquina o tractor" autocomplete="off"></div>
+      <div><label for="buscar-fecha">Fecha</label><input type="date" id="buscar-fecha" autocomplete="off"></div>
+      <div class="botones-tabla"><button type="button" id="boton-limpiar-busqueda">Limpiar</button><button type="button" id="boton-exportar-excel">Exportar Excel</button><button type="button" id="boton-exportar-pdf">Exportar PDF</button></div>
+    </section>
+
+    <section class="panel registros tarjetas-registros-panel">
+      <div class="titulo-tabla titulo-tarjetas-registros">
+        <div><span class="eyebrow-dashboard">ACTIVIDAD</span><h2>Historial de suministros</h2><p class="texto-secundario">Cada registro se muestra como una tarjeta para facilitar la lectura en celular y computador.</p></div>
+        <div class="resumen-tarjetas"><strong><span id="cantidad-registros">0</span></strong><small>registros</small><strong><span id="resumen-tabla-general">0.00</span></strong><small>galones</small></div>
+      </div>
+      <div id="cuerpo-registros-tarjetas" class="grid-registros-tarjetas"></div>
+      <p class="tabla-vacia" id="mensaje-tabla-vacia" hidden>No hay registros para mostrar con los filtros actuales.</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>if (protegerVista('tablas')) { aplicarPermisosEnlaces(); }</script>
+  <script src="../js/tablas.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Inicio de sesion</title>
+</head>
+<body class="pagina-login">
+  <main class="contenedor-login">
+    <!-- Tarjeta principal del inicio de sesion -->
+    <section class="panel tarjeta-login">
+      <div class="marca-login">
+        <img src="/assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="">
+        <div>
+          <h1>Control diario tanque principal</h1>
+        </div>
+      </div>
+
+      <!-- Formulario de acceso. Mas adelante aqui se conectara la base de datos -->
+      <form id="formulario-login" autocomplete="off">
+        <div>
+          <label for="usuario">Usuario</label>
+          <input type="text" id="usuario" name="usuario" autocomplete="off" required>
+        </div>
+
+        <div>
+          <label for="contrasena">Contrasena</label>
+          <input type="password" id="contrasena" name="contrasena" autocomplete="new-password" required>
+        </div>
+
+
+
+        <p class="mensaje-login" id="mensaje-login"></p>
+
+        <button type="submit">Ingresar</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/login.js"></script>
+</body>
+</html>

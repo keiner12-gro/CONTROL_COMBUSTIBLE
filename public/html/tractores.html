@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Registro de tractores</title>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado de la vista de tractores -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1>Registro de tractores</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <!-- Formulario para agregar tractores a la tabla tractores de MySQL -->
+    <section class="panel">
+      <form id="formulario-tractor" class="formulario-tractor" autocomplete="off">
+
+
+        <div>
+          <label for="tractor-maquina">Maquina</label>
+          <input type="text" id="tractor-maquina" maxlength="20" autocomplete="off" required>
+        </div>
+
+        <div>
+          <label for="tractor-descripcion-form">Descripcion</label>
+          <input type="text" id="tractor-descripcion-form" maxlength="150" autocomplete="off" required>
+        </div>
+
+        <div>
+          <label for="tractor-centro-costo-form">Centro costo</label>
+          <input type="text" id="tractor-centro-costo-form" maxlength="20" autocomplete="off" required>
+        </div>
+
+        <div>
+          <label for="tractor-capacidad-form">Capacidad galones</label>
+          <input type="number" id="tractor-capacidad-form" min="0" step="0.01" autocomplete="off" required>
+        </div>
+
+        <button type="submit">Agregar tractor</button>
+      </form>
+    </section>
+
+    <!-- Tractores mostrados como tarjetas independientes -->
+    <section class="panel registros panel-cartas">
+      <div class="titulo-tabla">
+        <div>
+          <h2>Tractores registrados</h2>
+          <p class="subtitulo-seccion">Cada máquina tiene su propia ficha para consultar y editar rápidamente.</p>
+        </div>
+        <strong class="contador-registros"><span id="cantidad-tractores">0</span> tractores</strong>
+      </div>
+      <div id="cuerpo-tabla-tractores" class="cartas-registros cartas-tractores"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (protegerVista('tractores')) {
+      aplicarPermisosEnlaces();
+    }
+  </script>
+  <script src="../js/tractores.js"></script>
+</body>
+</html>

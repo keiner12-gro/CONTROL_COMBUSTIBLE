@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Reportes mensuales</title>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado de la vista de reportes mensuales -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1>Reportes mensuales</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <!-- Cartas mensuales generadas automaticamente desde registros_combustible -->
+    <section class="panel panel-analitica-reportes">
+      <div class="titulo-tabla">
+        <div><span class="eyebrow-dashboard">ANÁLISIS DE CONSUMO</span><h2>Promedio por máquina</h2><p class="texto-secundario">El promedio ayuda a detectar suministros fuera del comportamiento habitual.</p></div>
+        <button type="button" id="boton-actualizar-analitica">Actualizar análisis</button>
+      </div>
+      <div id="analitica-maquinas" class="grid-analitica-maquinas"></div>
+    </section>
+
+    <section class="panel">
+      <div class="titulo-tabla">
+        <h2>Cartas de reportes</h2>
+        <button type="button" id="boton-actualizar-reportes">Actualizar reportes</button>
+      </div>
+
+      <div class="cartas-reportes" id="cartas-reportes"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (protegerVista('reportes')) {
+      aplicarPermisosEnlaces();
+    }
+  </script>
+  <script src="../js/reportes.js"></script>
+</body>
+</html>

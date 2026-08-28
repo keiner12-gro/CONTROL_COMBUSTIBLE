@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Registro de usuarios</title>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado de la vista administrativa de usuarios -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <h1>Registro de usuarios y permisos</h1>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <!-- Formulario para crear usuarios nuevos en usuarios_combustible -->
+    <section class="panel">
+      <form id="formulario-usuario" class="formulario-usuario" autocomplete="off">
+        <div>
+          <label for="usuario-nuevo">Usuario</label>
+          <input type="text" id="usuario-nuevo" autocomplete="off" required>
+        </div>
+
+        <div>
+          <label for="contrasena-nueva">Contrasena</label>
+          <input type="password" id="contrasena-nueva" value="123456" autocomplete="new-password" required>
+        </div>
+
+        <div>
+          <label for="rol-nuevo">Rol</label>
+          <select id="rol-nuevo" required>
+            <option value="">Seleccione un rol</option>
+            <option value="super_administrador">Super administrador</option>
+            <option value="administrador">Administrador</option>
+            <option value="operario">Operario</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
+        </div>
+
+        <!-- Permisos de acceso a vistas del sistema -->
+        <fieldset class="permisos-usuario">
+          <legend>Permisos de vistas</legend>
+          <label><input type="checkbox" value="registro"> Registro de combustible</label>
+          <label><input type="checkbox" value="tablas"> Tabla de registros</label>
+          <label><input type="checkbox" value="usuarios"> Registro de usuarios</label>
+          <label><input type="checkbox" value="tractores"> Registro de tractores</label>
+          <label><input type="checkbox" value="operarios"> Registro de operarios</label>
+          <label><input type="checkbox" value="reportes"> Reportes mensuales</label>
+          <label><input type="checkbox" value="alertas"> Alertas por sobrecapacidad</label>
+        </fieldset>
+
+        <button type="submit">Crear usuario</button>
+      </form>
+    </section>
+
+    <!-- Tabla de usuarios existentes y permisos editables -->
+    <section class="panel registros">
+      <div class="titulo-tabla">
+        <h2>Usuarios creados</h2>
+        <strong><span id="cantidad-usuarios">0</span> usuarios</strong>
+      </div>
+
+      <table class="tabla-usuarios">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Permiso registro</th>
+            <th>Permiso tablas</th>
+            <th>Permiso usuarios</th>
+            <th>Permiso tractores</th>
+            <th>Permiso operarios</th>
+            <th>Permiso reportes</th>
+            <th>Permiso alertas</th>
+            <th>Nueva contrasena</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-tabla-usuarios"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (protegerVista('usuarios')) {
+      aplicarPermisosEnlaces();
+    }
+  </script>
+  <script src="../js/usuarios.js"></script>
+</body>
+</html>
