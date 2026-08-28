@@ -27,6 +27,7 @@ const app = express();
 const port = process.env.PUERTO || process.env.PORT || 3000;
 const root = path.join(__dirname, 'public');
 const db = crearConexionMySQL();
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(root, { index: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const paginas = ['login', 'menu', 'index', 'tablas', 'usuarios', 'tractores', 'operarios', 'reportes', 'reporte-detalle', 'alertas', 'cambiar-contrasena'];
 app.get('/', (q, s) => s.sendFile(path.join(root, 'html', 'login.html')));
 paginas.forEach(p => app.get(`/${p}.html`, (q, s) => s.sendFile(path.join(root, 'html', `${p}.html`))));
@@ -76,11 +78,11 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ mensaje: err.status ? err.message : 'Error interno del servidor.' });
 });
 
-// En desarrollo local preparamos tablas e iniciamos listener
+// En desarrollo local inicializa las tablas y el listener
 if (process.env.NODE_ENV !== 'production') {
   prepararTablas(db)
     .then(() => app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`)))
-    .catch(e => { console.error('Error al inicializar tablas:', e.message); });
+    .catch(e => console.error('Error al inicializar tablas en local:', e.message));
 }
 
 module.exports = app;
