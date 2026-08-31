@@ -80,6 +80,10 @@ const alertRepository = new MySQLAlertRepository(db);
 const alertService = new AlertService(alertRepository);
 const recordService = new RecordService(recordRepository, tractorRepository, alertService);
 
+// Evita que un arranque en frío atienda peticiones a la API antes de que el
+// esquema (tablas/columnas nuevas) termine de prepararse.
+app.use('/api', (req, res, next) => { tablasListas.then(() => next()); });
+
 // Login es la única API pública. Todas las demás APIs pasan por sesión HttpOnly.
 app.use('/api', (req, res, next) => {
   if (req.path === '/login' && req.method === 'POST') return next();
@@ -99,11 +103,14 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ mensaje: err.status ? err.message : 'Error interno del servidor.' });
 });
 
-// En desarrollo local inicializa las tablas y el listener
+// Prepara/actualiza el esquema siempre (idempotente): en local y también en
+// cada arranque en frío de la función serverless de Vercel, ya que ahí nunca
+// se ejecuta este archivo como script y de lo contrario el esquema en
+// producción queda desactualizado (columnas nuevas nunca se crean).
+const tablasListas = prepararTablas(db).catch(e => console.error('Error al preparar tablas:', e.message));
+
 if (process.env.NODE_ENV !== 'production') {
-  prepararTablas(db)
-    .then(() => app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`)))
-    .catch(e => console.error('Error al inicializar tablas en local:', e.message));
+  tablasListas.then(() => app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`)));
 }
 
 module.exports = app;
