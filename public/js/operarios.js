@@ -76,7 +76,7 @@ function pintarOperarios(operarios) {
 formularioOperario.addEventListener('submit', async (evento) => {
   evento.preventDefault();
 
-  await fetch('/api/operarios', {
+  const respuesta = await fetch('/api/operarios', {
     method: 'POST',
     headers: obtenerCabecerasOperarios(),
     body: JSON.stringify({
@@ -84,6 +84,12 @@ formularioOperario.addEventListener('submit', async (evento) => {
       cedula: operarioCedula.value.trim()
     })
   });
+
+  if (!respuesta.ok) {
+    const payload = await respuesta.json().catch(() => ({}));
+    mostrarAlertaError('No se pudo guardar', payload.mensaje || 'No tienes permiso para registrar operarios.');
+    return;
+  }
 
   formularioOperario.reset();
   await cargarOperarios();
@@ -102,10 +108,16 @@ async function eliminarOperario(id) {
     return;
   }
 
-  await fetch(`/api/operarios/${id}`, {
+  const respuesta = await fetch(`/api/operarios/${id}`, {
     method: 'DELETE',
     headers: obtenerCabecerasOperarios()
   });
+
+  if (!respuesta.ok) {
+    const payload = await respuesta.json().catch(() => ({}));
+    mostrarAlertaError('No se pudo eliminar', payload.mensaje || 'No tienes permiso para eliminar operarios.');
+    return;
+  }
 
   await cargarOperarios();
   mostrarAlertaExito('Operario eliminado', 'El operario fue eliminado correctamente.');

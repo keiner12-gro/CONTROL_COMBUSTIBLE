@@ -137,7 +137,8 @@ async function guardarEdicionTractor(tarjeta, tractor) {
   });
 
   if (!respuesta.ok) {
-    mostrarAlertaError('No se pudo guardar', 'No se pudo guardar la edicion del tractor.');
+    const payload = await respuesta.json().catch(() => ({}));
+    mostrarAlertaError('No se pudo guardar', payload.mensaje || 'No tienes permiso para editar tractores.');
     return;
   }
 
@@ -149,7 +150,7 @@ async function guardarEdicionTractor(tarjeta, tractor) {
 formularioTractor.addEventListener('submit', async (evento) => {
   evento.preventDefault();
 
-  await fetch('/api/tractores', {
+  const respuesta = await fetch('/api/tractores', {
     method: 'POST',
     headers: obtenerCabecerasTractores(),
     body: JSON.stringify({
@@ -159,6 +160,12 @@ formularioTractor.addEventListener('submit', async (evento) => {
       capacidad_galones: Number(tractorCapacidad.value || 0)
     })
   });
+
+  if (!respuesta.ok) {
+    const payload = await respuesta.json().catch(() => ({}));
+    mostrarAlertaError('No se pudo guardar', payload.mensaje || 'No tienes permiso para registrar máquinas.');
+    return;
+  }
 
   formularioTractor.reset();
   await cargarTractores();
@@ -177,10 +184,16 @@ async function eliminarTractor(id) {
     return;
   }
 
-  await fetch(`/api/tractores/${id}`, {
+  const respuesta = await fetch(`/api/tractores/${id}`, {
     method: 'DELETE',
     headers: obtenerCabecerasTractores()
   });
+
+  if (!respuesta.ok) {
+    const payload = await respuesta.json().catch(() => ({}));
+    mostrarAlertaError('No se pudo eliminar', payload.mensaje || 'No tienes permiso para eliminar máquinas.');
+    return;
+  }
 
   await cargarTractores();
   mostrarAlertaExito('Tractor eliminado', 'El tractor fue eliminado correctamente.');
