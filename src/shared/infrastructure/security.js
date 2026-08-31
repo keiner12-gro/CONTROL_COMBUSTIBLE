@@ -3,6 +3,43 @@ const crypto = require('crypto');
 const COOKIE_NAME = 'cc_session';
 const SESSION_HOURS = 8;
 
+// Protección contra fuerza bruta en /api/login: bloquea por IP+usuario tras
+// varios intentos fallidos dentro de una ventana de tiempo. En memoria por
+// instancia; es una capa de defensa adicional, no un reemplazo de un WAF.
+const LOGIN_MAX_INTENTOS = 8;
+const LOGIN_VENTANA_MS = 15 * 60 * 1000;
+const intentosLogin = new Map();
+
+function claveIntentoLogin(req) {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+  const usuario = String(req.body?.usuario || '').trim().toLowerCase();
+  return `${ip}:${usuario}`;
+}
+
+function limitarIntentosLogin(req, res, next) {
+  if (intentosLogin.size > 5000) intentosLogin.clear();
+  const clave = claveIntentoLogin(req);
+  const ahora = Date.now();
+  const registro = intentosLogin.get(clave);
+  if (registro && ahora - registro.primerIntento < LOGIN_VENTANA_MS && registro.count >= LOGIN_MAX_INTENTOS) {
+    const restanteMin = Math.ceil((LOGIN_VENTANA_MS - (ahora - registro.primerIntento)) / 60000);
+    return res.status(429).json({ mensaje: `Demasiados intentos fallidos. Intenta de nuevo en ${restanteMin} minuto(s).` });
+  }
+  next();
+}
+
+function registrarIntentoLoginFallido(req) {
+  const clave = claveIntentoLogin(req);
+  const ahora = Date.now();
+  const registro = intentosLogin.get(clave);
+  if (registro && ahora - registro.primerIntento < LOGIN_VENTANA_MS) registro.count += 1;
+  else intentosLogin.set(clave, { count: 1, primerIntento: ahora });
+}
+
+function limpiarIntentosLogin(req) {
+  intentosLogin.delete(claveIntentoLogin(req));
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const N = 16384;
@@ -147,5 +184,8 @@ module.exports = {
   autenticarSolicitud,
   requirePermission,
   requireAnyPermission,
-  requireSuperAdmin
+  requireSuperAdmin,
+  limitarIntentosLogin,
+  registrarIntentoLoginFallido,
+  limpiarIntentosLogin
 };

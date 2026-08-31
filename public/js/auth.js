@@ -1,3 +1,11 @@
+// Escapa texto antes de insertarlo con innerHTML para evitar XSS con datos
+// que vienen de la base de datos (nombres de máquinas, operarios, etc.).
+function escapeHtml(valor = '') {
+  const div = document.createElement('div');
+  div.textContent = String(valor);
+  return div.innerHTML;
+}
+
 // Lee la sesion guardada por login.js.
 function obtenerSesionActual() {
   try {

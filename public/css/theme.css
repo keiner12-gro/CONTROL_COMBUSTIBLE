@@ -9,6 +9,10 @@
   --cc-amarillo-suave:#FFF7E4;
   --cc-rojo:#D9534F;
   --cc-rojo-suave:#FCECEC;
+  --cc-azul:#3C7EC7;
+  --cc-azul-suave:#EAF2FB;
+  --cc-morado:#8B5CD9;
+  --cc-morado-suave:#F3ECFC;
   --cc-fondo:#F4F7F4;
   --cc-superficie:#FFFFFF;
   --cc-texto:#1E2A23;
@@ -114,8 +118,6 @@ label{color:var(--cc-verde-oscuro);font-weight:700}
 @media(max-width:900px){.grid-registros-tarjetas{grid-template-columns:1fr}.tarjetas-controles{grid-template-columns:1fr 1fr}.tarjetas-controles .botones-tabla{grid-column:1/-1}}
 @media(max-width:650px){.tarjetas-controles{grid-template-columns:1fr}.tarjetas-controles .botones-tabla{grid-column:auto}.tarjetas-controles .botones-tabla button{flex:1}.grid-campos-registro{grid-template-columns:1fr}.registro-tarjeta{padding:14px}.registro-tarjeta-cabecera{flex-direction:column}.registro-cantidad{text-align:left}.titulo-tarjetas-registros{display:block}.resumen-tarjetas{margin-top:14px;text-align:left;justify-content:start}.acciones-tarjeta-registro{justify-content:stretch}.acciones-tarjeta-registro button{flex:1}.cantidad-destacada .campo-galones input{font-size:1.65rem}}
 @media print{body{background:#fff}.encabezado,.controles-tabla,.menu-lateral,.menu-overlay,.nav-movil-inferior,.acciones-tarjeta-registro{display:none!important}.panel{box-shadow:none;border:0}.grid-registros-tarjetas{display:block}.registro-tarjeta{break-inside:avoid;box-shadow:none;border:1px solid #bbb;margin-bottom:12px}.campo-registro-tarjeta input{border:0;background:#fff!important;padding:0}.texto-pdf{display:inline}}
-.alerta-promedio{border-left:5px solid var(--cc-amarillo)!important}
-.alerta-promedio .exceso-alerta{background:var(--cc-amarillo-suave)!important;color:#7A5A0C!important}
 .pagina-login{min-height:100vh;background:radial-gradient(circle at 15% 15%,rgba(95,143,61,.12),transparent 32%),radial-gradient(circle at 90% 85%,rgba(243,108,33,.10),transparent 28%),var(--cc-fondo)!important}
 .tarjeta-login{border-top:5px solid var(--cc-verde)!important;max-width:470px!important;padding:30px!important}
 .marca-login{display:flex!important;align-items:center!important;gap:14px!important;margin-bottom:22px!important}

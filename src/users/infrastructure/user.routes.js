@@ -1,15 +1,19 @@
 const express = require('express');
 const { VISTAS_DISPONIBLES } = require('../../shared/application/permisos');
-const { crearSesion, destruirSesion, requireSuperAdmin } = require('../../shared/infrastructure/security');
+const { crearSesion, destruirSesion, requireSuperAdmin, limitarIntentosLogin, registrarIntentoLoginFallido, limpiarIntentosLogin } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
 function crearRutasUsuarios(service, db) {
   const r = express.Router();
 
-  r.post('/login', async (req, res, next) => {
+  r.post('/login', limitarIntentosLogin, async (req, res, next) => {
     try {
       const x = await service.login(req.body.usuario, req.body.contrasena);
-      if (!x) return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
+      if (!x) {
+        registrarIntentoLoginFallido(req);
+        return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
+      }
+      limpiarIntentosLogin(req);
       const permisos = await service.repository?.getPermissions?.(x.id, x.rol) || x.permisos || [];
       await crearSesion(db, x.id, req, res);
       await registrarAuditoria(db, { usuarioId: x.id, usuario: x.usuario, rol: x.rol, accion: 'LOGIN', modulo: 'usuarios', detalle: { resultado: 'ok' } });

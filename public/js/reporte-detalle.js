@@ -330,8 +330,9 @@ async function cargarAlertasReporte() {
   } else return;
   try {
     const respuesta=await fetch(url); const alertas=await respuesta.json(); cuerpoAlertasReporte.innerHTML='';
-    if(!alertas.length){cuerpoAlertasReporte.innerHTML='<tr><td colspan="8">No hay alertas de sobrecapacidad.</td></tr>';return;}
-    alertas.forEach(a=>{const fila=document.createElement('tr');[a.fecha,a.maquina,Number(a.cantidad||0).toFixed(2),Number(a.capacidad_galones||0).toFixed(2),Number(a.exceso_galones||0).toFixed(2),a.estado||'pendiente',a.justificacion||'Sin justificación'].forEach(v=>{const td=document.createElement('td');td.textContent=v;fila.appendChild(td);});const td=document.createElement('td');if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.textContent='Abrir reporte';td.appendChild(link);}else td.textContent='Sin reporte';fila.appendChild(td);cuerpoAlertasReporte.appendChild(fila);});
+    if(!alertas.length){cuerpoAlertasReporte.innerHTML='<tr><td colspan="9">No hay alertas registradas.</td></tr>';return;}
+    const etiquetasTipo={sobrecapacidad:'Sobrecapacidad',promedio:'Consumo fuera de promedio',horometro_irregular:'Horómetro irregular',registro_incompleto:'Registro incompleto',inspeccion_pendiente:'Inspección pendiente'};
+    alertas.forEach(a=>{const fila=document.createElement('tr');[a.fecha,etiquetasTipo[a.tipo_alerta]||'Sobrecapacidad',a.maquina,Number(a.cantidad||0).toFixed(2),Number(a.capacidad_galones||0).toFixed(2),Number(a.exceso_galones||0).toFixed(2),a.estado||'pendiente',a.justificacion||'Sin justificación'].forEach(v=>{const td=document.createElement('td');td.textContent=v;fila.appendChild(td);});const td=document.createElement('td');if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.textContent='Abrir reporte';td.appendChild(link);}else td.textContent='Sin reporte';fila.appendChild(td);cuerpoAlertasReporte.appendChild(fila);});
   } catch(e){console.warn('No se pudieron cargar alertas del reporte',e);}
 }
 async function cargarDetalleMensual() {
