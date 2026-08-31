@@ -5,8 +5,13 @@ const { hashPassword, verifyPassword, esHashSeguro } = require('../../shared/inf
 class MySQLUserRepository extends UserRepository {
   constructor(db) { super(); this.db = db; }
 
+  normalizarUsuario(usuario) {
+    return String(usuario || '').trim();
+  }
+
   async findByCredentials(usuario, contrasena) {
-    const [r] = await this.db.query('SELECT id, usuario, contrasena, rol, debe_cambiar_contrasena FROM usuarios_combustible WHERE usuario=? LIMIT 1', [String(usuario || '').trim()]);
+    const usuarioNormalizado = this.normalizarUsuario(usuario);
+    const [r] = await this.db.query('SELECT id, usuario, contrasena, rol, debe_cambiar_contrasena FROM usuarios_combustible WHERE LOWER(usuario)=LOWER(?) LIMIT 1', [usuarioNormalizado]);
     const u = r[0];
     if (!u) return null;
 
@@ -33,7 +38,7 @@ class MySQLUserRepository extends UserRepository {
   }
 
   async create(d) {
-    const usuario = String(d.usuario || '').trim().toLowerCase();
+    const usuario = this.normalizarUsuario(d.usuario).toLowerCase();
     const contrasena = String(d.contrasena || '');
     if (usuario.length < 3) throw Object.assign(new Error('El usuario debe tener al menos 3 caracteres.'), { status: 400 });
     if (contrasena.length < 6) throw Object.assign(new Error('La contraseña debe tener al menos 6 caracteres.'), { status: 400 });
