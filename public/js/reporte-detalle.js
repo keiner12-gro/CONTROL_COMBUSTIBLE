@@ -40,6 +40,26 @@ let graficaConsumoFecha = null;
 let graficaM1M2 = null;
 let graficaMaquinas = null;
 
+const kpisReporte = document.getElementById('kpis-reporte');
+const cuerpoConsumoMaquina = document.getElementById('cuerpo-consumo-maquina');
+const mensajeConsumoMaquina = document.getElementById('mensaje-consumo-maquina');
+const ordenConsumoMaquina = document.getElementById('orden-consumo-maquina');
+const cuerpoResumenAlertasTipo = document.getElementById('cuerpo-resumen-alertas-tipo');
+const tendenciaConsumo = document.getElementById('tendencia-consumo');
+
+// Categorias vigentes del sistema de alertas (la categoria "registro incompleto" fue retirada).
+const ETIQUETAS_TIPO_ALERTA = {
+  sobrecapacidad: { label: 'Sobre capacidad', icon: '🔴' },
+  promedio: { label: 'Consumo fuera del promedio', icon: '🟠' },
+  horometro_irregular: { label: 'Horómetro irregular', icon: '🟡' },
+  inspeccion_pendiente: { label: 'Inspección pendiente', icon: '🟣' }
+};
+const ORDEN_TIPOS_ALERTA_REPORTE = ['sobrecapacidad', 'promedio', 'horometro_irregular', 'inspeccion_pendiente'];
+
+let alertasDelReporte = [];
+let registrosFiltradosActuales = [];
+let tipoPorMaquina = {};
+
 const subtituloGraficasReporte = document.getElementById('subtitulo-graficas-reporte');
 const totalConsumoGrafica = document.getElementById('total-consumo-grafica');
 const resumenRegistrosGrafica = document.getElementById('resumen-registros-grafica');
@@ -159,6 +179,152 @@ function agruparConsumoPorMaquina(registros) {
     .sort((a, b) => b[1] - a[1]);
 }
 
+// Extrae el tipo de maquina (Tractor, Camion, Excavadora, etc.) de la descripcion
+// existente en la tabla de maquinas, sin inventar un campo nuevo.
+function primeraPalabraCapitalizada(texto) {
+  const palabra = String(texto || '').trim().split(/\s+/)[0] || '';
+  if (!palabra) return 'Sin tipo';
+  return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
+}
+
+// Construye el mapa maquina -> tipo a partir del analisis ya existente,
+// que ya une registros con la tabla de maquinas.
+async function cargarTipoPorMaquina() {
+  try {
+    const respuesta = await fetch('/api/analitica/maquinas', { cache: 'no-store' });
+    if (!respuesta.ok) return;
+    const datos = await respuesta.json();
+    tipoPorMaquina = {};
+    (Array.isArray(datos) ? datos : []).forEach((x) => {
+      const maquina = String(x.maquina || '').trim().toUpperCase();
+      if (maquina) tipoPorMaquina[maquina] = primeraPalabraCapitalizada(x.descripcion);
+    });
+  } catch (_) {}
+}
+
+// KPIs del periodo: consumo total, registros, promedio, alertas y maquina top.
+function renderizarKpisReporte(registros, alertas) {
+  if (!kpisReporte) return;
+  const suministros = registros.filter((registro) => !esCierreDia(registro));
+  const totalGalones = suministros.reduce((total, registro) => total + obtenerConsumoRegistro(registro), 0);
+  const totalRegistros = suministros.length;
+  const promedio = totalRegistros ? totalGalones / totalRegistros : 0;
+  const top = agruparConsumoPorMaquina(registros)[0];
+
+  const tarjetas = [
+    { clase: 'kpi-consumo', icon: '⛽', label: 'Consumo total', valor: `${totalGalones.toFixed(2)} GAL` },
+    { clase: 'kpi-registros', icon: '📋', label: 'Registros', valor: String(totalRegistros) },
+    { clase: 'kpi-promedio', icon: '📊', label: 'Promedio por suministro', valor: `${promedio.toFixed(2)} GAL` },
+    { clase: 'kpi-alertas', icon: '🔔', label: 'Alertas', valor: String(alertas.length) },
+    { clase: 'kpi-top', icon: '🚜', label: 'Máquina con mayor consumo', valor: top ? top[0] : 'Sin datos', extra: top ? `${top[1].toFixed(2)} GAL` : '' }
+  ];
+
+  kpisReporte.innerHTML = tarjetas.map((t) => `
+    <div class="tarjeta-kpi-reporte ${t.clase}">
+      <span>${t.icon} ${escapeHtml(t.label)}</span>
+      <strong>${escapeHtml(t.valor)}</strong>
+      ${t.extra ? `<small>${escapeHtml(t.extra)}</small>` : ''}
+    </div>`).join('');
+}
+
+// Tendencia de consumo comparando la primera y la segunda mitad del periodo filtrado.
+function calcularTendencia(consumoFechas) {
+  if (consumoFechas.length < 2) return null;
+  const mitad = Math.floor(consumoFechas.length / 2) || 1;
+  const promedio = (arr) => arr.reduce((total, [, valor]) => total + valor, 0) / (arr.length || 1);
+  const promedioInicial = promedio(consumoFechas.slice(0, mitad));
+  const promedioFinal = promedio(consumoFechas.slice(mitad));
+  if (promedioInicial === 0 && promedioFinal === 0) return { tipo: 'estable', variacion: 0 };
+  const variacion = promedioInicial === 0 ? 100 : ((promedioFinal - promedioInicial) / promedioInicial) * 100;
+  if (Math.abs(variacion) < 5) return { tipo: 'estable', variacion };
+  return { tipo: variacion > 0 ? 'aumento' : 'disminucion', variacion };
+}
+
+function renderizarTendencia(consumoFechas) {
+  if (!tendenciaConsumo) return;
+  const tendencia = calcularTendencia(consumoFechas);
+  if (!tendencia) { tendenciaConsumo.hidden = true; return; }
+  const iconos = { aumento: '📈', disminucion: '📉', estable: '➖' };
+  const textos = { aumento: 'En aumento', disminucion: 'En disminución', estable: 'Estable' };
+  tendenciaConsumo.hidden = false;
+  tendenciaConsumo.className = `tendencia-chip ${tendencia.tipo}`;
+  const porcentaje = tendencia.tipo !== 'estable' ? ` (${tendencia.variacion > 0 ? '+' : ''}${tendencia.variacion.toFixed(1)}%)` : '';
+  tendenciaConsumo.textContent = `${iconos[tendencia.tipo]} ${textos[tendencia.tipo]}${porcentaje}`;
+}
+
+// Resumen de consumo por maquina: registros, galones, promedio y alertas asociadas.
+function calcularResumenPorMaquina(registros, alertas) {
+  const mapa = new Map();
+  registros.forEach((registro) => {
+    const maquina = String(registro.maquina || '').trim().toUpperCase();
+    if (!maquina || esCierreDia(registro)) return;
+    const consumo = obtenerConsumoMaquina(registro);
+    if (!mapa.has(maquina)) mapa.set(maquina, { maquina, registros: 0, galones: 0, alertas: 0 });
+    const entrada = mapa.get(maquina);
+    entrada.registros += 1;
+    entrada.galones += Number.isFinite(consumo) ? consumo : 0;
+  });
+  alertas.forEach((alerta) => {
+    const maquina = String(alerta.maquina || '').trim().toUpperCase();
+    if (!maquina || !mapa.has(maquina)) return;
+    mapa.get(maquina).alertas += 1;
+  });
+  return [...mapa.values()].map((entrada) => ({
+    ...entrada,
+    tipo: tipoPorMaquina[entrada.maquina] || 'Sin tipo',
+    promedio: entrada.registros ? entrada.galones / entrada.registros : 0
+  }));
+}
+
+function ordenarResumenMaquina(lista, criterio) {
+  const copia = [...lista];
+  if (criterio === 'consumo-asc') return copia.sort((a, b) => a.galones - b.galones);
+  if (criterio === 'registros-desc') return copia.sort((a, b) => b.registros - a.registros);
+  if (criterio === 'alertas-desc') return copia.sort((a, b) => b.alertas - a.alertas);
+  return copia.sort((a, b) => b.galones - a.galones);
+}
+
+function renderizarConsumoPorMaquina(registros, alertas) {
+  if (!cuerpoConsumoMaquina) return;
+  const criterio = ordenConsumoMaquina ? ordenConsumoMaquina.value : 'consumo-desc';
+  const resumen = ordenarResumenMaquina(calcularResumenPorMaquina(registros, alertas), criterio);
+  cuerpoConsumoMaquina.innerHTML = '';
+  if (mensajeConsumoMaquina) mensajeConsumoMaquina.hidden = resumen.length > 0;
+  resumen.forEach((x) => {
+    const fila = document.createElement('tr');
+    [x.maquina, x.tipo, String(x.registros), x.galones.toFixed(2), x.promedio.toFixed(2), String(x.alertas)].forEach((valor) => {
+      const celda = document.createElement('td');
+      celda.textContent = valor;
+      fila.appendChild(celda);
+    });
+    cuerpoConsumoMaquina.appendChild(fila);
+  });
+}
+
+// Resumen de alertas por categoria, usando las mismas etiquetas del panel de alertas.
+function renderizarResumenAlertasTipo(alertas) {
+  if (!cuerpoResumenAlertasTipo) return;
+  cuerpoResumenAlertasTipo.innerHTML = '';
+  ORDEN_TIPOS_ALERTA_REPORTE.forEach((tipo) => {
+    const cantidad = alertas.filter((a) => (a.tipo_alerta || 'sobrecapacidad') === tipo).length;
+    const fila = document.createElement('tr');
+    const celdaTipo = document.createElement('td');
+    celdaTipo.textContent = `${ETIQUETAS_TIPO_ALERTA[tipo].icon} ${ETIQUETAS_TIPO_ALERTA[tipo].label}`;
+    const celdaCantidad = document.createElement('td');
+    celdaCantidad.textContent = String(cantidad);
+    fila.append(celdaTipo, celdaCantidad);
+    cuerpoResumenAlertasTipo.appendChild(fila);
+  });
+}
+
+// Punto unico que recalcula KPIs, consumo por maquina y resumen de alertas
+// cada vez que cambian los registros filtrados o las alertas del periodo.
+function actualizarPanelesDerivados() {
+  renderizarKpisReporte(registrosFiltradosActuales, alertasDelReporte);
+  renderizarConsumoPorMaquina(registrosFiltradosActuales, alertasDelReporte);
+  renderizarResumenAlertasTipo(alertasDelReporte);
+}
+
 function actualizarGraficas(registros) {
   if (typeof Chart === 'undefined') return;
 
@@ -171,6 +337,8 @@ function actualizarGraficas(registros) {
   const consumoFechas = agruparConsumoPorFecha(lista);
   const consumoMangueras = calcularConsumoM1M2(lista);
   const consumoMaquinas = agruparConsumoPorMaquina(lista);
+
+  renderizarTendencia(consumoFechas);
 
   totalConsumoGrafica.textContent = totalConsumo.toFixed(2);
   resumenConsumoGrafica.textContent = totalConsumo.toFixed(2);
@@ -329,10 +497,24 @@ async function cargarAlertasReporte() {
     url=`/api/alertas/reportes/${anioReporte}/${mesReporte}`;
   } else return;
   try {
-    const respuesta=await fetch(url); const alertas=await respuesta.json(); cuerpoAlertasReporte.innerHTML='';
-    if(!alertas.length){cuerpoAlertasReporte.innerHTML='<tr><td colspan="9">No hay alertas registradas.</td></tr>';return;}
-    const etiquetasTipo={sobrecapacidad:'Sobrecapacidad',promedio:'Consumo fuera de promedio',horometro_irregular:'Horómetro irregular',registro_incompleto:'Registro incompleto',inspeccion_pendiente:'Inspección pendiente'};
-    alertas.forEach(a=>{const fila=document.createElement('tr');[a.fecha,etiquetasTipo[a.tipo_alerta]||'Sobrecapacidad',a.maquina,Number(a.cantidad||0).toFixed(2),Number(a.capacidad_galones||0).toFixed(2),Number(a.exceso_galones||0).toFixed(2),a.estado||'pendiente',a.justificacion||'Sin justificación'].forEach(v=>{const td=document.createElement('td');td.textContent=v;fila.appendChild(td);});const td=document.createElement('td');if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.textContent='Abrir reporte';td.appendChild(link);}else td.textContent='Sin reporte';fila.appendChild(td);cuerpoAlertasReporte.appendChild(fila);});
+    const respuesta=await fetch(url); const alertas=await respuesta.json();
+    const lista=Array.isArray(alertas)?alertas:[];
+    cuerpoAlertasReporte.innerHTML='';
+    if(!lista.length){cuerpoAlertasReporte.innerHTML='<tr><td colspan="9">No hay alertas registradas.</td></tr>';}
+    else{
+      lista.forEach(a=>{const fila=document.createElement('tr');const etiqueta=ETIQUETAS_TIPO_ALERTA[a.tipo_alerta]?.label||'Otra alerta';[a.fecha,etiqueta,a.maquina,Number(a.cantidad||0).toFixed(2),Number(a.capacidad_galones||0).toFixed(2),Number(a.exceso_galones||0).toFixed(2),a.estado||'pendiente',a.justificacion||'Sin justificación'].forEach(v=>{const td=document.createElement('td');td.textContent=v;fila.appendChild(td);});const td=document.createElement('td');if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.textContent='Abrir reporte';td.appendChild(link);}else td.textContent='Sin reporte';fila.appendChild(td);cuerpoAlertasReporte.appendChild(fila);});
+    }
+
+    // Subconjunto de alertas que respeta el rango de fechas y la busqueda activa,
+    // usado unicamente para los indicadores y resumenes (no altera la tabla de detalle).
+    let filtradas=lista;
+    if (esReporteGeneral) {
+      const inicio=fechaInicioReporte.value, fin=fechaFinReporte.value;
+      filtradas=filtradas.filter(a=>{const fecha=String(a.fecha||'').slice(0,10);return (!inicio||fecha>=inicio)&&(!fin||fecha<=fin);});
+    }
+    filtradas=filtrarRegistrosPorBusqueda(filtradas,buscarMaquinaReporte.value);
+    alertasDelReporte=filtradas;
+    actualizarPanelesDerivados();
   } catch(e){console.warn('No se pudieron cargar alertas del reporte',e);}
 }
 async function cargarDetalleMensual() {
@@ -370,6 +552,7 @@ function buscarReporteMensual() {
   }
 
   pintarVistaReporte(filtrarRegistrosPorBusqueda(registrosMensuales, buscarMaquinaReporte.value));
+  cargarAlertasReporte();
 }
 
 // Regresa la vista a todos los registros del mes.
@@ -383,6 +566,7 @@ function limpiarBusquedaReporte() {
   }
 
   pintarVistaReporte(registrosMensuales);
+  cargarAlertasReporte();
 }
 
 // Abre todas las secciones para que el PDF incluya el reporte completo.
@@ -439,6 +623,9 @@ function pintarVistaReporte(registros) {
   pintarRegistroDiarioMangueras(cierres);
   pintarRegistrosDelMes(suministros);
   actualizarGraficas(lista);
+
+  registrosFiltradosActuales = lista;
+  actualizarPanelesDerivados();
 }
 
 // Pinta los datos del checklist guardado desde el formulario principal.
@@ -545,7 +732,10 @@ buscarMaquinaReporte.addEventListener('keydown', (evento) => {
   }
 });
 
+ordenConsumoMaquina?.addEventListener('change', () => renderizarConsumoPorMaquina(registrosFiltradosActuales, alertasDelReporte));
+
 cargarDetalleMensual();
+cargarTipoPorMaquina().then(() => renderizarConsumoPorMaquina(registrosFiltradosActuales, alertasDelReporte));
 
 
 // Actualiza las graficas y tablas automaticamente mientras la vista permanece abierta.

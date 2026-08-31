@@ -38,6 +38,7 @@ async function prepararTablas(db) {
   await add('alertas_combustible','reporte_ruta','VARCHAR(500) NULL');
   await add('alertas_combustible','reporte_tipo','VARCHAR(100) NULL');
   await add('alertas_combustible','detalle_alerta','VARCHAR(255) NULL');
+  await add('alertas_combustible','valor_referencia','DECIMAL(12,2) NULL');
   try { await db.query(`ALTER TABLE alertas_combustible DROP INDEX alerta_registro_unico`); } catch (e) { if (e.code !== 'ER_CANT_DROP_FIELD_OR_KEY') throw e; }
   try { await db.query(`ALTER TABLE alertas_combustible ADD UNIQUE KEY alerta_registro_tipo_unico (registro_id,tipo_alerta)`); } catch (e) { if (!['ER_DUP_KEYNAME','ER_DUP_INDEX','ER_MULTIPLE_PRI_KEY'].includes(e.code)) throw e; }
 

@@ -44,6 +44,14 @@
       </div>
     </section>
 
+    <!-- Indicadores/KPIs del periodo seleccionado -->
+    <section class="panel">
+      <div class="titulo-tabla">
+        <div><span class="eyebrow-dashboard">INDICADORES</span><h2>Resumen del periodo</h2></div>
+      </div>
+      <div id="kpis-reporte" class="kpis-reporte"></div>
+    </section>
+
     <!-- Graficas automaticas del consumo -->
     <details class="desplegable-reporte desplegable-graficas-reporte">
       <summary>
@@ -80,7 +88,7 @@
 
         <div class="contenedor-graficas-reporte">
           <article class="tarjeta-grafica">
-            <h3 id="titulo-grafica-consumo">Consumo de combustible por fecha</h3>
+            <h3 id="titulo-grafica-consumo">Consumo de combustible por fecha<span id="tendencia-consumo" class="tendencia-chip" hidden></span></h3>
             <div class="lienzo-grafica">
               <canvas id="grafica-consumo-fecha"></canvas>
             </div>
@@ -206,9 +214,54 @@
           <p class="tabla-vacia" id="mensaje-registros-mes">No hay registros en este mes.</p>
         </div>
       </details>
+      <!-- Consumo por maquina del periodo, con tipo de maquina y alertas asociadas -->
       <details class="desplegable-reporte">
-        <summary><span class="icono-desplegable">⚠️</span><span class="texto-desplegable"><strong>Alertas de sobrecapacidad</strong><small>Excesos, justificaciones y reportes adjuntos</small></span><span class="flecha-desplegable" aria-hidden="true">⌄</span></summary>
-        <div class="contenido-desplegable"><table class="tabla-reportes"><thead><tr><th>Fecha</th><th>Tipo</th><th>Máquina</th><th>Cantidad</th><th>Capacidad</th><th>Exceso</th><th>Estado</th><th>Justificación</th><th>Reporte</th></tr></thead><tbody id="cuerpo-alertas-reporte"></tbody></table></div>
+        <summary>
+          <span class="icono-desplegable">🚜</span>
+          <span class="texto-desplegable">
+            <strong>Consumo por máquina</strong>
+            <small>Registros, promedio y alertas por máquina</small>
+          </span>
+          <span class="flecha-desplegable" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="contenido-desplegable">
+          <div class="titulo-tabla">
+            <h2>Consumo por máquina</h2>
+            <select id="orden-consumo-maquina">
+              <option value="consumo-desc">Mayor consumo</option>
+              <option value="consumo-asc">Menor consumo</option>
+              <option value="registros-desc">Mayor cantidad de registros</option>
+              <option value="alertas-desc">Mayor cantidad de alertas</option>
+            </select>
+          </div>
+          <table class="tabla-reportes">
+            <thead>
+              <tr>
+                <th>Máquina</th>
+                <th>Tipo</th>
+                <th>Registros</th>
+                <th>Galones consumidos</th>
+                <th>Promedio por suministro</th>
+                <th>Alertas generadas</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-consumo-maquina"></tbody>
+          </table>
+          <p class="tabla-vacia" id="mensaje-consumo-maquina" hidden>No hay consumo de máquinas en este periodo.</p>
+        </div>
+      </details>
+
+      <details class="desplegable-reporte">
+        <summary><span class="icono-desplegable">⚠️</span><span class="texto-desplegable"><strong>Alertas del sistema</strong><small>Sobrecapacidad, consumo, horómetro e inspecciones</small></span><span class="flecha-desplegable" aria-hidden="true">⌄</span></summary>
+        <div class="contenido-desplegable">
+          <div class="titulo-tabla"><h2>Resumen de alertas por tipo</h2></div>
+          <table class="tabla-reportes tabla-resumen-alertas">
+            <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
+            <tbody id="cuerpo-resumen-alertas-tipo"></tbody>
+          </table>
+          <div class="titulo-tabla"><h2>Detalle de alertas</h2></div>
+          <table class="tabla-reportes"><thead><tr><th>Fecha</th><th>Tipo</th><th>Máquina</th><th>Cantidad</th><th>Capacidad</th><th>Exceso</th><th>Estado</th><th>Justificación</th><th>Reporte</th></tr></thead><tbody id="cuerpo-alertas-reporte"></tbody></table>
+        </div>
       </details>
     </section>
   </main>

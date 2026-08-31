@@ -24,7 +24,14 @@ async function cargarTractores() {
   pintarTractores(tractores);
 }
 
-// Pinta la tabla de tractores en pantalla.
+// Extrae el tipo de maquina (Tractor, Camion, Excavadora, etc.) a partir de la
+// descripcion ya existente, sin crear un campo nuevo en la base de datos.
+function tipoDeMaquina(descripcion) {
+  const palabra = String(descripcion || '').trim().split(/\s+/)[0] || '';
+  return palabra ? palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase() : 'Máquina';
+}
+
+// Pinta la tabla de maquinas en pantalla.
 function pintarTractores(tractores) {
   cuerpoTablaTractores.innerHTML = '';
   cantidadTractores.textContent = tractores.length;
@@ -33,7 +40,7 @@ function pintarTractores(tractores) {
     cuerpoTablaTractores.innerHTML = `
       <div class="estado-vacio-cartas">
         <span class="estado-vacio-icono">🚜</span>
-        <strong>No hay tractores registrados</strong>
+        <strong>No hay máquinas registradas</strong>
         <p>Agrega la primera máquina usando el formulario superior.</p>
       </div>`;
     return;
@@ -51,6 +58,7 @@ function pintarTractores(tractores) {
           <span class="etiqueta-registro">MÁQUINA #${tractor.item ?? '—'}</span>
           <h3 class="maquina-registro"></h3>
           <p class="descripcion-registro"></p>
+          <span class="badge-tipo-maquina"></span>
         </div>
         <div class="icono-tractor-card">🚜</div>
       </div>
@@ -62,6 +70,7 @@ function pintarTractores(tractores) {
 
     tarjeta.querySelector('.maquina-registro').textContent = tractor.maquina || 'SIN MÁQUINA';
     tarjeta.querySelector('.descripcion-registro').textContent = tractor.descripcion || 'Sin descripción';
+    tarjeta.querySelector('.badge-tipo-maquina').textContent = tipoDeMaquina(tractor.descripcion);
     tarjeta.querySelector('.centro-registro').textContent = tractor.centro_costo || '—';
     tarjeta.querySelector('.capacidad-registro').textContent = `${Number.isFinite(capacidad) ? capacidad.toFixed(2) : '0.00'} gal`;
 
@@ -88,7 +97,7 @@ function activarEdicionTractor(tarjeta, tractor) {
   tarjeta.innerHTML = `
     <div class="edicion-carta-titulo">
       <span class="etiqueta-registro">EDITANDO MÁQUINA #${tractor.item ?? '—'}</span>
-      <h3>Actualizar tractor</h3>
+      <h3>Actualizar máquina</h3>
     </div>
     <div class="form-edicion-card">
       <label>Máquina<input class="ed-maquina" type="text" maxlength="20" required></label>
@@ -126,7 +135,7 @@ async function guardarEdicionTractor(tarjeta, tractor) {
   };
 
   if (!datos.maquina || !datos.descripcion || !datos.centro_costo || !Number.isFinite(datos.capacidad_galones)) {
-    mostrarAlertaError('Datos incompletos', 'Completa todos los campos del tractor.');
+    mostrarAlertaError('Datos incompletos', 'Completa todos los campos de la máquina.');
     return;
   }
 
@@ -138,12 +147,12 @@ async function guardarEdicionTractor(tarjeta, tractor) {
 
   if (!respuesta.ok) {
     const payload = await respuesta.json().catch(() => ({}));
-    mostrarAlertaError('No se pudo guardar', payload.mensaje || 'No tienes permiso para editar tractores.');
+    mostrarAlertaError('No se pudo guardar', payload.mensaje || 'No tienes permiso para editar máquinas.');
     return;
   }
 
   await cargarTractores();
-  mostrarAlertaExito('Tractor actualizado', 'Los cambios fueron guardados correctamente.');
+  mostrarAlertaExito('Máquina actualizada', 'Los cambios fueron guardados correctamente.');
 }
 
 // Agrega un tractor nuevo en MySQL.
@@ -169,15 +178,15 @@ formularioTractor.addEventListener('submit', async (evento) => {
 
   formularioTractor.reset();
   await cargarTractores();
-  mostrarAlertaExito('Tractor agregado', 'El tractor fue agregado correctamente.');
+  mostrarAlertaExito('Máquina agregada', 'La máquina fue agregada correctamente.');
 });
 
-// Elimina un tractor sin tocar los registros historicos ya guardados.
+// Elimina una maquina sin tocar los registros historicos ya guardados.
 async function eliminarTractor(id) {
   const confirmado = await confirmarAccion(
-    'Eliminar tractor',
-    'Desea eliminar este tractor? Los registros guardados no se borraran.',
-    'Si, eliminar'
+    'Eliminar máquina',
+    '¿Desea eliminar esta máquina? Los registros guardados no se borrarán.',
+    'Sí, eliminar'
   );
 
   if (!confirmado) {
@@ -196,7 +205,7 @@ async function eliminarTractor(id) {
   }
 
   await cargarTractores();
-  mostrarAlertaExito('Tractor eliminado', 'El tractor fue eliminado correctamente.');
+  mostrarAlertaExito('Máquina eliminada', 'La máquina fue eliminada correctamente.');
 }
 
 cargarTractores();

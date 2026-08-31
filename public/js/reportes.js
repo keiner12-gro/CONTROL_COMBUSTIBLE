@@ -82,8 +82,10 @@ async function cargarAnaliticaMaquinas(){
       const card=document.createElement('article');
       const variacion=x.capacidadGalones>0?(Number(x.promedioGalones)/Number(x.capacidadGalones))*100:0;
       const estado=variacion>=85?'advertencia':'normal';
+      const tipoMaquina=String(x.descripcion||'').trim().split(/\s+/)[0]||'';
+      const tipoEtiqueta=tipoMaquina?tipoMaquina.charAt(0).toUpperCase()+tipoMaquina.slice(1).toLowerCase():'';
       card.className=`analitica-maquina-card ${estado}`;
-      card.innerHTML=`<div class="analitica-card-top"><span class="ranking-analitica">#${i+1}</span><div><strong>${escapeHtml(x.maquina||'Sin máquina')}</strong><small>${x.registros} registros</small></div><b>${Number(x.totalGalones||0).toFixed(2)} GAL</b></div><div class="barra-analitica"><span style="width:${Math.min(100,Number(x.totalGalones||0)/maxTotal*100)}%"></span></div><div class="metricas-analitica"><span>Promedio <strong>${Number(x.promedioGalones||0).toFixed(2)} GAL</strong></span><span>Máximo <strong>${Number(x.maximoGalones||0).toFixed(2)} GAL</strong></span>${x.capacidadGalones?`<span>Tanque <strong>${Number(x.capacidadGalones).toFixed(2)} GAL</strong></span>`:''}</div>`;
+      card.innerHTML=`<div class="analitica-card-top"><span class="ranking-analitica">#${i+1}</span><div><strong>${escapeHtml(x.maquina||'Sin máquina')}</strong><small>${x.registros} registros${tipoEtiqueta?` · <span class="badge-tipo-maquina">${escapeHtml(tipoEtiqueta)}</span>`:''}</small></div><b>${Number(x.totalGalones||0).toFixed(2)} GAL</b></div><div class="barra-analitica"><span style="width:${Math.min(100,Number(x.totalGalones||0)/maxTotal*100)}%"></span></div><div class="metricas-analitica"><span>Promedio <strong>${Number(x.promedioGalones||0).toFixed(2)} GAL</strong></span><span>Máximo <strong>${Number(x.maximoGalones||0).toFixed(2)} GAL</strong></span>${x.capacidadGalones?`<span>Tanque <strong>${Number(x.capacidadGalones).toFixed(2)} GAL</strong></span>`:''}</div>`;
       analiticaMaquinas.appendChild(card);
     });
   }catch(e){analiticaMaquinas.innerHTML='<div class="estado-vacio-selector">No se pudo cargar el análisis. Verifica la conexión con el servidor.</div>';}

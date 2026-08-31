@@ -5,13 +5,23 @@ const botonActualizar=document.getElementById('boton-actualizar-alertas');
 function headersSesion(){return {'Content-Type':'application/json'};}
 
 const TIPOS_ALERTA={
-  sobrecapacidad:{label:'Sobrecapacidad',icon:'🔴'},
-  promedio:{label:'Consumo fuera de promedio',icon:'🟠'},
+  sobrecapacidad:{label:'Sobre capacidad',icon:'🔴'},
+  promedio:{label:'Consumo fuera del promedio',icon:'🟠'},
   horometro_irregular:{label:'Horómetro irregular',icon:'🟡'},
-  registro_incompleto:{label:'Registro incompleto',icon:'🔵'},
-  inspeccion_pendiente:{label:'Inspección pendiente',icon:'🟣'}
+  inspeccion_pendiente:{label:'Inspección pendiente',icon:'🟣'},
+  // La categoria "registro incompleto" ya no se genera; se conserva solo para
+  // rotular correctamente alertas historicas que hayan quedado guardadas con este tipo.
+  registro_incompleto:{label:'Registro incompleto (histórico)',icon:'⚪'}
 };
-const ORDEN_TIPOS=['sobrecapacidad','promedio','horometro_irregular','registro_incompleto','inspeccion_pendiente'];
+const ORDEN_TIPOS=['sobrecapacidad','promedio','horometro_irregular','inspeccion_pendiente'];
+
+// Jerarquia visual de prioridad por tipo de alerta (no altera el estado real de la alerta).
+const PRIORIDAD_ALERTA={
+  sobrecapacidad:{clase:'alta',label:'Prioridad alta'},
+  promedio:{clase:'media-alta',label:'Prioridad media-alta'},
+  horometro_irregular:{clase:'media',label:'Prioridad media'},
+  inspeccion_pendiente:{clase:'seguimiento',label:'Seguimiento'}
+};
 
 let alertasCargadas=[];
 let filtroTipo='todas';
@@ -58,11 +68,13 @@ function renderizarFiltrosTipo(){
 function tarjetaAlerta(a){
   const tipo=a.tipo_alerta||'sobrecapacidad';
   const info=TIPOS_ALERTA[tipo]||TIPOS_ALERTA.sobrecapacidad;
+  const prioridad=PRIORIDAD_ALERTA[tipo];
   const fecha=a.fecha?String(a.fecha).slice(0,10).split('-').reverse().join('/'):'Sin fecha';
   const cantidad=Number(a.cantidad||0), capacidad=Number(a.capacidad_galones||0), exceso=Number(a.exceso_galones||0);
   const porcentaje=capacidad?Math.min(100,Math.round(cantidad/capacidad*100)):0;
+  const esInspeccion=tipo==='inspeccion_pendiente';
   const estado=a.estado==='justificada'?'justificada':'pendiente';
-  const esMaquina=tipo!=='inspeccion_pendiente';
+  const esMaquina=!esInspeccion;
 
   let cuerpo='';
   if(tipo==='promedio'){
@@ -70,22 +82,27 @@ function tarjetaAlerta(a){
   }else if(tipo==='sobrecapacidad'){
     cuerpo=`<div class="comparativo-alerta"><div><span>Capacidad</span><strong>${capacidad.toFixed(2)} GAL</strong></div><div><span>Suministrado</span><strong>${cantidad.toFixed(2)} GAL</strong></div></div><div class="barra-capacidad"><span style="width:${porcentaje}%"></span></div><div class="exceso-alerta"><span>Exceso detectado</span><strong>+${exceso.toFixed(2)} GAL</strong></div>`;
   }else if(tipo==='horometro_irregular'){
-    cuerpo=`<div class="detalle-alerta"><span>Valor de horómetro registrado</span><strong>${escapeHtml(a.detalle_alerta||'Sin valor numérico')}</strong></div>`;
-  }else if(tipo==='registro_incompleto'){
-    cuerpo=`<div class="detalle-alerta"><span>Información faltante</span><strong>${escapeHtml(a.detalle_alerta||'Datos requeridos')}</strong></div>`;
-  }else if(tipo==='inspeccion_pendiente'){
+    const anterior=a.valor_referencia!=null?Number(a.valor_referencia):null;
+    const actualNumerico=Number(String(a.detalle_alerta||'').replace(',','.'));
+    const hayDiferencia=anterior!=null&&Number.isFinite(actualNumerico);
+    cuerpo=`<div class="detalle-alerta"><span>Horómetro actual</span><strong>${escapeHtml(a.detalle_alerta||'Sin valor numérico')}</strong></div>`
+      +(anterior!=null?`<div class="detalle-alerta"><span>Horómetro anterior</span><strong>${anterior.toFixed(2)}</strong></div>`:'')
+      +(hayDiferencia?`<div class="exceso-alerta"><span>Diferencia</span><strong>${(actualNumerico-anterior>=0?'+':'')}${(actualNumerico-anterior).toFixed(2)}</strong></div>`:'');
+  }else if(esInspeccion){
     cuerpo=`<div class="detalle-alerta"><span>Estado del checklist</span><strong>Fuga de biodiésel, sistema eléctrico y parada de emergencia sin diligenciar</strong></div>`;
+  }else if(tipo==='registro_incompleto'){
+    cuerpo=`<div class="detalle-alerta"><span>Información faltante (histórico)</span><strong>${escapeHtml(a.detalle_alerta||'Datos requeridos')}</strong></div>`;
   }
 
   const card=document.createElement('article');
   card.className=`alerta-card ${estado} tipo-${tipo}`;
-  card.innerHTML=`<div class="alerta-card-head"><div class="alerta-card-badges"><span class="badge-tipo-alerta tipo-${tipo}">${info.icon} ${info.label}</span><span class="badge-alerta ${estado}">${estado==='justificada'?'✓ Justificada':'Pendiente'}</span></div><span class="fecha-alerta">${fecha}</span></div><h3>${esMaquina?'🚜':'🗓'} ${escapeHtml(a.maquina||'Máquina')}</h3><p class="operario-alerta">👤 ${escapeHtml(a.operario||'Operario no registrado')}</p>${cuerpo}<div class="observacion-alerta"><span>Observaciones</span><p>${escapeHtml(a.observaciones||'Sin observaciones')}</p></div>`;
+  card.innerHTML=`<div class="alerta-card-head"><div class="alerta-card-badges"><span class="badge-tipo-alerta tipo-${tipo}">${info.icon} ${info.label}</span>${prioridad?`<span class="prioridad-alerta ${prioridad.clase}">${prioridad.label}</span>`:''}<span class="badge-alerta ${estado}">${estado==='justificada'?(esInspeccion?'✓ Atendida':'✓ Justificada'):'Pendiente'}</span></div><span class="fecha-alerta">${fecha}</span></div><h3>${esMaquina?'🚜':'🗓'} ${escapeHtml(a.maquina||'Máquina')}</h3><p class="operario-alerta">👤 ${escapeHtml(a.operario||'Operario no registrado')}</p>${cuerpo}<div class="observacion-alerta"><span>Observaciones</span><p>${escapeHtml(a.observaciones||'Sin observaciones')}</p></div>`;
 
   const acciones=document.createElement('div'); acciones.className='acciones-alerta';
   if(a.estado==='justificada'){
-    acciones.innerHTML='<span class="texto-estado">Justificación registrada</span>';
+    acciones.innerHTML=`<span class="texto-estado">${esInspeccion?'Inspección atendida':'Justificación registrada'}</span>`;
     if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.rel='noopener';link.textContent='📎 Ver reporte';acciones.appendChild(link);}
-  }else{const b=document.createElement('button');b.type='button';b.textContent='✎ Justificar alerta';b.addEventListener('click',()=>justificarAlerta(a));acciones.appendChild(b);}
+  }else{const b=document.createElement('button');b.type='button';b.textContent=esInspeccion?'✎ Marcar como atendida':'✎ Justificar alerta';b.addEventListener('click',()=>justificarAlerta(a));acciones.appendChild(b);}
   card.appendChild(acciones);
   return card;
 }

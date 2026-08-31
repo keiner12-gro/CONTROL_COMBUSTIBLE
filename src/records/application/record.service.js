@@ -30,14 +30,8 @@ class RecordService{
 
       const horometroTexto=String(x.horometro||'').trim();
       if(horometroTexto&&!HOROMETRO_NUMERICO.test(horometroTexto)){
-        await this.alertService.create({registroId:id,fecha:x.fecha,maquina:x.maquina,operario:x.operario,cantidad,capacidadGalones:0,excesoGalones:0,observaciones:x.observaciones,tipoAlerta:'horometro_irregular',detalle:horometroTexto});
-      }
-
-      const faltantes=[];
-      if(!horometroTexto)faltantes.push('Horómetro');
-      if(!String(x.numeroSai||'').trim())faltantes.push('No. SAI');
-      if(faltantes.length){
-        await this.alertService.create({registroId:id,fecha:x.fecha,maquina:x.maquina,operario:x.operario,cantidad,capacidadGalones:0,excesoGalones:0,observaciones:x.observaciones,tipoAlerta:'registro_incompleto',detalle:faltantes.join(', ')});
+        const anterior=this.repository.latestHourmeter?await this.repository.latestHourmeter(x.maquina):0;
+        await this.alertService.create({registroId:id,fecha:x.fecha,maquina:x.maquina,operario:x.operario,cantidad,capacidadGalones:0,excesoGalones:0,observaciones:x.observaciones,tipoAlerta:'horometro_irregular',detalle:horometroTexto,valorReferencia:anterior||null});
       }
     }
     return{...x,id:String(id),capacidadGalones:capacidad,alertaSobrecapacidad:capacidad>0&&cantidad>capacidad};

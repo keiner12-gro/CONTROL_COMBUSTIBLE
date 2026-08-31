@@ -194,15 +194,33 @@ input:focus,select:focus,textarea:focus { outline:0;border-color:#54a36b!importa
 .estado-vacio h3 { margin:0 }
 .estado-vacio p { color:var(--muted) }
 .filtros-alertas { display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px }
-.filtro-chip { min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px }
+.filtro-chip { min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border-left-width:4px }
 .filtro-chip:hover { border-color:#9bc9a7 }
+.filtro-chip[data-tipo="sobrecapacidad"] { border-left-color:var(--cc-rojo) }
+.filtro-chip[data-tipo="promedio"] { border-left-color:var(--cc-naranja) }
+.filtro-chip[data-tipo="horometro_irregular"] { border-left-color:var(--cc-amarillo) }
+.filtro-chip[data-tipo="inspeccion_pendiente"] { border-left-color:var(--cc-morado) }
 .filtro-chip.activo { color:#fff;border-color:transparent }
 .filtro-chip.activo[data-tipo="todas"] { background:var(--cc-verde,#5F8F3D) }
 .filtro-chip.activo[data-tipo="sobrecapacidad"] { background:var(--cc-rojo) }
 .filtro-chip.activo[data-tipo="promedio"] { background:var(--cc-naranja) }
 .filtro-chip.activo[data-tipo="horometro_irregular"] { background:var(--cc-amarillo);color:#4a3607 }
-.filtro-chip.activo[data-tipo="registro_incompleto"] { background:var(--cc-azul) }
 .filtro-chip.activo[data-tipo="inspeccion_pendiente"] { background:var(--cc-morado) }
+
+/* Sistema semantico de colores por tipo de alerta: reutiliza los tokens --cc-* existentes. */
+.badge-tipo-alerta.tipo-sobrecapacidad { background:var(--cc-rojo-suave);color:#a83e3a }
+.badge-tipo-alerta.tipo-promedio { background:var(--cc-naranja-suave);color:#a84a15 }
+.badge-tipo-alerta.tipo-horometro_irregular { background:var(--cc-amarillo-suave);color:#8b640d }
+.badge-tipo-alerta.tipo-inspeccion_pendiente { background:var(--cc-morado-suave);color:#5b3a94 }
+.alerta-card.tipo-sobrecapacidad { border-top-color:var(--cc-rojo) }
+.alerta-card.tipo-promedio { border-top-color:var(--cc-naranja) }
+.alerta-card.tipo-horometro_irregular { border-top-color:var(--cc-amarillo) }
+.alerta-card.tipo-inspeccion_pendiente { border-top-color:var(--cc-morado) }
+.prioridad-alerta { display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.03em;background:#f1f3f1;color:#4a564d }
+.prioridad-alerta.alta { background:var(--cc-rojo-suave);color:#a83e3a }
+.prioridad-alerta.media-alta { background:var(--cc-naranja-suave);color:#a84a15 }
+.prioridad-alerta.media { background:var(--cc-amarillo-suave);color:#8b640d }
+.prioridad-alerta.seguimiento { background:var(--cc-morado-suave);color:#5b3a94 }
 .ubicacion-compacta strong, .ubicacion-compacta span { white-space: nowrap; }
 .menu-overlay { position: fixed; z-index: 9998; inset: 0; background: rgba(9, 24, 19, .42); opacity: 0; transition: opacity .22s ease; }
 .menu-overlay.visible { opacity: 1; }
