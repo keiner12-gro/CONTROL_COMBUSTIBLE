@@ -31,31 +31,23 @@
 
     <section class="panel tarjeta-menu dashboard-acciones">
       <div class="titulo-seccion-dashboard"><div><span class="eyebrow-dashboard">ACCESOS</span><h2>¿Qué deseas hacer?</h2></div></div>
-      <div class="botones-menu" data-menu-principal="true">
-        <a class="boton-vista accion-principal" href="index.html" data-vista="registro"><span class="icono-vista">⛽</span><span><strong>Registrar combustible</strong><small>Registrar un nuevo suministro.</small></span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista" href="tablas.html" data-vista="tablas"><span class="icono-vista">📋</span><span><strong>Registros</strong><small>Consultar y revisar suministros.</small></span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista" href="tractores.html" data-vista="tractores"><span class="icono-vista">🚜</span><span><strong>Máquinas</strong><small>Consultar y administrar equipos.</small></span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista" href="operarios.html" data-vista="operarios"><span class="icono-vista">👷</span><span><strong>Operarios</strong><small>Consultar y administrar personal.</small></span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista" href="reportes.html" data-vista="reportes"><span class="icono-vista">📊</span><span><strong>Reportes</strong><small>Analizar consumo y actividad.</small></span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista alerta-menu" href="alertas.html" data-vista="alertas"><span class="icono-vista">🔔</span><span><strong>Alertas</strong><small>Revisar situaciones pendientes.</small></span><span class="menu-alerta-badge" id="dashboard-alerta-badge" hidden>0</span><span class="flecha-vista">→</span></a>
-        <a class="boton-vista" href="usuarios.html" data-vista="usuarios"><span class="icono-vista">👥</span><span><strong>Usuarios y permisos</strong><small>Gestionar acceso al sistema.</small></span><span class="flecha-vista">→</span></a>
+      <div class="lista-accesos" data-menu-principal="true">
+        <a class="fila-acceso destacada" href="index.html" data-vista="registro"><span class="icono-vista">⛽</span><span class="fila-texto"><strong>Registrar combustible</strong><small>Registrar un nuevo suministro.</small></span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="tablas.html" data-vista="tablas"><span class="icono-vista">📋</span><span class="fila-texto"><strong>Registros</strong><small>Consultar y revisar suministros.</small></span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="tractores.html" data-vista="tractores"><span class="icono-vista">🚜</span><span class="fila-texto"><strong>Máquinas</strong><small>Consultar y administrar equipos.</small></span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="operarios.html" data-vista="operarios"><span class="icono-vista">👷</span><span class="fila-texto"><strong>Operarios</strong><small>Consultar y administrar personal.</small></span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="reportes.html" data-vista="reportes"><span class="icono-vista">📊</span><span class="fila-texto"><strong>Reportes</strong><small>Analizar consumo y actividad.</small></span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="alertas.html" data-vista="alertas"><span class="icono-vista">🔔</span><span class="fila-texto"><strong>Alertas</strong><small>Revisar situaciones pendientes.</small></span><span class="menu-alerta-badge" id="dashboard-alerta-badge" hidden>0</span><span class="flecha-vista">→</span></a>
+        <a class="fila-acceso" href="usuarios.html" data-vista="usuarios"><span class="icono-vista">👥</span><span class="fila-texto"><strong>Usuarios y permisos</strong><small>Gestionar acceso al sistema.</small></span><span class="flecha-vista">→</span></a>
       </div>
     </section>
 
     <section class="panel consejo-dashboard"><span>💡</span><div><strong>Tu menú se adapta a tus permisos.</strong><p>Solo aparecen las funciones que tu usuario está autorizado a utilizar.</p></div></section>
   </main>
 
-  <nav class="nav-movil-inferior" aria-label="Navegación rápida">
-    <a href="menu.html" class="activo"><span>⌂</span><small>Inicio</small></a>
-    <a href="index.html" data-vista="registro"><span>⛽</span><small>Registrar</small></a>
-    <a href="tablas.html" data-vista="tablas"><span>📋</span><small>Registros</small></a>
-    <a href="alertas.html" data-vista="alertas"><span>🔔</span><small>Alertas</small></a>
-    <button type="button" class="nav-movil-menu"><span>☰</span><small>Más</small></button>
-  </nav>
-
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/auth.js"></script>
-  <script src="../js/sidebar.js"></script>
+  <script src="../js/shell.js"></script>
   <script>if (protegerMenuPrincipal()) aplicarPermisosEnlaces();</script>
   <script src="../js/menu.js"></script>
 </body>

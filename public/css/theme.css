@@ -1,7 +1,8 @@
 /* Identidad visual "Centro de control": tema oscuro industrial con acento
    ambar. Los mismos nombres de variable --cc-* se conservan para no tocar
-   selectores en el resto del CSS/HTML; solo cambian sus valores. */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap');
+   selectores en el resto del CSS/HTML; solo cambian sus valores.
+   Los numeros usan la fuente monoespaciada del sistema (ui-monospace): el
+   Content-Security-Policy del servidor no permite cargar fuentes externas. */
 :root { --cc-verde:#3ecf8e; --cc-verde-oscuro:#eef2f0; --cc-verde-suave:#12301f; --cc-naranja:#f5a524; --cc-naranja-suave:#332711; --cc-amarillo:#d9c24a; --cc-amarillo-suave:#302b10; --cc-rojo:#ef6259; --cc-rojo-suave:#32191a; --cc-azul:#5b9fe8; --cc-azul-suave:#16283a; --cc-morado:#a98cf0; --cc-morado-suave:#241c3a; --cc-fondo:#0f1214; --cc-superficie:#171b1e; --cc-texto:#eef2f0; --cc-muted:#93a09c; --cc-borde:#2b3136; --cc-sombra:0 10px 30px rgba(0,0,0,.4); --cc-radio:16px; --cc-acento:#f5a524; --cc-acento-hover:#ffb646; --cc-acento-ink:#2c1c04; }
 * { box-sizing:border-box }
 body { background:var(--cc-fondo);color:var(--cc-texto);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }

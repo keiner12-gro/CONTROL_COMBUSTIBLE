@@ -541,7 +541,24 @@ tbody tr:hover td { background: #1d2620; }
 .dashboard-acciones { margin-top:12px }
 .titulo-seccion-dashboard { margin-bottom:16px }
 .titulo-seccion-dashboard h2 { margin:4px 0 0;color:var(--ink) }
-/* Contenedor de botones grandes para entrar a cada vista */
+/* Lista de accesos del menu principal: filas planas en vez de una rejilla
+   de cajas iguales, para que la jerarquia (el registro es la accion
+   principal) se note sin depender solo del color. */
+.lista-accesos { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.fila-acceso { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); text-decoration: none !important; color: inherit !important; background: transparent !important; box-shadow: none !important; transition: background .12s ease; }
+.fila-acceso:last-child { border-bottom: 0; }
+.fila-acceso:hover { background: var(--surface-2) !important; transform: none; }
+.fila-acceso .icono-vista { flex: 0 0 auto; }
+.fila-acceso .fila-texto { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fila-acceso .fila-texto strong { font-size: 13.5px; color: var(--ink); text-transform: none; font-weight: 700; }
+.fila-acceso .fila-texto small { font-size: 11.5px; color: var(--muted); }
+.fila-acceso.destacada { background: var(--brand-soft) !important; }
+.fila-acceso.destacada .fila-texto strong { color: var(--brand); }
+.fila-acceso .flecha-vista { flex: 0 0 auto; }
+.fila-acceso .menu-alerta-badge { position: static; width: auto; height: auto; min-width: 20px; padding: 2px 7px; margin-left: auto; border-radius: 999px; background: var(--danger); color: #2c0e0c; font-size: 10.5px; font-weight: 800; text-align: center; box-shadow: none; }
+
+/* Contenedor de botones grandes para entrar a cada vista (heredado, ya no
+   se usa en el menu principal pero se conserva por compatibilidad). */
 .botones-menu { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px !important; }
 /* Boton grande de cada vista del sistema */
 .boton-vista { position: relative; display: flex; grid-template-rows: auto auto 1fr auto; gap: 13px; min-height: 78px; padding: 15px 17px !important; border: 1px solid var(--line) !important; border-radius: 17px !important; background: var(--surface) !important; color: var(--ink) !important; text-decoration: none !important; box-shadow: 0 7px 18px rgba(0,0,0,.24) !important; transition: .18s ease; align-items: center; }
@@ -705,3 +722,62 @@ tbody tr:hover td { background: #1d2620; }
 .swal2-icon.swal2-warning { border-color: #f2924a !important; color: #f2924a !important; }
 .swal2-icon.swal2-info { border-color: #5b9fe8 !important; color: #5b9fe8 !important; }
 .swal2-icon.swal2-question { border-color: #a98cf0 !important; color: #a98cf0 !important; }
+
+/* ==========================================================
+   BARRA LATERAL PERSISTENTE (shell.js)
+   Reemplaza el cajon deslizante en todas las vistas excepto el
+   registro de suministro (index.html), que conserva su menu actual.
+   Se adapta con el ancho real: rail agrupado -> rail de iconos -> barra inferior.
+   ========================================================== */
+body.con-shell { padding: 0; }
+.shell-layout { display: flex; align-items: flex-start; min-height: 100vh; }
+.shell-layout .pantalla { flex: 1; min-width: 0; width: auto; margin: 0; padding: 20px 26px 40px; }
+
+.rail { position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto; flex: 0 0 224px; width: 224px; background: var(--surface); border-right: 1px solid var(--line); padding: 18px 14px; display: flex; flex-direction: column; gap: 2px; z-index: 30; }
+.rail-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; }
+.rail-brand .logo-mini { width: 34px; height: 34px; border-radius: 9px; overflow: hidden; background: #eef1ee; flex: 0 0 auto; }
+.rail-brand .logo-mini img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+.rail-brand strong { font-size: 13px; font-weight: 700; display: block; color: var(--ink); }
+.rail-brand span { font-size: 10.5px; color: var(--muted); display: block; }
+.rail-group-label { font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #5f6a66; padding: 13px 10px 5px; }
+.rail-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 500; text-decoration: none; }
+.rail-item:hover { background: var(--surface-2); color: var(--ink); }
+.rail-item.activo { background: var(--surface-2); color: var(--ink); box-shadow: inset 2px 0 0 var(--brand); }
+.rail-item .rail-icon { width: 18px; text-align: center; flex: 0 0 auto; font-size: 15px; }
+.rail-item .rail-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-item .rail-badge { margin-left: auto; font-size: 10px; font-weight: 700; background: rgba(239,98,89,.18); color: #ff9791; border-radius: 999px; padding: 1px 7px; }
+.rail-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.rail-user { display: flex; align-items: center; gap: 9px; padding: 7px 8px; }
+.rail-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 10.5px; font-weight: 700; color: var(--brand); flex: 0 0 auto; }
+.rail-user strong { display: block; font-size: 11.5px; color: var(--ink); }
+.rail-user span { display: block; font-size: 10px; color: var(--muted); text-transform: capitalize; }
+.rail-logout { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; border: 0; background: none; color: #ff8585; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; width: 100%; }
+.rail-logout:hover { background: rgba(239,98,89,.1); color: #ffb0b0; }
+
+.bottom-nav { display: none; }
+
+@media (min-width: 768px) {
+  .con-shell .boton-tres-puntos { display: none; }
+}
+@media (max-width: 1023px) and (min-width: 768px) {
+  .rail { flex-basis: 64px; width: 64px; padding: 16px 8px; }
+  .rail-brand { justify-content: center; padding-bottom: 14px; }
+  .rail-brand strong, .rail-brand span, .rail-group-label, .rail-item .rail-label, .rail-item .rail-badge, .rail-user strong, .rail-user span, .rail-logout .texto { display: none; }
+  .rail-item, .rail-logout { justify-content: center; }
+  .rail-user { justify-content: center; }
+}
+@media (max-width: 767px) {
+  .rail { display: none; }
+  .shell-layout .pantalla { padding: 16px 14px 90px; }
+  .bottom-nav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
+    justify-content: space-around; box-shadow: 0 -5px 18px rgba(0,0,0,.3);
+  }
+  .bottom-nav a, .bottom-nav button { border: 0; background: transparent; text-decoration: none; color: var(--muted); display: grid; justify-items: center; gap: 3px; font: inherit; position: relative; padding: 4px 8px; }
+  .bottom-nav span { font-size: 18px; }
+  .bottom-nav small { font-size: 8.5px; font-weight: 800; }
+  .bottom-nav .activo { color: var(--brand); }
+  .bottom-nav .bn-badge { position: absolute; top: 0; right: 2px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 8.5px; font-weight: 900; display: grid; place-items: center; }
+}
