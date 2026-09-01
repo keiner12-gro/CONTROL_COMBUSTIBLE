@@ -32,7 +32,7 @@ label { color:var(--cc-texto);font-weight:700 }
 .indicador-capacidad.exceso { background:var(--cc-rojo-suave);border-color:#f0c5c1;color:#9d3027 }
 .flujo-registro { max-width:1120px;margin:auto }
 .pasos-registro { background:var(--cc-superficie);border:1px solid var(--cc-borde);border-radius:16px;padding:12px;box-shadow:var(--cc-sombra) }
-.paso-registro b { background:#23282d;color:var(--cc-muted) }
+.paso-registro b { background:#f7faf7;color:var(--cc-texto);border:1px solid var(--cc-borde);border-radius:8px }
 .paso-registro.activo b,.paso-registro.completado b { background:var(--cc-acento);color:var(--cc-acento-ink) }
 .paso-registro.activo small { color:var(--cc-acento);font-weight:800 }
 .paso-registro.completado small { color:var(--cc-verde) }
@@ -45,8 +45,8 @@ label { color:var(--cc-texto);font-weight:700 }
 .manguera-card { border:1px solid var(--cc-borde)!important;border-radius:18px!important;background:var(--cc-superficie)!important;box-shadow:none!important }
 .manguera-card.manguera-m1 { border-top:4px solid var(--cc-azul)!important }
 .manguera-card.manguera-m2 { border-top:4px solid var(--cc-acento)!important }
-.manguera-card input[readonly].inicial-automatico { background:#1a1e21;border-color:#2b3136;color:#93a09c }
-.manguera-card input.inicial-manual { background:#241c10;border-color:#4a3820;box-shadow:inset 0 0 0 1px rgba(245,165,36,.14) }
+.manguera-card input[readonly].inicial-automatico { background:#f2f7f3;border-color:#dfe7df;color:#5a6f62 }
+.manguera-card input.inicial-manual { background:#f9f6f1;border-color:#e8d8a8;color:#7f6121;box-shadow:inset 0 0 0 1px rgba(217,106,61,.14) }
 .manguera-card label span { font-size:.72rem;color:var(--cc-muted);font-weight:700 }
 .resultado-manguera { background:#f7faf7!important;border-radius:13px!important }
 .total-surtidor { border: 1px solid #dfe7df !important; background: linear-gradient(90deg,#f9ece6,#ffffff) !important; border-radius: 18px !important; padding: 11px 14px !important; gap: 6px !important; }
@@ -57,7 +57,7 @@ label { color:var(--cc-texto);font-weight:700 }
 .badge-estado-surtidor.correcto { background:var(--cc-verde-suave)!important;color:#8fe6b8!important }
 .badge-estado-surtidor.pendiente { background:var(--cc-amarillo-suave)!important;color:#e6d27c!important }
 .checklist-surtidor { background:var(--cc-superficie)!important;border:1px solid var(--cc-borde)!important }
-.nav-movil-inferior { border-top:1px solid var(--cc-borde)!important;background:rgba(23,27,30,.97)!important }
+.nav-movil-inferior { border-top:1px solid var(--cc-borde)!important;background:rgba(255,255,255,.96)!important }
 .menu-lateral { background:#f4f7f4!important;border-right:1px solid var(--cc-borde)!important;box-shadow:20px 0 45px rgba(18,35,24,.12)!important }
 .menu-lateral-marca strong { color:var(--cc-texto)!important }
 .menu-lateral-marca span { color:var(--cc-verde-oscuro)!important }
@@ -72,7 +72,7 @@ label { color:var(--cc-texto);font-weight:700 }
 .menu-alerta-badge { background:var(--cc-rojo)!important }
 .grid-registros-tarjetas { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px }
 .registro-tarjeta { border:1px solid var(--cc-borde);border-radius:18px;background:var(--cc-superficie);box-shadow:0 8px 24px rgba(0,0,0,.32);padding:18px;display:flex;flex-direction:column;gap:15px }
-.registro-tarjeta:hover { box-shadow:0 12px 30px rgba(0,0,0,.4);border-color:#3a4147 }
+.registro-tarjeta:hover { box-shadow:0 12px 30px rgba(23,47,32,.12);border-color:var(--cc-acento) }
 .registro-tarjeta-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--cc-borde);padding-bottom:14px }
 .registro-tarjeta-cabecera h3 { margin:7px 0 3px;color:var(--cc-texto);font-size:1.15rem }
 .registro-tarjeta-cabecera p { margin:0;color:var(--cc-muted);font-size:.88rem }
@@ -84,7 +84,7 @@ label { color:var(--cc-texto);font-weight:700 }
 .campo-registro-tarjeta { display:flex;flex-direction:column;gap:5px;font-size:.72rem;color:var(--cc-muted) }
 .campo-registro-tarjeta input { width:100%;min-height:40px;padding:8px 10px;font-size:.9rem;color:var(--cc-texto);font-weight:600 }
 .campo-registro-tarjeta input:disabled { opacity:1;background:#1a1e21;border-color:#2b3136;color:#8b9591 }
-.registro-soporte { display:flex;justify-content:space-between;align-items:center;background:#1d2226;border-radius:12px;padding:10px 12px;color:var(--cc-muted);font-size:.82rem }
+.registro-soporte { display:flex;justify-content:space-between;align-items:center;background:#f7faf7;border:1px solid var(--cc-borde);border-radius:12px;padding:10px 12px;color:var(--cc-muted);font-size:.82rem }
 .registro-soporte strong { color:var(--cc-texto) }
 .acciones-tarjeta-registro { display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end }
 .acciones-tarjeta-registro button { min-height:40px;padding:8px 13px;border-radius:11px }
