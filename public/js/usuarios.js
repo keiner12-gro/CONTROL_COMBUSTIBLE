@@ -155,9 +155,12 @@ function aplicarSugerenciaDeRol() {
 
 // Obtiene los permisos marcados en el formulario de crear usuario.
 function obtenerPermisosFormulario() {
-  return Array.from(arbolPermisosNuevo.querySelectorAll('input:checked')).map(
+  const marcados = Array.from(arbolPermisosNuevo.querySelectorAll('input:checked')).map(
     (permiso) => permiso.value
   );
+  // Algunas vistas (ej. auditoria) aparecen en mas de un grupo de rol, asi
+  // que puede haber dos checkboxes con el mismo valor marcados a la vez.
+  return [...new Set(marcados)];
 }
 
 // Carga usuarios desde MySQL usando la API de Express.
@@ -286,9 +289,12 @@ function crearCeldaConElemento(elemento) {
 
 // Lee los permisos marcados en una fila de la tabla.
 function obtenerPermisosFila(fila) {
-  return Array.from(fila.querySelectorAll('input[type="checkbox"]:checked')).map(
+  const marcados = Array.from(fila.querySelectorAll('input[type="checkbox"]:checked')).map(
     (checkbox) => checkbox.dataset.vista
   );
+  // Algunas vistas (ej. auditoria) aparecen en mas de un grupo de rol, asi
+  // que puede haber dos checkboxes con el mismo valor marcados a la vez.
+  return [...new Set(marcados)];
 }
 
 // Guarda cambios de rol, contrasena y permisos de un usuario.

@@ -151,7 +151,10 @@ class MySQLUserRepository extends UserRepository {
 
   async replacePermissions(id, permisos) {
     await this.db.query('DELETE FROM permisos_usuarios_combustible WHERE usuario_id=?', [id]);
-    for (const vista of (permisos || []).filter((v) => VISTAS_DISPONIBLES.includes(v))) {
+    const vistasUnicas = [
+      ...new Set((permisos || []).filter((v) => VISTAS_DISPONIBLES.includes(v)))
+    ];
+    for (const vista of vistasUnicas) {
       await this.db.query(
         'INSERT INTO permisos_usuarios_combustible(usuario_id,vista) VALUES(?,?)',
         [id, vista]
