@@ -20,25 +20,43 @@
 
     <section class="bienvenida-dashboard">
       <div><span class="eyebrow-dashboard">INICIO</span><h2>Buenos días, <span id="nombre-usuario-dashboard">usuario</span> 👋</h2><p id="mensaje-rol-dashboard">Selecciona una acción para continuar.</p></div>
-      <div class="chip-rol-dashboard" id="rol-usuario-dashboard">Usuario</div>
+      <div class="cabecera-acciones">
+        <div class="chip-rol-dashboard" id="rol-usuario-dashboard">Usuario</div>
+        <a class="boton-cta-registrar" href="index.html" data-vista="registro">+ Registrar combustible</a>
+      </div>
     </section>
 
     <section class="panel resumen-dashboard" id="resumen-dashboard">
       <div class="resumen-dashboard-card"><span>⛽</span><div><small>Hoy</small><strong id="dashboard-galones">0.00 GAL</strong><label>Combustible registrado</label></div></div>
       <div class="resumen-dashboard-card"><span>📝</span><div><small>Hoy</small><strong id="dashboard-registros">0</strong><label>Registros</label></div></div>
+      <div class="resumen-dashboard-card"><span>🚜</span><div><small>Total</small><strong id="dashboard-maquinas">—</strong><label>Máquinas registradas</label></div></div>
       <div class="resumen-dashboard-card card-alertas"><span>🔔</span><div><small>Atención</small><strong id="dashboard-alertas">0</strong><label>Alertas pendientes</label></div></div>
     </section>
 
+    <div class="grid-inicio-dos">
+      <section class="panel tarjeta-consumo-semana">
+        <h2>Consumo · últimos 7 días</h2>
+        <p class="texto-secundario">Galones despachados por día</p>
+        <svg class="grafica-svg" id="grafica-consumo-semana" viewBox="0 0 400 150" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <p class="grafica-vacia" id="grafica-consumo-vacia" hidden>Aún no hay suficientes registros esta semana.</p>
+      </section>
+      <section class="panel tarjeta-alertas-recientes" id="tarjeta-alertas-recientes">
+        <h2>Alertas recientes</h2>
+        <p class="texto-secundario">Requieren revisión</p>
+        <div id="lista-alertas-recientes"></div>
+        <p class="alertas-recientes-vacio" id="alertas-recientes-vacio" hidden>No hay alertas pendientes.</p>
+        <a class="ver-todas-alertas" href="alertas.html" data-vista="alertas">Ver todas las alertas →</a>
+      </section>
+    </div>
+
     <section class="panel tarjeta-menu dashboard-acciones">
-      <div class="titulo-seccion-dashboard"><div><span class="eyebrow-dashboard">ACCESOS</span><h2>¿Qué deseas hacer?</h2></div></div>
-      <div class="lista-accesos" data-menu-principal="true">
-        <a class="fila-acceso destacada" href="index.html" data-vista="registro"><span class="icono-vista">⛽</span><span class="fila-texto"><strong>Registrar combustible</strong><small>Registrar un nuevo suministro.</small></span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="tablas.html" data-vista="tablas"><span class="icono-vista">📋</span><span class="fila-texto"><strong>Registros</strong><small>Consultar y revisar suministros.</small></span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="tractores.html" data-vista="tractores"><span class="icono-vista">🚜</span><span class="fila-texto"><strong>Máquinas</strong><small>Consultar y administrar equipos.</small></span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="operarios.html" data-vista="operarios"><span class="icono-vista">👷</span><span class="fila-texto"><strong>Operarios</strong><small>Consultar y administrar personal.</small></span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="reportes.html" data-vista="reportes"><span class="icono-vista">📊</span><span class="fila-texto"><strong>Reportes</strong><small>Analizar consumo y actividad.</small></span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="alertas.html" data-vista="alertas"><span class="icono-vista">🔔</span><span class="fila-texto"><strong>Alertas</strong><small>Revisar situaciones pendientes.</small></span><span class="menu-alerta-badge" id="dashboard-alerta-badge" hidden>0</span><span class="flecha-vista">→</span></a>
-        <a class="fila-acceso" href="usuarios.html" data-vista="usuarios"><span class="icono-vista">👥</span><span class="fila-texto"><strong>Usuarios y permisos</strong><small>Gestionar acceso al sistema.</small></span><span class="flecha-vista">→</span></a>
+      <div class="titulo-seccion-dashboard"><div><span class="eyebrow-dashboard">OTRAS SECCIONES</span><h2>Accesos rápidos</h2></div></div>
+      <div class="grid-accesos" data-menu-principal="true">
+        <a class="accion-rapida" href="tablas.html" data-vista="tablas"><span class="icono-vista">📋</span><strong>Historial</strong><small>Ver suministros</small></a>
+        <a class="accion-rapida" href="tractores.html" data-vista="tractores"><span class="icono-vista">🚜</span><strong>Máquinas</strong><small>Administrar equipos</small></a>
+        <a class="accion-rapida" href="operarios.html" data-vista="operarios"><span class="icono-vista">👷</span><strong>Operarios</strong><small>Administrar personal</small></a>
+        <a class="accion-rapida" href="reportes.html" data-vista="reportes"><span class="icono-vista">📊</span><strong>Reportes</strong><small>Analizar consumo</small></a>
+        <a class="accion-rapida" href="usuarios.html" data-vista="usuarios"><span class="icono-vista">👥</span><strong>Usuarios</strong><small>Gestionar acceso</small></a>
       </div>
     </section>
 
