@@ -48,8 +48,8 @@ label { color:var(--cc-texto);font-weight:700 }
 .manguera-card input[readonly].inicial-automatico { background:#1a1e21;border-color:#2b3136;color:#93a09c }
 .manguera-card input.inicial-manual { background:#241c10;border-color:#4a3820;box-shadow:inset 0 0 0 1px rgba(245,165,36,.14) }
 .manguera-card label span { font-size:.72rem;color:var(--cc-muted);font-weight:700 }
-.resultado-manguera { background:#1d2226!important;border-radius:13px!important }
-.total-surtidor { border: 1px solid #4a3820 !important; background: linear-gradient(90deg,#211a12,#171b1e) !important; border-radius: 18px !important; padding: 11px 14px !important; gap: 6px !important; }
+.resultado-manguera { background:#f7faf7!important;border-radius:13px!important }
+.total-surtidor { border: 1px solid #dfe7df !important; background: linear-gradient(90deg,#f9ece6,#ffffff) !important; border-radius: 18px !important; padding: 11px 14px !important; gap: 6px !important; }
 .total-surtidor>span { color:var(--cc-muted)!important;font-size:.72rem!important;font-weight:900!important }
 .total-surtidor strong { color:var(--cc-acento)!important;font-size:1.65rem!important;line-height:1.1!important }
 .total-surtidor small { color:var(--cc-texto)!important;font-weight:800!important }
