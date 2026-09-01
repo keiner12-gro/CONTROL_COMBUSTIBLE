@@ -101,7 +101,7 @@ function tarjetaAlerta(a){
   const acciones=document.createElement('div'); acciones.className='acciones-alerta';
   if(a.estado==='justificada'){
     acciones.innerHTML=`<span class="texto-estado">${esInspeccion?'Inspección atendida':'Justificación registrada'}</span>`;
-    if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.rel='noopener';link.textContent='📎 Ver reporte';acciones.appendChild(link);}
+    if(a.reporte_ruta){const link=document.createElement('a');link.href=`/api/alertas/${a.id}/soporte`;link.target='_blank';link.rel='noopener';link.textContent='📎 Ver reporte';acciones.appendChild(link);}
   }else{const b=document.createElement('button');b.type='button';b.textContent=esInspeccion?'✎ Marcar como atendida':'✎ Justificar alerta';b.addEventListener('click',()=>justificarAlerta(a));acciones.appendChild(b);}
   card.appendChild(acciones);
   return card;

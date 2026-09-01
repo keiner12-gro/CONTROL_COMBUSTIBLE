@@ -68,7 +68,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(root, { index: false }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Los soportes de alertas ya NO se sirven como archivos estáticos públicos:
+// se entregan solo mediante GET /api/alertas/:id/soporte (ver alert.routes.js),
+// que exige sesión y permiso antes de leer el archivo del disco.
 
 const paginas = [
   'login',

@@ -39,6 +39,28 @@ function crearRutasRegistros(service, reports, db) {
 
   router.post('/registros', requirePermission('registro'), async (req, res, next) => {
     try {
+      const hoy = new Date().toISOString().slice(0, 10);
+      const fecha = String(req.body.fecha || '').slice(0, 10);
+      const esCorreccionFecha = Boolean(fecha) && fecha !== hoy;
+
+      if (esCorreccionFecha && req.user.rol !== 'super_administrador') {
+        const limiteDias =
+          req.user.rol === 'administrador'
+            ? Number(process.env.DIAS_ATRAS_ADMIN || 30)
+            : req.user.rol === 'supervisor'
+              ? Number(process.env.DIAS_ATRAS_PERMITIDOS || 3)
+              : 0;
+        const fechaLimite = new Date();
+        fechaLimite.setDate(fechaLimite.getDate() - limiteDias);
+        if (limiteDias <= 0 || fecha < fechaLimite.toISOString().slice(0, 10))
+          return res.status(403).json({
+            mensaje:
+              req.user.rol === 'operario'
+                ? 'Solo puedes registrar suministros con la fecha de hoy.'
+                : `No puedes registrar una fecha con más de ${limiteDias} día(s) de antigüedad.`
+          });
+      }
+
       const creado = await service.create(req.body);
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
@@ -47,7 +69,12 @@ function crearRutasRegistros(service, reports, db) {
         accion: 'CREAR',
         modulo: 'registros',
         registroId: creado.id,
-        detalle: { maquina: req.body.maquina, cantidad: req.body.cantidad }
+        detalle: {
+          maquina: req.body.maquina,
+          cantidad: req.body.cantidad,
+          fechaRegistro: fecha || null,
+          correccionFechaRetroactiva: esCorreccionFecha
+        }
       });
       res.status(201).json(creado);
     } catch (error) {
@@ -79,6 +106,7 @@ function crearRutasRegistros(service, reports, db) {
     requireAnyPermission(['tablas', 'registro']),
     async (req, res, next) => {
       try {
+        const antes = await service.findById(req.params.id);
         if (!(await service.update(req.params.id, req.body)))
           return res.status(400).json({ mensaje: 'No hay campos validos para actualizar.' });
         await registrarAuditoria(db, {
@@ -88,7 +116,7 @@ function crearRutasRegistros(service, reports, db) {
           accion: 'EDITAR',
           modulo: 'registros',
           registroId: req.params.id,
-          detalle: req.body
+          detalle: { antes, despues: req.body }
         });
         res.json({ mensaje: 'Registro actualizado.' });
       } catch (error) {
@@ -102,16 +130,18 @@ function crearRutasRegistros(service, reports, db) {
     requireAnyPermission(['tablas', 'registro']),
     async (req, res, next) => {
       try {
-        await service.remove(req.params.id);
+        const motivo = String(req.body?.motivo || '').trim();
+        const anulado = await service.remove(req.params.id, motivo, req.user.usuario);
         await registrarAuditoria(db, {
           usuarioId: req.user.id,
           usuario: req.user.usuario,
           rol: req.user.rol,
-          accion: 'ELIMINAR',
+          accion: 'ANULAR',
           modulo: 'registros',
-          registroId: req.params.id
+          registroId: req.params.id,
+          detalle: { antes: anulado, motivo }
         });
-        res.json({ mensaje: 'Registro eliminado.' });
+        res.json({ mensaje: 'Registro anulado. Queda disponible en el historial de auditoría.' });
       } catch (error) {
         next(error);
       }

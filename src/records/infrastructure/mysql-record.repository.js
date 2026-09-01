@@ -6,8 +6,16 @@ class MySQLRecordRepository extends RecordRepository {
     this.db = db;
   }
 
+  // Conexion dedicada para operaciones que deben correr en una sola
+  // transaccion (p. ej. crear un registro junto con su alerta).
+  getConnection() {
+    return this.db.getConnection();
+  }
+
   async list() {
-    const [filas] = await this.db.query('SELECT * FROM registros_combustible ORDER BY id DESC');
+    const [filas] = await this.db.query(
+      "SELECT * FROM registros_combustible WHERE estado<>'ANULADO' ORDER BY id DESC"
+    );
     return filas;
   }
 
@@ -16,8 +24,10 @@ class MySQLRecordRepository extends RecordRepository {
     return filas[0] || null;
   }
 
-  async insert(datos) {
-    const [resultado] = await this.db.query(
+  // "connection" es opcional: si se pasa una conexion abierta en transaccion
+  // (ver record.service.js), se usa esa; si no, se toma una del pool normal.
+  async insert(datos, connection = this.db) {
+    const [resultado] = await connection.query(
       `INSERT INTO registros_combustible(fecha,m1_inicial,m1_final,m2_inicial,m2_final,galones_m1,galones_m2,total_galones,fuga_biodiesel,sistema_electrico,parada_emergencia,cierre_dia,operario,cedula,maquina,horometro,cantidad,numero_sai,firma,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         datos.fecha || null,
@@ -47,11 +57,11 @@ class MySQLRecordRepository extends RecordRepository {
 
   async getDailyMeterState(fecha) {
     const [filasDia] = await this.db.query(
-      `SELECT id,fecha,m1_inicial,m1_final,m2_inicial,m2_final,cierre_dia,operario,maquina FROM registros_combustible WHERE fecha=? ORDER BY id DESC`,
+      `SELECT id,fecha,m1_inicial,m1_final,m2_inicial,m2_final,cierre_dia,operario,maquina FROM registros_combustible WHERE fecha=? AND estado<>'ANULADO' ORDER BY id DESC`,
       [fecha]
     );
     const [filasDiaAnterior] = await this.db.query(
-      `SELECT id,fecha,m1_final,m2_final,cierre_dia FROM registros_combustible WHERE fecha=DATE_SUB(?,INTERVAL 1 DAY) ORDER BY id DESC`,
+      `SELECT id,fecha,m1_final,m2_final,cierre_dia FROM registros_combustible WHERE fecha=DATE_SUB(?,INTERVAL 1 DAY) AND estado<>'ANULADO' ORDER BY id DESC`,
       [fecha]
     );
     const cierreActual = filasDia.find((fila) => Number(fila.cierre_dia) === 1) || null;
@@ -71,7 +81,7 @@ class MySQLRecordRepository extends RecordRepository {
 
   async findDailyClosing(fecha) {
     const [filas] = await this.db.query(
-      'SELECT id FROM registros_combustible WHERE fecha=? AND cierre_dia=1 LIMIT 1',
+      "SELECT id FROM registros_combustible WHERE fecha=? AND cierre_dia=1 AND estado<>'ANULADO' LIMIT 1",
       [fecha || null]
     );
     return filas[0] || null;
@@ -99,6 +109,7 @@ class MySQLRecordRepository extends RecordRepository {
   async hasChecklist(fecha, idExcluido = null) {
     const condiciones = [
       'fecha=?',
+      "estado<>'ANULADO'",
       '(fuga_biodiesel IS NOT NULL OR sistema_electrico IS NOT NULL OR parada_emergencia IS NOT NULL)'
     ];
     const valores = [fecha || null];
@@ -115,7 +126,7 @@ class MySQLRecordRepository extends RecordRepository {
 
   async machineConsumptionStats(inicio, fin) {
     const [filas] = await this.db.query(
-      `SELECT r.maquina,COUNT(*) AS registros,COALESCE(SUM(r.cantidad),0) AS total_galones,COALESCE(AVG(r.cantidad),0) AS promedio_galones,COALESCE(MAX(r.cantidad),0) AS maximo_galones,COALESCE(t.capacidad_galones,0) AS capacidad_galones,t.descripcion AS descripcion FROM registros_combustible r LEFT JOIN tractores t ON UPPER(t.maquina)=UPPER(r.maquina) WHERE r.cierre_dia=0 AND r.fecha BETWEEN ? AND ? AND r.cantidad IS NOT NULL AND r.cantidad>0 GROUP BY r.maquina,t.capacidad_galones,t.descripcion ORDER BY total_galones DESC`,
+      `SELECT r.maquina,COUNT(*) AS registros,COALESCE(SUM(r.cantidad),0) AS total_galones,COALESCE(AVG(r.cantidad),0) AS promedio_galones,COALESCE(MAX(r.cantidad),0) AS maximo_galones,COALESCE(t.capacidad_galones,0) AS capacidad_galones,t.descripcion AS descripcion FROM registros_combustible r LEFT JOIN tractores t ON UPPER(t.maquina)=UPPER(r.maquina) WHERE r.cierre_dia=0 AND r.estado<>'ANULADO' AND r.fecha BETWEEN ? AND ? AND r.cantidad IS NOT NULL AND r.cantidad>0 GROUP BY r.maquina,t.capacidad_galones,t.descripcion ORDER BY total_galones DESC`,
       [inicio, fin]
     );
     return filas.map((fila) => ({
@@ -132,6 +143,7 @@ class MySQLRecordRepository extends RecordRepository {
   async averageQuantityByMachine(maquina, idExcluido = null) {
     const condiciones = [
       'cierre_dia=0',
+      "estado<>'ANULADO'",
       'cantidad IS NOT NULL',
       'cantidad>0',
       'UPPER(maquina)=UPPER(?)'
@@ -150,14 +162,14 @@ class MySQLRecordRepository extends RecordRepository {
 
   async latestHourmeter(maquina) {
     const [filas] = await this.db.query(
-      `SELECT MAX(CAST(REPLACE(horometro,',','.') AS DECIMAL(12,2))) AS ultimo_horometro FROM registros_combustible WHERE maquina=? AND horometro REGEXP '^[0-9]+([,.][0-9]+)?$'`,
+      `SELECT MAX(CAST(REPLACE(horometro,',','.') AS DECIMAL(12,2))) AS ultimo_horometro FROM registros_combustible WHERE maquina=? AND estado<>'ANULADO' AND horometro REGEXP '^[0-9]+([,.][0-9]+)?$'`,
       [maquina || '']
     );
     return Number(filas[0].ultimo_horometro) || 0;
   }
 
   async findByDateRange(inicio, fin, busqueda = '') {
-    const condiciones = ['fecha BETWEEN ? AND ?'];
+    const condiciones = ['fecha BETWEEN ? AND ?', "estado<>'ANULADO'"];
     const valores = [inicio, fin];
     if (busqueda) {
       condiciones.push('(maquina LIKE ? OR operario LIKE ?)');
@@ -198,13 +210,19 @@ class MySQLRecordRepository extends RecordRepository {
     return true;
   }
 
-  async remove(id) {
-    await this.db.query('DELETE FROM registros_combustible WHERE id=?', [id]);
+  // Anula el registro en vez de borrarlo fisicamente: conserva el dato
+  // historico y deja quien/cuando/por que se anulo.
+  async remove(id, motivo, usuario) {
+    const [resultado] = await this.db.query(
+      "UPDATE registros_combustible SET estado='ANULADO',motivo_anulacion=?,usuario_anulacion=?,fecha_anulacion=NOW() WHERE id=? AND estado<>'ANULADO'",
+      [motivo || null, usuario || null, id]
+    );
+    return resultado.affectedRows > 0;
   }
 
   async summarizeByMonth() {
     const [filas] = await this.db.query(
-      `SELECT YEAR(fecha) AS anio,MONTH(fecha) AS mes,COALESCE(SUM(CASE WHEN(cierre_dia=1 OR(cierre_dia=0 AND m1_inicial IS NOT NULL AND m1_final IS NOT NULL AND m2_inicial IS NOT NULL AND m2_final IS NOT NULL AND(operario IS NULL OR TRIM(operario)='') AND(maquina IS NULL OR TRIM(maquina)=''))) THEN 0 ELSE 1 END),0) AS totalRegistros,COALESCE(SUM(CASE WHEN(cierre_dia=1 OR(cierre_dia=0 AND m1_inicial IS NOT NULL AND m1_final IS NOT NULL AND m2_inicial IS NOT NULL AND m2_final IS NOT NULL AND(operario IS NULL OR TRIM(operario)='') AND(maquina IS NULL OR TRIM(maquina)=''))) THEN COALESCE(total_galones,0) ELSE 0 END),0) AS totalGalones FROM registros_combustible WHERE fecha IS NOT NULL GROUP BY YEAR(fecha),MONTH(fecha)`
+      `SELECT YEAR(fecha) AS anio,MONTH(fecha) AS mes,COALESCE(SUM(CASE WHEN(cierre_dia=1 OR(cierre_dia=0 AND m1_inicial IS NOT NULL AND m1_final IS NOT NULL AND m2_inicial IS NOT NULL AND m2_final IS NOT NULL AND(operario IS NULL OR TRIM(operario)='') AND(maquina IS NULL OR TRIM(maquina)=''))) THEN 0 ELSE 1 END),0) AS totalRegistros,COALESCE(SUM(CASE WHEN(cierre_dia=1 OR(cierre_dia=0 AND m1_inicial IS NOT NULL AND m1_final IS NOT NULL AND m2_inicial IS NOT NULL AND m2_final IS NOT NULL AND(operario IS NULL OR TRIM(operario)='') AND(maquina IS NULL OR TRIM(maquina)=''))) THEN COALESCE(total_galones,0) ELSE 0 END),0) AS totalGalones FROM registros_combustible WHERE fecha IS NOT NULL AND estado<>'ANULADO' GROUP BY YEAR(fecha),MONTH(fecha)`
     );
     return filas;
   }

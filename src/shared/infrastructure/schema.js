@@ -32,6 +32,16 @@ async function prepararTablas(db) {
   await db.query(
     `CREATE TABLE IF NOT EXISTS registros_combustible(id INT AUTO_INCREMENT PRIMARY KEY,fecha DATE,m1_inicial DECIMAL(12,2),m1_final DECIMAL(12,2),m2_inicial DECIMAL(12,2),m2_final DECIMAL(12,2),galones_m1 DECIMAL(12,2),galones_m2 DECIMAL(12,2),total_galones DECIMAL(12,2),fuga_biodiesel VARCHAR(20),sistema_electrico VARCHAR(30),parada_emergencia VARCHAR(30),cierre_dia TINYINT(1) DEFAULT 0,operario VARCHAR(120),cedula VARCHAR(30),maquina VARCHAR(80),horometro VARCHAR(120),cantidad DECIMAL(12,2),numero_sai VARCHAR(80),firma LONGTEXT,observaciones TEXT,registrado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
   );
+  // Los registros historicos ya no se eliminan fisicamente: "estado" ANULADO
+  // reemplaza al DELETE, conservando el dato y quien/cuando/por que se anulo.
+  await agregarColumnaSiFalta(
+    'registros_combustible',
+    'estado',
+    "VARCHAR(20) NOT NULL DEFAULT 'ACTIVO'"
+  );
+  await agregarColumnaSiFalta('registros_combustible', 'motivo_anulacion', 'VARCHAR(255) NULL');
+  await agregarColumnaSiFalta('registros_combustible', 'usuario_anulacion', 'VARCHAR(80) NULL');
+  await agregarColumnaSiFalta('registros_combustible', 'fecha_anulacion', 'DATETIME NULL');
   await db.query(
     `CREATE TABLE IF NOT EXISTS permisos_usuarios_combustible(id INT AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,vista VARCHAR(40) NOT NULL,creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY permiso_unico (usuario_id,vista),FOREIGN KEY (usuario_id) REFERENCES usuarios_combustible(id) ON DELETE CASCADE)`
   );
@@ -39,9 +49,17 @@ async function prepararTablas(db) {
     `CREATE TABLE IF NOT EXISTS tractores(id INT AUTO_INCREMENT PRIMARY KEY,item INT NOT NULL,maquina VARCHAR(20) NOT NULL,descripcion VARCHAR(150) NOT NULL,centro_costo VARCHAR(20) NOT NULL,capacidad_galones DECIMAL(12,2) DEFAULT 0)`
   );
   await agregarColumnaSiFalta('tractores', 'capacidad_galones', 'DECIMAL(12,2) DEFAULT 0');
+  await agregarColumnaSiFalta('tractores', 'estado', "VARCHAR(20) NOT NULL DEFAULT 'ACTIVO'");
+  await agregarColumnaSiFalta('tractores', 'motivo_anulacion', 'VARCHAR(255) NULL');
+  await agregarColumnaSiFalta('tractores', 'usuario_anulacion', 'VARCHAR(80) NULL');
+  await agregarColumnaSiFalta('tractores', 'fecha_anulacion', 'DATETIME NULL');
   await db.query(
     `CREATE TABLE IF NOT EXISTS operarios(id INT AUTO_INCREMENT PRIMARY KEY,nombre VARCHAR(120) NOT NULL,cedula VARCHAR(30) NOT NULL,creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
   );
+  await agregarColumnaSiFalta('operarios', 'estado', "VARCHAR(20) NOT NULL DEFAULT 'ACTIVO'");
+  await agregarColumnaSiFalta('operarios', 'motivo_anulacion', 'VARCHAR(255) NULL');
+  await agregarColumnaSiFalta('operarios', 'usuario_anulacion', 'VARCHAR(80) NULL');
+  await agregarColumnaSiFalta('operarios', 'fecha_anulacion', 'DATETIME NULL');
   await db.query(
     `CREATE TABLE IF NOT EXISTS reportes_combustible(id INT AUTO_INCREMENT PRIMARY KEY,anio INT NOT NULL,mes INT NOT NULL,fecha_inicio DATE NOT NULL,fecha_fin DATE NOT NULL,fecha_cierre DATETIME NOT NULL,estado VARCHAR(20) NOT NULL,total_registros INT DEFAULT 0,total_galones DECIMAL(12,2) DEFAULT 0,actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY reporte_mes_unico (anio,mes))`
   );

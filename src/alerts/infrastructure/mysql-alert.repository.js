@@ -33,17 +33,27 @@ class MySQLAlertRepository extends AlertRepository {
     return rows;
   }
 
-  async findByRegistro(registroId, tipo = 'sobrecapacidad') {
+  async findById(id) {
     const [rows] = await this.db.query(
+      `SELECT id,registro_id,fecha,maquina,operario,cantidad,capacidad_galones,exceso_galones,observaciones,justificacion,estado,justificado_por,justificado_en,reporte_nombre,reporte_ruta,reporte_tipo,tipo_alerta,promedio_galones,porcentaje_sobre_promedio,detalle_alerta,valor_referencia,creado_en FROM alertas_combustible WHERE id=? LIMIT 1`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async findByRegistro(registroId, tipo = 'sobrecapacidad', connection = this.db) {
+    const [rows] = await connection.query(
       'SELECT * FROM alertas_combustible WHERE registro_id=? AND tipo_alerta=? LIMIT 1',
       [registroId, tipo]
     );
     return rows[0] || null;
   }
 
-  async create(alerta) {
+  // "connection" es opcional: se usa la misma conexion en transaccion que el
+  // registro que disparo la alerta (ver record.service.js), si se paso una.
+  async create(alerta, connection = this.db) {
     const tipoAlerta = alerta.tipoAlerta || 'sobrecapacidad';
-    const [result] = await this.db.query(
+    const [result] = await connection.query(
       `INSERT INTO alertas_combustible(registro_id,fecha,maquina,operario,cantidad,capacidad_galones,exceso_galones,observaciones,estado,tipo_alerta,promedio_galones,porcentaje_sobre_promedio,detalle_alerta,valor_referencia) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         alerta.registroId || null,
@@ -66,7 +76,7 @@ class MySQLAlertRepository extends AlertRepository {
     const titulo = TITULOS_ALERTA[tipoAlerta] || TITULOS_ALERTA.sobrecapacidad;
     const mensaje = construirMensaje({ ...alerta, tipoAlerta });
     for (const rol of ['super_administrador', 'supervisor', 'administrador'])
-      await this.db.query(
+      await connection.query(
         `INSERT INTO notificaciones_combustible(alerta_id,rol,titulo,mensaje) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE mensaje=VALUES(mensaje)`,
         [id, rol, titulo, mensaje]
       );

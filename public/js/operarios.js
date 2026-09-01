@@ -96,31 +96,31 @@ formularioOperario.addEventListener('submit', async (evento) => {
   mostrarAlertaExito('Operario agregado', 'El operario fue agregado correctamente.');
 });
 
-// Elimina un operario sin tocar los registros historicos ya guardados.
+// Anula un operario sin borrar los registros historicos ya guardados.
 async function eliminarOperario(id) {
-  const confirmado = await confirmarAccion(
-    'Eliminar operario',
-    'Desea eliminar este operario? Los registros guardados no se borraran.',
-    'Si, eliminar'
+  const motivo = await solicitarMotivoAnulacion(
+    'Anular operario',
+    'El operario no se borrará: quedará anulado y los registros guardados no se modificarán.'
   );
 
-  if (!confirmado) {
+  if (!motivo) {
     return;
   }
 
   const respuesta = await fetch(`/api/operarios/${id}`, {
     method: 'DELETE',
-    headers: obtenerCabecerasOperarios()
+    headers: obtenerCabecerasOperarios(),
+    body: JSON.stringify({ motivo })
   });
 
   if (!respuesta.ok) {
     const payload = await respuesta.json().catch(() => ({}));
-    mostrarAlertaError('No se pudo eliminar', payload.mensaje || 'No tienes permiso para eliminar operarios.');
+    mostrarAlertaError('No se pudo anular', payload.mensaje || 'No tienes permiso para anular operarios.');
     return;
   }
 
   await cargarOperarios();
-  mostrarAlertaExito('Operario eliminado', 'El operario fue eliminado correctamente.');
+  mostrarAlertaExito('Operario anulado', 'El operario fue anulado correctamente.');
 }
 
 cargarOperarios();

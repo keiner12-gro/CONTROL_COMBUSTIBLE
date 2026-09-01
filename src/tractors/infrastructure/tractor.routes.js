@@ -36,16 +36,20 @@ function crearRutasTractores(service, db) {
 
   router.put('/tractores/:id', requirePermission('tractores'), async (req, res, next) => {
     try {
+      const antes = await service.findById(req.params.id);
       const tractor = await service.update(req.params.id, req.body);
       if (!tractor) return res.status(404).json({ mensaje: 'Máquina no encontrada.' });
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
-        accion: 'EDITAR',
+        accion:
+          antes && Number(antes.capacidad_galones) !== Number(req.body.capacidad_galones)
+            ? 'CAMBIAR_CAPACIDAD'
+            : 'EDITAR',
         modulo: 'tractores',
         registroId: req.params.id,
-        detalle: req.body
+        detalle: { antes, despues: req.body }
       });
       res.json(tractor);
     } catch (error) {
@@ -55,16 +59,18 @@ function crearRutasTractores(service, db) {
 
   router.delete('/tractores/:id', requirePermission('tractores'), async (req, res, next) => {
     try {
-      await service.remove(req.params.id);
+      const motivo = String(req.body?.motivo || '').trim();
+      const anulado = await service.remove(req.params.id, motivo, req.user.usuario);
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
-        accion: 'ELIMINAR',
+        accion: 'ANULAR',
         modulo: 'tractores',
-        registroId: req.params.id
+        registroId: req.params.id,
+        detalle: { antes: anulado, motivo }
       });
-      res.json({ mensaje: 'Máquina eliminada. Los registros históricos no se modificaron.' });
+      res.json({ mensaje: 'Máquina anulada. Los registros históricos no se modificaron.' });
     } catch (error) {
       next(error);
     }

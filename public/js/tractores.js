@@ -214,31 +214,31 @@ formularioTractor.addEventListener('submit', async (evento) => {
   mostrarAlertaExito('Máquina agregada', 'La máquina fue agregada correctamente.');
 });
 
-// Elimina una maquina sin tocar los registros historicos ya guardados.
+// Anula una maquina sin tocar los registros historicos ya guardados.
 async function eliminarTractor(id) {
-  const confirmado = await confirmarAccion(
-    'Eliminar máquina',
-    '¿Desea eliminar esta máquina? Los registros guardados no se borrarán.',
-    'Sí, eliminar'
+  const motivo = await solicitarMotivoAnulacion(
+    'Anular máquina',
+    'La máquina no se borrará: quedará anulada y los registros guardados no se modificarán.'
   );
 
-  if (!confirmado) {
+  if (!motivo) {
     return;
   }
 
   const respuesta = await fetch(`/api/tractores/${id}`, {
     method: 'DELETE',
-    headers: obtenerCabecerasTractores()
+    headers: obtenerCabecerasTractores(),
+    body: JSON.stringify({ motivo })
   });
 
   if (!respuesta.ok) {
     const payload = await respuesta.json().catch(() => ({}));
-    mostrarAlertaError('No se pudo eliminar', payload.mensaje || 'No tienes permiso para eliminar máquinas.');
+    mostrarAlertaError('No se pudo anular', payload.mensaje || 'No tienes permiso para anular máquinas.');
     return;
   }
 
   await cargarTractores();
-  mostrarAlertaExito('Máquina eliminada', 'La máquina fue eliminada correctamente.');
+  mostrarAlertaExito('Máquina anulada', 'La máquina fue anulada correctamente.');
 }
 
 cargarTractores();

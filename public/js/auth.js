@@ -116,6 +116,37 @@ async function confirmarAccion(titulo, texto, textoConfirmar = 'Si, eliminar') {
   return confirm(texto || titulo);
 }
 
+// Pide un motivo obligatorio antes de anular un registro/operario/máquina.
+// Ya no se borra nada físicamente: el backend convierte esto en un estado
+// ANULADO y guarda quién y por qué, así que siempre se necesita un motivo.
+async function solicitarMotivoAnulacion(titulo, texto) {
+  if (window.Swal) {
+    const resultado = await Swal.fire({
+      icon: 'warning',
+      title: titulo,
+      html: `<p style="margin:0 0 12px;text-align:left">${texto}</p><textarea id="motivo-anulacion" class="swal2-textarea" placeholder="Motivo de la anulación (obligatorio)"></textarea>`,
+      showCancelButton: true,
+      confirmButtonText: 'Anular',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef6259',
+      cancelButtonColor: '#2b3136',
+      preConfirm: () => {
+        const motivo = String(document.getElementById('motivo-anulacion').value || '').trim();
+        if (!motivo) {
+          Swal.showValidationMessage('El motivo es obligatorio.');
+          return false;
+        }
+        return motivo;
+      }
+    });
+
+    return resultado.isConfirmed ? resultado.value : null;
+  }
+
+  const motivo = prompt(`${texto}\n\nMotivo de la anulación:`);
+  return motivo && motivo.trim() ? motivo.trim() : null;
+}
+
 // Guarda la ultima vista permitida para regresar ahi si escriben una URL sin permiso.
 function guardarUltimaVistaPermitida() {
   const vistaActual = `${window.location.pathname.split('/').pop()}${window.location.search}`;

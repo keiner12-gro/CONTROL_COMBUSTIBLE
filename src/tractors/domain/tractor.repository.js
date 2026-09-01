@@ -7,6 +7,10 @@ class TractorRepository {
     throw new Error('Not implemented');
   }
 
+  async findById() {
+    throw new Error('Not implemented');
+  }
+
   async update() {
     throw new Error('Not implemented');
   }

@@ -8,9 +8,14 @@ class MySQLOperatorRepository extends OperatorRepository {
 
   async list() {
     const [filas] = await this.db.query(
-      'SELECT id,nombre,cedula FROM operarios ORDER BY nombre ASC'
+      "SELECT id,nombre,cedula FROM operarios WHERE estado<>'ANULADO' ORDER BY nombre ASC"
     );
     return filas;
+  }
+
+  async findById(id) {
+    const [filas] = await this.db.query('SELECT * FROM operarios WHERE id=?', [id]);
+    return filas[0] || null;
   }
 
   async create(datos) {
@@ -25,8 +30,14 @@ class MySQLOperatorRepository extends OperatorRepository {
     return { id: resultado.insertId, nombre, cedula };
   }
 
-  async remove(id) {
-    await this.db.query('DELETE FROM operarios WHERE id=?', [id]);
+  // Anula en vez de borrar: conserva el operario para los registros historicos
+  // que ya lo referencian por nombre/cedula.
+  async remove(id, motivo, usuario) {
+    const [resultado] = await this.db.query(
+      "UPDATE operarios SET estado='ANULADO',motivo_anulacion=?,usuario_anulacion=?,fecha_anulacion=NOW() WHERE id=? AND estado<>'ANULADO'",
+      [motivo || null, usuario || null, id]
+    );
+    return resultado.affectedRows > 0;
   }
 }
 

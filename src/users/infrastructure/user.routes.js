@@ -123,13 +123,13 @@ function crearRutasUsuarios(service, db) {
 
   router.put('/usuarios/:id', requirePermission('usuarios'), async (req, res, next) => {
     try {
+      const antes = await service.findById(req.params.id);
       if (!esSuperAdmin(req)) {
         if (req.body.rol === 'super_administrador')
           return res
             .status(403)
             .json({ mensaje: 'Solo el super administrador puede asignar ese rol.' });
-        const objetivo = await service.findById(req.params.id);
-        if (objetivo?.rol === 'super_administrador')
+        if (antes?.rol === 'super_administrador')
           return res
             .status(403)
             .json({ mensaje: 'No tienes permiso para modificar un super administrador.' });
@@ -139,10 +139,13 @@ function crearRutasUsuarios(service, db) {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
-        accion: 'EDITAR',
+        accion: antes && antes.rol !== req.body.rol ? 'CAMBIAR_ROL' : 'EDITAR',
         modulo: 'usuarios',
         registroId: req.params.id,
-        detalle: { rol: req.body.rol, permisos: req.body.permisos }
+        detalle: {
+          antes: antes ? { rol: antes.rol } : null,
+          despues: { rol: req.body.rol, permisos: req.body.permisos }
+        }
       });
       res.json({ mensaje: 'Usuario actualizado.' });
     } catch (error) {

@@ -7,6 +7,10 @@ class OperatorRepository {
     throw new Error('Not implemented');
   }
 
+  async findById() {
+    throw new Error('Not implemented');
+  }
+
   async remove() {
     throw new Error('Not implemented');
   }

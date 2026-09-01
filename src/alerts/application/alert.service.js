@@ -11,13 +11,20 @@ class AlertService {
     return this.repository.list();
   }
 
-  async create(alerta) {
+  async findById(id) {
+    return this.repository.findById(id);
+  }
+
+  // "connection" es opcional: si el llamador esta corriendo una transaccion
+  // (ver record.service.js), la alerta se crea con esa misma conexion para
+  // que quede todo o nada junto con el registro que la origina.
+  async create(alerta, connection) {
     const tipo = alerta.tipoAlerta || 'sobrecapacidad';
     const existente = alerta.registroId
-      ? await this.repository.findByRegistro(alerta.registroId, tipo)
+      ? await this.repository.findByRegistro(alerta.registroId, tipo, connection)
       : null;
     if (existente) return existente;
-    return this.repository.create(alerta);
+    return this.repository.create(alerta, connection);
   }
 
   async update(id, datos) {
