@@ -38,7 +38,7 @@ label { color:var(--cc-texto);font-weight:700 }
 .paso-registro.completado small { color:var(--cc-verde) }
 .paso-cabecera { display:flex;align-items:center;gap:14px;margin-bottom:16px }
 .numero-paso { display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--cc-naranja-suave);color:var(--cc-acento);font-weight:900 }
-.seleccion-confirmada { background:var(--cc-verde-suave)!important;border-color:#1e4a32!important;color:#8fe6b8!important }
+.seleccion-confirmada { background:var(--cc-verde-suave)!important;border-color:#cfe1d1!important;color:#2d5a41!important }
 .selector-card { border:1px solid var(--cc-borde)!important;background:var(--cc-superficie)!important;border-radius:15px!important }
 .selector-card:hover,.selector-card.seleccionada { border-color:var(--cc-acento)!important;background:var(--cc-naranja-suave)!important;box-shadow:0 8px 20px rgba(245,165,36,.14)!important }
 .selector-card em { color:var(--cc-acento)!important;font-style:normal;font-weight:800 }
@@ -54,8 +54,8 @@ label { color:var(--cc-texto);font-weight:700 }
 .total-surtidor strong { color:var(--cc-acento)!important;font-size:1.65rem!important;line-height:1.1!important }
 .total-surtidor small { color:var(--cc-texto)!important;font-weight:800!important }
 .total-surtidor button { min-height:40px!important }
-.badge-estado-surtidor.correcto { background:var(--cc-verde-suave)!important;color:#8fe6b8!important }
-.badge-estado-surtidor.pendiente { background:var(--cc-amarillo-suave)!important;color:#e6d27c!important }
+.badge-estado-surtidor.correcto { background:var(--cc-verde-suave)!important;color:#2d5a41!important }
+.badge-estado-surtidor.pendiente { background:var(--cc-amarillo-suave)!important;color:#7f6121!important }
 .checklist-surtidor { background:var(--cc-superficie)!important;border:1px solid var(--cc-borde)!important }
 .nav-movil-inferior { border-top:1px solid var(--cc-borde)!important;background:rgba(255,255,255,.96)!important }
 .menu-lateral { background:#f4f7f4!important;border-right:1px solid var(--cc-borde)!important;box-shadow:20px 0 45px rgba(18,35,24,.12)!important }
@@ -71,19 +71,19 @@ label { color:var(--cc-texto);font-weight:700 }
 .menu-item-lateral.activo { border-left-color:var(--cc-acento)!important }
 .menu-alerta-badge { background:var(--cc-rojo)!important }
 .grid-registros-tarjetas { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px }
-.registro-tarjeta { border:1px solid var(--cc-borde);border-radius:18px;background:var(--cc-superficie);box-shadow:0 8px 24px rgba(0,0,0,.32);padding:18px;display:flex;flex-direction:column;gap:15px }
+.registro-tarjeta { border:1px solid var(--cc-borde);border-radius:18px;background:var(--cc-superficie);box-shadow:0 8px 24px rgba(23,47,32,.08);padding:18px;display:flex;flex-direction:column;gap:15px }
 .registro-tarjeta:hover { box-shadow:0 12px 30px rgba(23,47,32,.12);border-color:var(--cc-acento) }
 .registro-tarjeta-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--cc-borde);padding-bottom:14px }
 .registro-tarjeta-cabecera h3 { margin:7px 0 3px;color:var(--cc-texto);font-size:1.15rem }
 .registro-tarjeta-cabecera p { margin:0;color:var(--cc-muted);font-size:.88rem }
-.badge-registro-fecha { display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--cc-verde-suave);color:#8fe6b8;font-size:.72rem;font-weight:800 }
+.badge-registro-fecha { display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--cc-verde-suave);color:#2d5a41;font-size:.72rem;font-weight:800 }
 .registro-cantidad { min-width:82px;text-align:right;color:var(--cc-acento) }
 .registro-cantidad strong { display:block;font-size:1.65rem;line-height:1 }
 .registro-cantidad span { font-size:.7rem;font-weight:800;letter-spacing:.08em }
 .grid-campos-registro { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px }
 .campo-registro-tarjeta { display:flex;flex-direction:column;gap:5px;font-size:.72rem;color:var(--cc-muted) }
 .campo-registro-tarjeta input { width:100%;min-height:40px;padding:8px 10px;font-size:.9rem;color:var(--cc-texto);font-weight:600 }
-.campo-registro-tarjeta input:disabled { opacity:1;background:#1a1e21;border-color:#2b3136;color:#8b9591 }
+.campo-registro-tarjeta input:disabled { opacity:1;background:#f2f7f3;border-color:#dfe7df;color:#5a6f62 }
 .registro-soporte { display:flex;justify-content:space-between;align-items:center;background:#f7faf7;border:1px solid var(--cc-borde);border-radius:12px;padding:10px 12px;color:var(--cc-muted);font-size:.82rem }
 .registro-soporte strong { color:var(--cc-texto) }
 .acciones-tarjeta-registro { display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end }
@@ -133,13 +133,13 @@ label { color:var(--cc-texto);font-weight:700 }
 .panel-analitica-reportes { margin-bottom:18px }
 .grid-analitica-maquinas { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px }
 .analitica-maquina-card { border:1px solid var(--cc-borde);border-radius:16px;padding:15px;background:var(--cc-superficie) }
-.analitica-maquina-card.advertencia { border-color:#4a4018;background:#1c1a12 }
+.analitica-maquina-card.advertencia { border-color:#e8d8a8;background:#f9f1db }
 .analitica-card-top { display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center }
 .ranking-analitica { display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--cc-naranja-suave);color:var(--cc-acento);font-weight:900 }
 .analitica-card-top strong { display:block;color:var(--cc-texto) }
 .analitica-card-top small { display:block;color:var(--cc-muted);font-size:.75rem;margin-top:2px }
 .analitica-card-top>b { color:var(--cc-acento);font-size:1.1rem }
-.barra-analitica { height:7px;background:#23282d;border-radius:999px;overflow:hidden;margin:13px 0 }
+.barra-analitica { height:7px;background:#edf1ee;border-radius:999px;overflow:hidden;margin:13px 0 }
 .barra-analitica span { display:block;height:100%;background:var(--cc-acento);border-radius:999px }
 .metricas-analitica { display:flex;flex-wrap:wrap;gap:8px 14px;color:var(--cc-muted);font-size:.76rem }
 .metricas-analitica strong { color:var(--cc-texto) }
@@ -149,7 +149,7 @@ label { color:var(--cc-texto);font-weight:700 }
   .analitica-card-top>b { grid-column:2;text-align:left }
 }
 .fecha-automatica-ayuda { display:block;color:var(--cc-muted);font-size:.72rem;margin-top:5px }
-.checklist-grid input[type=date]:disabled { opacity:1;background:#1a1e21;color:#8b9591;cursor:not-allowed }
+.checklist-grid input[type=date]:disabled { opacity:1;background:#f2f7f3;color:#5a6f62;cursor:not-allowed }
 
 /* Indicadores/KPIs de la vista de reporte. */
 .kpis-reporte { display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0 }
@@ -165,12 +165,12 @@ label { color:var(--cc-texto);font-weight:700 }
 
 /* Tendencia de consumo dentro de la grafica por fecha. */
 .tendencia-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:.72rem;font-weight:800;margin-left:8px }
-.tendencia-chip.aumento { background:var(--cc-naranja-suave);color:#f2b877 }
-.tendencia-chip.disminucion { background:var(--cc-verde-suave);color:#8fe6b8 }
-.tendencia-chip.estable { background:#23282d;color:#93a09c }
+.tendencia-chip.aumento { background:var(--cc-naranja-suave);color:#a85818 }
+.tendencia-chip.disminucion { background:var(--cc-verde-suave);color:#2d5a41 }
+.tendencia-chip.estable { background:var(--cc-fondo);color:var(--cc-muted) }
 
 /* Etiqueta de tipo de maquina, reutilizada en tractores y reportes. */
-.badge-tipo-maquina { display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--cc-verde-suave);color:#8fe6b8;font-size:.68rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase }
+.badge-tipo-maquina { display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--cc-verde-suave);color:#2d5a41;font-size:.68rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase }
 
 @media(max-width:700px) {
   .kpis-reporte { grid-template-columns:repeat(2,minmax(0,1fr)) }

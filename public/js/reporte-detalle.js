@@ -17,10 +17,10 @@ const botonLimpiarBusqueda = document.getElementById('boton-limpiar-busqueda');
 const botonExportarPdfReporte = document.getElementById('boton-exportar-pdf-reporte');
 
 // Las graficas de Chart.js no heredan el CSS del tema; sin esto, sus textos
-// y lineas de cuadricula quedarian oscuros sobre el fondo oscuro del panel.
+// y lineas de cuadricula quedarian ilegibles sobre el fondo claro del panel.
 if (typeof Chart !== 'undefined') {
-  Chart.defaults.color = '#93a09c';
-  Chart.defaults.borderColor = 'rgba(255,255,255,.08)';
+  Chart.defaults.color = '#5a6f62';
+  Chart.defaults.borderColor = 'rgba(24,51,39,.08)';
   Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif';
 }
 
