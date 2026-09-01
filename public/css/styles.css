@@ -550,6 +550,16 @@ tbody tr:hover td { background: #edf5ef; }
 .boton-cta-registrar { display:inline-flex;align-items:center;min-height:40px;padding:0 18px;border-radius:10px;background:var(--brand);color:var(--accent-ink,#2c1c04);font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap;box-shadow:0 5px 13px rgba(245,165,36,.22) }
 .boton-cta-registrar:hover { background:#ffb646 }
 
+/* Ranking horizontal de consumo por maquina, arriba de la grafica semanal */
+.tarjeta-consumo-maquinas { margin:14px 0 }
+.ranking-consumo-maquinas { display:flex;flex-direction:column;gap:13px;margin-top:16px }
+.fila-ranking-maquina { display:grid;grid-template-columns:120px 1fr auto;gap:14px;align-items:center }
+.fila-ranking-maquina .nombre-ranking-maquina { font-size:12.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.fila-ranking-maquina .pista-ranking-maquina { height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden }
+.fila-ranking-maquina .pista-ranking-maquina span { display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f5a524,#d96a3d) }
+.fila-ranking-maquina .valor-ranking-maquina { font-size:12px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums }
+.ranking-consumo-vacio { margin:14px 0 0;color:var(--muted);font-size:12px }
+
 /* Grafica de consumo + alertas recientes, en dos columnas */
 .grid-inicio-dos { display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin:14px 0 }
 .tarjeta-consumo-semana h2,.tarjeta-alertas-recientes h2 { margin:0 0 3px;font-size:13.5px }

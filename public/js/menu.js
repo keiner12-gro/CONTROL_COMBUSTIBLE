@@ -100,9 +100,53 @@ async function cargarResumen() {
     document.getElementById('dashboard-registros')?.replaceChildren(document.createTextNode(String(delDia.length)));
 
     dibujarConsumoSemana(registros);
+    dibujarConsumoPorMaquina(registros);
   } catch (error) {
     console.warn('No se pudo cargar el resumen de registros', error);
   }
+}
+
+// Ranking horizontal de las maquinas con mas galones despachados en el mes
+// en curso, calculado con los mismos registros que ya se cargan arriba.
+function dibujarConsumoPorMaquina(registros) {
+  const contenedor = document.getElementById('ranking-consumo-maquinas');
+  const vacio = document.getElementById('ranking-consumo-vacio');
+  if (!contenedor) return;
+
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const totalesPorMaquina = new Map();
+
+  registros
+    .filter((r) => !Number(r.cierreDia) && String(r.fecha || '').slice(0, 7) === mesActual)
+    .forEach((r) => {
+      const nombre = String(r.maquina || 'Sin máquina').trim() || 'Sin máquina';
+      totalesPorMaquina.set(nombre, (totalesPorMaquina.get(nombre) || 0) + Number(r.cantidad || 0));
+    });
+
+  const ranking = Array.from(totalesPorMaquina.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+
+  if (!ranking.length) {
+    contenedor.innerHTML = '';
+    if (vacio) vacio.hidden = false;
+    return;
+  }
+  if (vacio) vacio.hidden = true;
+
+  const maximo = ranking[0][1] || 1;
+  contenedor.innerHTML = ranking
+    .map(([nombre, total]) => {
+      const porcentaje = Math.max(4, Math.round((total / maximo) * 100));
+      return `
+        <div class="fila-ranking-maquina">
+          <span class="nombre-ranking-maquina">${escapeHtml(nombre)}</span>
+          <span class="pista-ranking-maquina"><span style="width:${porcentaje}%"></span></span>
+          <span class="valor-ranking-maquina">${total.toFixed(1)} GAL</span>
+        </div>
+      `;
+    })
+    .join('');
 }
 
 // Grafica de area con los galones despachados en los ultimos 7 dias,
