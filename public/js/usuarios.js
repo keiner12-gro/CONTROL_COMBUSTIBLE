@@ -39,9 +39,32 @@ const GRUPOS_PERMISOS = [
 
 const vistasPermisos = GRUPOS_PERMISOS.flatMap((grupo) => grupo.permisos.map((p) => p.vista));
 
+// Rol de quien esta viendo la pantalla. Solo un super administrador puede
+// asignar o ver el rol "super_administrador"; el resto de administradores
+// gestiona el resto de cuentas (el backend aplica esta misma restriccion).
+function obtenerRolActual() {
+  const sesion = typeof obtenerSesionActual === 'function' ? obtenerSesionActual() : null;
+  return sesion?.rol || '';
+}
+
+const ROLES_ASIGNABLES =
+  obtenerRolActual() === 'super_administrador'
+    ? ['super_administrador', 'administrador', 'operario', 'supervisor']
+    : ['administrador', 'operario', 'supervisor'];
+
 // Lee la sesion para enviar el rol al servidor en APIs administrativas.
 function obtenerCabecerasAdmin() {
   return { 'Content-Type': 'application/json' };
+}
+
+// Extrae el mensaje de error que envia el backend, con un texto de respaldo.
+async function extraerMensajeError(respuesta, mensajePorDefecto) {
+  try {
+    const datos = await respuesta.json();
+    return datos?.mensaje || mensajePorDefecto;
+  } catch (_) {
+    return mensajePorDefecto;
+  }
 }
 
 // Construye el arbol de solo lectura "Mapa de permisos por rol".
@@ -143,6 +166,9 @@ async function cargarUsuarios() {
 
   if (!respuesta.ok) {
     cuerpoTablaUsuarios.innerHTML = '';
+    cantidadUsuarios.textContent = '0';
+    const mensaje = await extraerMensajeError(respuesta, 'No se pudo cargar la lista de usuarios.');
+    mostrarAlertaError('No se pudo cargar la lista', mensaje);
     return;
   }
 
@@ -197,7 +223,7 @@ function pintarUsuarios(usuarios) {
 
     celdaUsuario.textContent = usuario.usuario;
 
-    ['super_administrador', 'administrador', 'operario', 'supervisor'].forEach((rol) => {
+    ROLES_ASIGNABLES.forEach((rol) => {
       const opcion = document.createElement('option');
       opcion.value = rol;
       opcion.textContent = rol;
@@ -217,7 +243,17 @@ function pintarUsuarios(usuarios) {
     botonGuardar.type = 'button';
     botonGuardar.textContent = 'Guardar';
     botonGuardar.addEventListener('click', async () => {
-      await guardarCambiosUsuario(usuario.id, fila, selectorRol.value, entradaContrasena.value);
+      const respuesta = await guardarCambiosUsuario(
+        usuario.id,
+        fila,
+        selectorRol.value,
+        entradaContrasena.value
+      );
+      if (!respuesta.ok) {
+        const mensaje = await extraerMensajeError(respuesta, 'No se pudo actualizar el usuario.');
+        mostrarAlertaError('No se pudo guardar', mensaje);
+        return;
+      }
       entradaContrasena.value = '';
       await cargarUsuarios();
       mostrarAlertaExito('Usuario actualizado', 'Los cambios del usuario fueron guardados.');
@@ -254,8 +290,8 @@ function obtenerPermisosFila(fila) {
 }
 
 // Guarda cambios de rol, contrasena y permisos de un usuario.
-async function guardarCambiosUsuario(id, fila, rol, contrasena) {
-  await fetch(`/api/usuarios/${id}`, {
+function guardarCambiosUsuario(id, fila, rol, contrasena) {
+  return fetch(`/api/usuarios/${id}`, {
     method: 'PUT',
     headers: obtenerCabecerasAdmin(),
     body: JSON.stringify({
@@ -278,10 +314,16 @@ async function eliminarUsuario(id) {
     return;
   }
 
-  await fetch(`/api/usuarios/${id}`, {
+  const respuesta = await fetch(`/api/usuarios/${id}`, {
     method: 'DELETE',
     headers: obtenerCabecerasAdmin()
   });
+
+  if (!respuesta.ok) {
+    const mensaje = await extraerMensajeError(respuesta, 'No se pudo eliminar el usuario.');
+    mostrarAlertaError('No se pudo eliminar', mensaje);
+    return;
+  }
 
   await cargarUsuarios();
   mostrarAlertaExito('Usuario eliminado', 'El usuario fue eliminado correctamente.');
@@ -291,7 +333,7 @@ async function eliminarUsuario(id) {
 formularioUsuario.addEventListener('submit', async (evento) => {
   evento.preventDefault();
 
-  await fetch('/api/usuarios', {
+  const respuesta = await fetch('/api/usuarios', {
     method: 'POST',
     headers: obtenerCabecerasAdmin(),
     body: JSON.stringify({
@@ -302,11 +344,22 @@ formularioUsuario.addEventListener('submit', async (evento) => {
     })
   });
 
+  if (!respuesta.ok) {
+    const mensaje = await extraerMensajeError(respuesta, 'No se pudo crear el usuario.');
+    mostrarAlertaError('No se pudo crear el usuario', mensaje);
+    return;
+  }
+
   formularioUsuario.reset();
   aplicarSugerenciaDeRol();
   await cargarUsuarios();
   mostrarAlertaExito('Usuario creado', 'El usuario fue creado correctamente.');
 });
+
+// Oculta la opcion "Super administrador" del formulario si quien la ve no lo es.
+if (obtenerRolActual() !== 'super_administrador') {
+  rolNuevo.querySelector('option[value="super_administrador"]')?.remove();
+}
 
 arbolPermisosNuevo.appendChild(construirArbolPermisosEditable([], false));
 rolNuevo.addEventListener('change', aplicarSugerenciaDeRol);

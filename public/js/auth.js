@@ -106,8 +106,8 @@ async function confirmarAccion(titulo, texto, textoConfirmar = 'Si, eliminar') {
       showCancelButton: true,
       confirmButtonText: textoConfirmar,
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#d95c5c',
-      cancelButtonColor: '#2c974b'
+      confirmButtonColor: '#ef6259',
+      cancelButtonColor: '#2b3136'
     });
 
     return resultado.isConfirmed;

@@ -19,6 +19,10 @@ class UserService {
     return this.repository.list();
   }
 
+  findById(id) {
+    return this.repository.findById(id);
+  }
+
   async changePassword(id, contrasenaActual, nuevaContrasena) {
     if (!nuevaContrasena || String(nuevaContrasena).length < 6)
       throw Object.assign(new Error('La nueva contrasena debe tener al menos 6 caracteres.'), {

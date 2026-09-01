@@ -16,6 +16,14 @@ const botonBuscarMaquina = document.getElementById('boton-buscar-maquina');
 const botonLimpiarBusqueda = document.getElementById('boton-limpiar-busqueda');
 const botonExportarPdfReporte = document.getElementById('boton-exportar-pdf-reporte');
 
+// Las graficas de Chart.js no heredan el CSS del tema; sin esto, sus textos
+// y lineas de cuadricula quedarian oscuros sobre el fondo oscuro del panel.
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#93a09c';
+  Chart.defaults.borderColor = 'rgba(255,255,255,.08)';
+  Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif';
+}
+
 const nombresMesesDetalle = [
   'Enero',
   'Febrero',
@@ -371,7 +379,11 @@ function actualizarGraficas(registros) {
         label: 'Galones consumidos',
         data: consumoFechas.map(([, consumo]) => Number(consumo.toFixed(2))),
         tension: 0.25,
-        fill: false
+        fill: true,
+        borderColor: '#f5a524',
+        backgroundColor: 'rgba(245,165,36,.14)',
+        pointBackgroundColor: '#f5a524',
+        pointBorderColor: '#171b1e'
       }]
     },
     options: opcionesComunes
@@ -383,7 +395,9 @@ function actualizarGraficas(registros) {
       labels: ['M1', 'M2'],
       datasets: [{
         label: 'Galones consumidos',
-        data: [Number(consumoMangueras.m1.toFixed(2)), Number(consumoMangueras.m2.toFixed(2))]
+        data: [Number(consumoMangueras.m1.toFixed(2)), Number(consumoMangueras.m2.toFixed(2))],
+        backgroundColor: ['#5b9fe8', '#f5a524'],
+        borderRadius: 6
       }]
     },
     options: opcionesComunes
@@ -406,7 +420,10 @@ function actualizarGraficas(registros) {
       datasets: [{
         label: 'Galones consumidos',
         data: consumoMaquinas.map(([, consumo]) => Number(consumo.toFixed(2))),
-        borderWidth: 1
+        backgroundColor: '#f5a524',
+        borderColor: '#c1691f',
+        borderWidth: 1,
+        borderRadius: 6
       }]
     },
     options: {

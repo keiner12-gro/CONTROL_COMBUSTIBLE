@@ -50,6 +50,14 @@ class MySQLUserRepository extends UserRepository {
     };
   }
 
+  async findById(id) {
+    const [filas] = await this.db.query(
+      'SELECT id,usuario,rol,debe_cambiar_contrasena FROM usuarios_combustible WHERE id=? LIMIT 1',
+      [id]
+    );
+    return filas[0] || null;
+  }
+
   async list() {
     const [usuarios] = await this.db.query(
       'SELECT id,usuario,rol,debe_cambiar_contrasena,creado_en FROM usuarios_combustible ORDER BY id DESC'

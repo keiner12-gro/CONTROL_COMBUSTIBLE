@@ -3,7 +3,7 @@ const { VISTAS_DISPONIBLES } = require('../../shared/application/permisos');
 const {
   crearSesion,
   destruirSesion,
-  requireSuperAdmin,
+  requirePermission,
   limitarIntentosLogin,
   registrarIntentoLoginFallido,
   limpiarIntentosLogin
@@ -82,16 +82,29 @@ function crearRutasUsuarios(service, db) {
     }
   });
 
-  router.get('/usuarios', requireSuperAdmin, async (req, res, next) => {
+  // Solo el super administrador puede ver, crear, editar o eliminar cuentas de
+  // OTRO super administrador. Un administrador con el permiso "usuarios" puede
+  // gestionar el resto de cuentas, pero nunca escalar privilegios ni tocar la
+  // cuenta de un super administrador.
+  const esSuperAdmin = (req) => req.user.rol === 'super_administrador';
+
+  router.get('/usuarios', requirePermission('usuarios'), async (req, res, next) => {
     try {
-      res.json(await service.list());
+      const usuarios = await service.list();
+      res.json(
+        esSuperAdmin(req) ? usuarios : usuarios.filter((u) => u.rol !== 'super_administrador')
+      );
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/usuarios', requireSuperAdmin, async (req, res, next) => {
+  router.post('/usuarios', requirePermission('usuarios'), async (req, res, next) => {
     try {
+      if (req.body.rol === 'super_administrador' && !esSuperAdmin(req))
+        return res
+          .status(403)
+          .json({ mensaje: 'Solo el super administrador puede crear otro super administrador.' });
       const id = await service.create(req.body);
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
@@ -108,8 +121,19 @@ function crearRutasUsuarios(service, db) {
     }
   });
 
-  router.put('/usuarios/:id', requireSuperAdmin, async (req, res, next) => {
+  router.put('/usuarios/:id', requirePermission('usuarios'), async (req, res, next) => {
     try {
+      if (!esSuperAdmin(req)) {
+        if (req.body.rol === 'super_administrador')
+          return res
+            .status(403)
+            .json({ mensaje: 'Solo el super administrador puede asignar ese rol.' });
+        const objetivo = await service.findById(req.params.id);
+        if (objetivo?.rol === 'super_administrador')
+          return res
+            .status(403)
+            .json({ mensaje: 'No tienes permiso para modificar un super administrador.' });
+      }
       await service.update(req.params.id, req.body);
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
@@ -126,10 +150,17 @@ function crearRutasUsuarios(service, db) {
     }
   });
 
-  router.delete('/usuarios/:id', requireSuperAdmin, async (req, res, next) => {
+  router.delete('/usuarios/:id', requirePermission('usuarios'), async (req, res, next) => {
     try {
       if (String(req.user.id) === String(req.params.id))
         return res.status(400).json({ mensaje: 'No puedes eliminar tu propio usuario.' });
+      if (!esSuperAdmin(req)) {
+        const objetivo = await service.findById(req.params.id);
+        if (objetivo?.rol === 'super_administrador')
+          return res
+            .status(403)
+            .json({ mensaje: 'No tienes permiso para eliminar un super administrador.' });
+      }
       await service.remove(req.params.id);
       await registrarAuditoria(db, {
         usuarioId: req.user.id,

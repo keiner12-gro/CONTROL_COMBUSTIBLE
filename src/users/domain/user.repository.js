@@ -2,6 +2,9 @@ class UserRepository {
   async findByCredentials() {
     throw new Error('Not implemented');
   }
+  async findById() {
+    throw new Error('Not implemented');
+  }
   async changePassword() {
     throw new Error('Not implemented');
   }
