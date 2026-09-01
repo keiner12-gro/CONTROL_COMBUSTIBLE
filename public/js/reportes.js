@@ -68,6 +68,63 @@ function pintarCartasReportes(reportes) {
 botonActualizarReportes.addEventListener('click', cargarReportes);
 cargarReportes();
 
+// Grafica de area con los galones despachados en los ultimos 7 dias,
+// calculada con los registros reales del año en curso.
+async function cargarConsumoSemanaReportes() {
+  const grafica = document.getElementById('grafica-consumo-reportes');
+  const vacio = document.getElementById('grafica-consumo-reportes-vacia');
+  if (!grafica) return;
+
+  try {
+    const respuesta = await fetch('/api/reportes-general/registros', { cache: 'no-store' });
+    if (!respuesta.ok) return;
+    const registros = await respuesta.json();
+
+    const dias = [];
+    for (let i = 6; i >= 0; i--) {
+      const fecha = new Date();
+      fecha.setDate(fecha.getDate() - i);
+      dias.push(fecha.toISOString().slice(0, 10));
+    }
+
+    const totalesPorDia = dias.map((fecha) =>
+      registros
+        .filter((r) => String(r.fecha || '').slice(0, 10) === fecha && !Number(r.cierreDia))
+        .reduce((total, r) => total + Number(r.cantidad || 0), 0)
+    );
+    const totalSemana = totalesPorDia.reduce((a, b) => a + b, 0);
+
+    if (totalSemana <= 0) {
+      grafica.hidden = true;
+      if (vacio) vacio.hidden = false;
+      return;
+    }
+    grafica.hidden = false;
+    if (vacio) vacio.hidden = true;
+
+    const ancho = 400;
+    const alto = 150;
+    const maximo = Math.max(...totalesPorDia, 1);
+    const paso = ancho / (totalesPorDia.length - 1);
+    const puntos = totalesPorDia.map((valor, indice) => {
+      const x = indice * paso;
+      const y = alto - (valor / maximo) * (alto - 20) - 10;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const linea = puntos.join(' ');
+    const relleno = `0,${alto} ${linea} ${ancho},${alto}`;
+
+    grafica.innerHTML = `
+      <polygon points="${relleno}" fill="#f5a524" opacity=".14"></polygon>
+      <polyline points="${linea}" fill="none" stroke="#f5a524" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+    `;
+  } catch (error) {
+    console.warn('No se pudo cargar el consumo de los últimos 7 días', error);
+  }
+}
+
+cargarConsumoSemanaReportes();
+
 
 async function cargarAnaliticaMaquinas(){
   if(!analiticaMaquinas)return;

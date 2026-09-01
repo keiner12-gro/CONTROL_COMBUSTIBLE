@@ -518,6 +518,13 @@ tbody tr:hover td { background: #1d2620; }
 .datos-tractor-card { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .datos-tractor-card .dato-registro { display: block; margin-top: 14px; }
 .datos-tractor-card .dato-registro strong { display: block; margin-top: 4px; text-align: left; }
+/* Consumo del mes en curso, con barra relativa a la capacidad del tanque. */
+.consumo-tractor-card { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.consumo-tractor-card .fila-consumo { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.consumo-tractor-card .fila-consumo strong { color: var(--ink); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
+.barra-consumo-tractor { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barra-consumo-tractor span { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
+.consumo-tractor-vacio { margin: 0; font-size: 11px; color: var(--muted); }
 .estado-vacio-cartas { grid-column: 1 / -1; padding: 35px 20px; text-align: center; border: 1px dashed #3a4147; border-radius: 16px; background: #171b1e; color: var(--muted); }
 .estado-vacio-icono { display: block; place-items: center; width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%; background: #12301f; color: #7fe0ac; font-size: 30px; font-weight: 900; margin-bottom: 8px; }
 .estado-vacio-cartas strong { display: block; color: var(--ink); }

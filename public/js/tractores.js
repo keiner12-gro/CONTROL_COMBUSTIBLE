@@ -16,12 +16,30 @@ function obtenerCabecerasTractores() {
   };
 }
 
+// Consumo del mes en curso por maquina, para mostrarlo en cada tarjeta.
+// Si el usuario no tiene permiso de "reportes" la consulta falla en
+// silencio y las tarjetas simplemente no muestran esa seccion.
+async function obtenerConsumoDelMes() {
+  const hoy = new Date();
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+  const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+  try {
+    const respuesta = await fetch(`/api/analitica/maquinas?fechaInicio=${inicio}&fechaFin=${fin}`);
+    if (!respuesta.ok) return new Map();
+    const estadisticas = await respuesta.json();
+    return new Map(estadisticas.map((item) => [String(item.maquina || '').toUpperCase(), item]));
+  } catch (_) {
+    return new Map();
+  }
+}
+
 // Consulta los tractores guardados en MySQL.
 async function cargarTractores() {
-  const respuesta = await fetch('/api/tractores');
+  const [respuesta, consumoPorMaquina] = await Promise.all([fetch('/api/tractores'), obtenerConsumoDelMes()]);
   const tractores = await respuesta.json();
 
-  pintarTractores(tractores);
+  pintarTractores(tractores, consumoPorMaquina);
 }
 
 // Extrae el tipo de maquina (Tractor, Camion, Excavadora, etc.) a partir de la
@@ -32,7 +50,7 @@ function tipoDeMaquina(descripcion) {
 }
 
 // Pinta la tabla de maquinas en pantalla.
-function pintarTractores(tractores) {
+function pintarTractores(tractores, consumoPorMaquina = new Map()) {
   cuerpoTablaTractores.innerHTML = '';
   cantidadTractores.textContent = tractores.length;
 
@@ -48,6 +66,7 @@ function pintarTractores(tractores) {
 
   tractores.forEach((tractor) => {
     const capacidad = Number(tractor.capacidad_galones ?? tractor.capacidad ?? 0);
+    const consumo = consumoPorMaquina.get(String(tractor.maquina || '').toUpperCase());
     const tarjeta = document.createElement('article');
     tarjeta.className = 'carta-registro carta-tractor';
     tarjeta.dataset.tractorId = tractor.id;
@@ -66,6 +85,7 @@ function pintarTractores(tractores) {
         <div class="dato-registro"><span>Centro de costo</span><strong class="centro-registro"></strong></div>
         <div class="dato-registro"><span>Capacidad del tanque</span><strong class="capacidad-registro"></strong></div>
       </div>
+      <div class="consumo-tractor-card"></div>
       <div class="acciones-registro"></div>`;
 
     tarjeta.querySelector('.maquina-registro').textContent = tractor.maquina || 'SIN MÁQUINA';
@@ -73,6 +93,19 @@ function pintarTractores(tractores) {
     tarjeta.querySelector('.badge-tipo-maquina').textContent = tipoDeMaquina(tractor.descripcion);
     tarjeta.querySelector('.centro-registro').textContent = tractor.centro_costo || '—';
     tarjeta.querySelector('.capacidad-registro').textContent = `${Number.isFinite(capacidad) ? capacidad.toFixed(2) : '0.00'} gal`;
+
+    const bloqueConsumo = tarjeta.querySelector('.consumo-tractor-card');
+    if (consumo && Number(consumo.registros) > 0) {
+      const totalMes = Number(consumo.totalGalones || 0);
+      const porcentaje = capacidad > 0 ? Math.min(100, (totalMes / capacidad) * 100) : 0;
+      bloqueConsumo.innerHTML = `
+        <div class="fila-consumo"><span>Consumo este mes</span><strong>${totalMes.toFixed(2)} gal</strong></div>
+        <div class="barra-consumo-tractor"><span style="width:${porcentaje}%"></span></div>
+        <div class="fila-consumo"><span>${consumo.registros} registro${consumo.registros === 1 ? '' : 's'} este mes</span></div>
+      `;
+    } else {
+      bloqueConsumo.innerHTML = `<p class="consumo-tractor-vacio">Sin movimientos este mes.</p>`;
+    }
 
     const botonEditar = document.createElement('button');
     botonEditar.type = 'button';
