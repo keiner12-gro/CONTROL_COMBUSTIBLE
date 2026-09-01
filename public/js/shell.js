@@ -1,43 +1,43 @@
 (function () {
   'use strict';
 
-  const pagina = window.location.pathname.split('/').pop() || 'menu.html';
+  const pagina = window.location.pathname.split('/').pop() || 'menu';
   const sesion = typeof obtenerSesionActual === 'function' ? obtenerSesionActual() : null;
   if (!sesion) return;
 
   // Estructura agrupada de navegacion. "grupo:null" es el item suelto (Inicio).
   const grupos = [
-    { grupo: null, items: [{ href: 'menu.html', vista: null, icon: '⌂', label: 'Inicio' }] },
+    { grupo: null, items: [{ href: 'menu', vista: null, icon: '⌂', label: 'Inicio' }] },
     {
       grupo: 'Operación',
       items: [
-        { href: 'index.html', vista: 'registro', icon: '⛽', label: 'Registrar suministro' },
-        { href: 'tablas.html', vista: 'tablas', icon: '📋', label: 'Historial' }
+        { href: 'index', vista: 'registro', icon: '⛽', label: 'Registrar suministro' },
+        { href: 'tablas', vista: 'tablas', icon: '📋', label: 'Historial' }
       ]
     },
     {
       grupo: 'Flota',
       items: [
-        { href: 'tractores.html', vista: 'tractores', icon: '🚜', label: 'Máquinas' },
-        { href: 'operarios.html', vista: 'operarios', icon: '👤', label: 'Operarios' }
+        { href: 'tractores', vista: 'tractores', icon: '🚜', label: 'Máquinas' },
+        { href: 'operarios', vista: 'operarios', icon: '👤', label: 'Operarios' }
       ]
     },
-    { grupo: 'Análisis', items: [{ href: 'reportes.html', vista: 'reportes', icon: '📊', label: 'Reportes' }] },
+    { grupo: 'Análisis', items: [{ href: 'reportes', vista: 'reportes', icon: '📊', label: 'Reportes' }] },
     {
       grupo: 'Monitoreo',
       items: [
-        { href: 'alertas.html', vista: 'alertas', icon: '🔔', label: 'Alertas', badge: true },
-        { href: 'auditoria.html', vista: 'auditoria', icon: '🧾', label: 'Auditoría' }
+        { href: 'alertas', vista: 'alertas', icon: '🔔', label: 'Alertas', badge: true },
+        { href: 'auditoria', vista: 'auditoria', icon: '🧾', label: 'Auditoría' }
       ]
     },
     {
       grupo: 'Administración',
-      items: [{ href: 'usuarios.html', vista: 'usuarios', icon: '👥', label: 'Usuarios y permisos' }]
+      items: [{ href: 'usuarios', vista: 'usuarios', icon: '👥', label: 'Usuarios y permisos' }]
     }
   ];
 
   // Los 4 accesos mas usados, para la barra inferior en movil.
-  const itemsBarraInferior = ['menu.html', 'index.html', 'tablas.html', 'alertas.html'];
+  const itemsBarraInferior = ['menu', 'index', 'tablas', 'alertas'];
 
   const tienePermiso = (vista) => {
     if (!vista) return true;

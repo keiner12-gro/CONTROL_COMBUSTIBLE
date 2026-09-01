@@ -67,7 +67,7 @@ formularioLogin.addEventListener('submit', async (evento) => {
 
     // Todos los roles entran primero al menu principal.
     // En menu.html se bloquean los botones de las vistas sin permiso.
-    window.location.href = datosSesion.debeCambiarContrasena ? 'cambiar-contrasena.html' : 'menu.html';
+    window.location.href = datosSesion.debeCambiarContrasena ? 'cambiar-contrasena' : 'menu';
   } catch (error) {
     mensajeLogin.textContent = error.message;
     mostrarAvisoLogin('error', 'No se pudo iniciar sesion', error.message);

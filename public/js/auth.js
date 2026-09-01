@@ -22,12 +22,12 @@ function limpiarSesionEnNavegador() {}
 // Detecta si la pagina actual es el login para no crear redirecciones repetidas.
 function esPaginaLogin() {
   const paginaActual = window.location.pathname.split('/').pop();
-  return paginaActual === 'login.html' || paginaActual === '';
+  return paginaActual === 'login' || paginaActual === '';
 }
 
 // Envia al login reemplazando el historial actual.
 function irAlLogin() {
-  window.location.replace('login.html');
+  window.location.replace('login');
 }
 
 // Verifica si el usuario tiene permiso para entrar a una vista.
@@ -156,7 +156,7 @@ async function solicitarMotivoAnulacion(titulo, texto) {
 // Guarda la ultima vista permitida para regresar ahi si escriben una URL sin permiso.
 function guardarUltimaVistaPermitida() {
   const vistaActual = `${window.location.pathname.split('/').pop()}${window.location.search}`;
-  sessionStorage.setItem('ultimaVistaPermitida', vistaActual || 'menu.html');
+  sessionStorage.setItem('ultimaVistaPermitida', vistaActual || 'menu');
 }
 
 // Protege una pagina completa. Si no tiene permiso, avisa y regresa a la ultima vista permitida.
@@ -169,12 +169,12 @@ function protegerVista(vista) {
   }
 
   if (sesion.debeCambiarContrasena && vista !== 'cambiar-contrasena') {
-    window.location.replace('cambiar-contrasena.html');
+    window.location.replace('cambiar-contrasena');
     return false;
   }
 
   if (!usuarioTienePermiso(vista)) {
-    const ultimaVista = sessionStorage.getItem('ultimaVistaPermitida') || 'menu.html';
+    const ultimaVista = sessionStorage.getItem('ultimaVistaPermitida') || 'menu';
 
     mostrarAlertaSinPermiso().then(() => {
       window.location.href = ultimaVista;
@@ -195,7 +195,7 @@ function protegerMenuPrincipal() {
   }
 
   if (sesion.debeCambiarContrasena) {
-    window.location.replace('cambiar-contrasena.html');
+    window.location.replace('cambiar-contrasena');
     return false;
   }
 
@@ -296,7 +296,7 @@ function iniciarMonitorAlertas() {
   const rolesPermitidos = ['super_administrador', 'supervisor', 'administrador'];
 
   if (!sesion || !usuarioTienePermiso('alertas')) return;
-  if (paginaActual === 'alertas.html') return;
+  if (paginaActual === 'alertas') return;
   if (!window.fetch) return;
 
   monitorAlertasIniciado = true;
@@ -335,7 +335,7 @@ function iniciarMonitorAlertas() {
 
       // IMPORTANTE: ver la alerta NO la marca como leída.
       // La notificación permanece pendiente hasta que la alerta sea justificada.
-      window.location.replace('alertas.html');
+      window.location.replace('alertas');
     } catch (error) {
       console.warn('No se pudieron consultar las alertas:', error);
     } finally {

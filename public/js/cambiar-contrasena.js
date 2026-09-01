@@ -8,7 +8,7 @@ const mensajeCambio = document.getElementById('mensaje-cambiar-contrasena');
 if (!sesionCambio) {
   irAlLogin();
 } else if (!sesionCambio.debeCambiarContrasena) {
-  window.location.replace('menu.html');
+  window.location.replace('menu');
 }
 
 formularioCambio.addEventListener('submit', async (evento) => {
@@ -42,7 +42,7 @@ formularioCambio.addEventListener('submit', async (evento) => {
     const sesionActualizada = {...sesionCambio, debeCambiarContrasena: false};
     sessionStorage.setItem('sesionCombustible', JSON.stringify(sesionActualizada));
     await mostrarAlertaExito('Contraseña actualizada', 'Ya puedes continuar al sistema.');
-    window.location.replace('menu.html');
+    window.location.replace('menu');
   } catch (error) {
     mensajeCambio.textContent = error.message;
     mostrarAlertaError('No se pudo cambiar la contraseña', error.message);

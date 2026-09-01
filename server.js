@@ -88,9 +88,12 @@ const paginas = [
   'cambiar-contrasena'
 ];
 app.get('/', (req, res) => res.sendFile(path.join(root, 'html', 'login.html')));
-paginas.forEach((pagina) =>
-  app.get(`/${pagina}.html`, (req, res) => res.sendFile(path.join(root, 'html', `${pagina}.html`)))
-);
+paginas.forEach((pagina) => {
+  // URL limpia (sin .html): es la que ve el usuario en la barra de direcciones.
+  app.get(`/${pagina}`, (req, res) => res.sendFile(path.join(root, 'html', `${pagina}.html`)));
+  // La ruta con .html redirige a la limpia, asi los enlaces/marcadores viejos siguen funcionando.
+  app.get(`/${pagina}.html`, (req, res) => res.redirect(301, `/${pagina}`));
+});
 
 const userService = new UserService(new MySQLUserRepository(db));
 const tractorRepository = new MySQLTractorRepository(db);

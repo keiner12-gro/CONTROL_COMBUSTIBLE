@@ -41,7 +41,7 @@ function pintarCartasReportes(reportes) {
   `;
 
   cartaGeneral.addEventListener('click', () => {
-    window.location.href = 'reporte-detalle.html?tipo=general';
+    window.location.href = 'reporte-detalle?tipo=general';
   });
 
   cartasReportes.appendChild(cartaGeneral);
@@ -59,7 +59,7 @@ function pintarCartasReportes(reportes) {
     `;
 
     carta.addEventListener('click', () => {
-      window.location.href = `reporte-detalle.html?anio=${reporte.anio}&mes=${reporte.mes}`;
+      window.location.href = `reporte-detalle?anio=${reporte.anio}&mes=${reporte.mes}`;
     });
     cartasReportes.appendChild(carta);
   });
