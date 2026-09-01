@@ -5,7 +5,8 @@ const VISTAS_DISPONIBLES = [
   'tractores',
   'operarios',
   'reportes',
-  'alertas'
+  'alertas',
+  'auditoria'
 ];
 
 function validarSuperAdministrador(solicitud, respuesta) {

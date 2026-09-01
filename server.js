@@ -26,6 +26,7 @@ const { crearRutasReportes } = require('./src/reports/infrastructure/report.rout
 const { MySQLAlertRepository } = require('./src/alerts/infrastructure/mysql-alert.repository');
 const { AlertService } = require('./src/alerts/application/alert.service');
 const { crearRutasAlertas } = require('./src/alerts/infrastructure/alert.routes');
+const { crearRutasAuditoria } = require('./src/auditoria/infrastructure/auditoria.routes');
 
 const app = express();
 const port = process.env.PUERTO || process.env.PORT || 3000;
@@ -83,6 +84,7 @@ const paginas = [
   'reportes',
   'reporte-detalle',
   'alertas',
+  'auditoria',
   'cambiar-contrasena'
 ];
 app.get('/', (req, res) => res.sendFile(path.join(root, 'html', 'login.html')));
@@ -118,6 +120,7 @@ app.use('/api', crearRutasOperarios(operatorService, db));
 app.use('/api', crearRutasReportes(reportService));
 app.use('/api', crearRutasRegistros(recordService, reportService, db));
 app.use('/api', crearRutasAlertas(alertService, db));
+app.use('/api', crearRutasAuditoria(db));
 
 app.use((err, req, res, next) => {
   console.error(err);

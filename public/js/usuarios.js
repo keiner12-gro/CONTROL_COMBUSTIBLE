@@ -23,7 +23,8 @@ const GRUPOS_PERMISOS = [
     permisos: [
       { vista: 'tablas', etiqueta: 'Ver registros' },
       { vista: 'reportes', etiqueta: 'Ver reportes' },
-      { vista: 'alertas', etiqueta: 'Justificar alertas' }
+      { vista: 'alertas', etiqueta: 'Justificar alertas' },
+      { vista: 'auditoria', etiqueta: 'Consultar auditoría' }
     ]
   },
   {
@@ -32,7 +33,8 @@ const GRUPOS_PERMISOS = [
     permisos: [
       { vista: 'tractores', etiqueta: 'Administrar máquinas' },
       { vista: 'operarios', etiqueta: 'Administrar operarios' },
-      { vista: 'usuarios', etiqueta: 'Administrar usuarios' }
+      { vista: 'usuarios', etiqueta: 'Administrar usuarios' },
+      { vista: 'auditoria', etiqueta: 'Auditoría y exportación' }
     ]
   }
 ];

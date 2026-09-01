@@ -43,10 +43,16 @@ function usuarioTienePermiso(vista) {
     ? sesion.permisos.map((permiso) => String(permiso).trim().toLowerCase())
     : [];
 
+  if (rol === 'super_administrador') return true;
+
+  if (String(vista || '').trim().toLowerCase() === 'auditoria') {
+    return ['administrador', 'supervisor'].includes(rol) || permisos.includes('auditoria');
+  }
+
   // Solo el super administrador tiene acceso global.
   // Cualquier otro rol depende EXCLUSIVAMENTE de los permisos
   // guardados para ese usuario.
-  return rol === 'super_administrador' || permisos.includes(vista);
+  return permisos.includes(vista);
 }
 
 // Muestra aviso cuando un usuario intenta abrir una vista sin permiso.
@@ -236,12 +242,16 @@ function aplicarPermisosEnlaces() {
     ? sesion.permisos.map((permiso) => String(permiso).trim().toLowerCase())
     : [];
   const esSuperAdministrador = rol === 'super_administrador';
+  const tieneAccesoAuditoria = ['administrador', 'supervisor'].includes(rol) || permisos.includes('auditoria');
 
   // IMPORTANTE: en el menu principal los accesos sin permiso se eliminan
   // visualmente. No se dejan como botones deshabilitados.
   document.querySelectorAll('[data-menu-principal="true"] [data-vista]').forEach((elemento) => {
     const vista = String(elemento.dataset.vista || '').trim().toLowerCase();
-    const permitido = vista === 'menu' || esSuperAdministrador || permisos.includes(vista);
+    const permitido =
+      vista === 'menu' ||
+      esSuperAdministrador ||
+      (vista === 'auditoria' ? tieneAccesoAuditoria : permisos.includes(vista));
 
     elemento.hidden = !permitido;
     elemento.setAttribute('aria-hidden', String(!permitido));

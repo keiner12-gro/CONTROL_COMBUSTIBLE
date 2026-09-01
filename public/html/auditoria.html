@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  <title>Auditoría | Control de Combustible</title>
+</head>
+<body>
+  <main class="pantalla">
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <div>
+          <h1>Auditoría</h1>
+        </div>
+      </div>
+      <div class="ubicacion ubicacion-compacta">
+        <strong>Barranca de Upia, Meta</strong>
+        <span data-fecha-encabezado></span>
+      </div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <section class="panel">
+      <div class="titulo-tabla">
+        <div>
+          <span class="eyebrow-dashboard">SEGURIDAD</span>
+          <h2>Registro de cambios y eventos</h2>
+        </div>
+        <div class="botones-tabla">
+          <button type="button" class="boton-secundario" id="boton-limpiar-filtros">Limpiar filtros</button>
+          <button type="button" id="boton-exportar-auditoria">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="formulario-usuario" style="grid-template-columns: repeat(5, minmax(150px, 1fr));">
+        <div>
+          <label for="filtro-fecha-desde">Desde</label>
+          <input type="date" id="filtro-fecha-desde" />
+        </div>
+        <div>
+          <label for="filtro-fecha-hasta">Hasta</label>
+          <input type="date" id="filtro-fecha-hasta" />
+        </div>
+        <div>
+          <label for="filtro-usuario">Usuario</label>
+          <input type="text" id="filtro-usuario" placeholder="Nombre del usuario" />
+        </div>
+        <div>
+          <label for="filtro-accion">Acción</label>
+          <select id="filtro-accion">
+            <option value="">Todas</option>
+            <option value="LOGIN">Login</option>
+            <option value="LOGOUT">Logout</option>
+            <option value="CREAR">Crear</option>
+            <option value="EDITAR">Editar</option>
+            <option value="ELIMINAR">Eliminar</option>
+            <option value="ANULAR">Anular</option>
+            <option value="CAMBIAR_ROL">Cambio de rol</option>
+            <option value="JUSTIFICAR">Justificar</option>
+            <option value="CAMBIAR_CONTRASENA">Cambio de contraseña</option>
+            <option value="EDITAR_AUDITORIA">Edición de auditoría</option>
+            <option value="ELIMINAR_AUDITORIA">Eliminación de auditoría</option>
+          </select>
+        </div>
+        <div>
+          <label for="filtro-modulo">Módulo</label>
+          <select id="filtro-modulo">
+            <option value="">Todos</option>
+            <option value="usuarios">Usuarios</option>
+            <option value="tractores">Máquinas</option>
+            <option value="operarios">Operarios</option>
+            <option value="registros">Registros</option>
+            <option value="reportes">Reportes</option>
+            <option value="alertas">Alertas</option>
+            <option value="auditoria">Auditoría</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="formulario-usuario" style="grid-template-columns: 1fr auto; margin-top: 12px; align-items: end;">
+        <div>
+          <label for="filtro-busqueda">Búsqueda</label>
+          <input type="search" id="filtro-busqueda" placeholder="Buscar evento, usuario, módulo o detalle" />
+        </div>
+        <button type="button" class="boton-principal" id="boton-aplicar-filtros">Aplicar filtros</button>
+      </div>
+    </section>
+
+    <section class="panel resumen-dashboard" id="resumen-dashboard" style="margin-top: 14px;">
+      <div class="resumen-dashboard-card">
+        <span>📌</span>
+        <div>
+          <small>Total</small>
+          <strong id="total-eventos">0</strong>
+          <label>Eventos</label>
+        </div>
+      </div>
+      <div class="resumen-dashboard-card">
+        <span>👤</span>
+        <div>
+          <small>Usuarios</small>
+          <strong id="usuarios-unicos">0</strong>
+          <label>Activos</label>
+        </div>
+      </div>
+      <div class="resumen-dashboard-card">
+        <span>⚡</span>
+        <div>
+          <small>Acciones</small>
+          <strong id="acciones-unicas">0</strong>
+          <label>Distintas</label>
+        </div>
+      </div>
+      <div class="resumen-dashboard-card card-alertas">
+        <span>🧩</span>
+        <div>
+          <small>Módulos</small>
+          <strong id="modulos-unicos">0</strong>
+          <label>Con actividad</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel registros" style="margin-top: 14px;">
+      <div class="titulo-tabla">
+        <div>
+          <span class="eyebrow-dashboard">HISTORIAL</span>
+          <h2>Eventos registrados</h2>
+        </div>
+        <div class="contador-registros"><span id="cantidad-auditoria">0</span> registros</div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Acción</th>
+              <th>Módulo</th>
+              <th>Registro</th>
+              <th>Detalle</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-auditoria"></tbody>
+        </table>
+      </div>
+
+      <div class="resumen" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <span>Mostrando <strong id="rango-registros">0</strong></span>
+        <div class="botones-tabla">
+          <button type="button" class="boton-secundario" id="pagina-anterior">Anterior</button>
+          <span id="pagina-actual" style="font-weight:700; color:#f2c877; min-width: 90px; text-align: center;">Página 1</span>
+          <button type="button" class="boton-secundario" id="pagina-siguiente">Siguiente</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="detalle-auditoria-modal" class="fondo-firma" hidden>
+    <div class="hoja-firma" style="max-width: 760px;">
+      <h2>Detalle del evento</h2>
+      <div class="confirmacion-registro" id="detalle-auditoria-contenido" style="margin-top:16px;"></div>
+      <div class="acciones-firma" style="margin-top: 18px;">
+        <button type="button" class="boton-secundario" id="cerrar-detalle-auditoria">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/shell.js"></script>
+  <script>if (protegerVista('auditoria')) aplicarPermisosEnlaces();</script>
+  <script src="../js/auditoria.js"></script>
+</body>
+</html>

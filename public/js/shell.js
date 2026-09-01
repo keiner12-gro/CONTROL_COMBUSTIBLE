@@ -25,7 +25,10 @@
     { grupo: 'Análisis', items: [{ href: 'reportes.html', vista: 'reportes', icon: '📊', label: 'Reportes' }] },
     {
       grupo: 'Monitoreo',
-      items: [{ href: 'alertas.html', vista: 'alertas', icon: '🔔', label: 'Alertas', badge: true }]
+      items: [
+        { href: 'alertas.html', vista: 'alertas', icon: '🔔', label: 'Alertas', badge: true },
+        { href: 'auditoria.html', vista: 'auditoria', icon: '🧾', label: 'Auditoría' }
+      ]
     },
     {
       grupo: 'Administración',
