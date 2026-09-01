@@ -1,1 +1,15 @@
-class OperatorRepository{async list(){throw new Error('Not implemented')}async create(){throw new Error('Not implemented')}async remove(){throw new Error('Not implemented')}}module.exports={OperatorRepository};
+class OperatorRepository {
+  async list() {
+    throw new Error('Not implemented');
+  }
+
+  async create() {
+    throw new Error('Not implemented');
+  }
+
+  async remove() {
+    throw new Error('Not implemented');
+  }
+}
+
+module.exports = { OperatorRepository };

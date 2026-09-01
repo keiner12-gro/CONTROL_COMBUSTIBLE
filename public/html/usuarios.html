@@ -24,6 +24,18 @@
       </button>
     </header>
 
+    <!-- Referencia visual: que puede hacer cada rol, en forma de arbol -->
+    <section class="panel panel-mapa-permisos">
+      <div class="titulo-tabla">
+        <h2>Mapa de permisos por rol</h2>
+      </div>
+      <p class="texto-secundario">
+        Guia rapida de que incluye cada rol. Al crear o editar un usuario puedes ajustar sus
+        permisos individualmente.
+      </p>
+      <div class="arbol-roles" id="mapa-permisos-roles" aria-hidden="true"></div>
+    </section>
+
     <!-- Formulario para crear usuarios nuevos en usuarios_combustible -->
     <section class="panel">
       <form id="formulario-usuario" class="formulario-usuario" autocomplete="off">
@@ -48,16 +60,13 @@
           </select>
         </div>
 
-        <!-- Permisos de acceso a vistas del sistema -->
+        <!-- Permisos de acceso agrupados por rol, con sugerencia automatica -->
         <fieldset class="permisos-usuario">
-          <legend>Permisos de vistas</legend>
-          <label><input type="checkbox" value="registro"> Registro de combustible</label>
-          <label><input type="checkbox" value="tablas"> Tabla de registros</label>
-          <label><input type="checkbox" value="usuarios"> Registro de usuarios</label>
-          <label><input type="checkbox" value="tractores"> Registro de máquinas</label>
-          <label><input type="checkbox" value="operarios"> Registro de operarios</label>
-          <label><input type="checkbox" value="reportes"> Reportes mensuales</label>
-          <label><input type="checkbox" value="alertas"> Alertas del sistema</label>
+          <legend>Permisos de acceso (sugeridos segun el rol, ajustables)</legend>
+          <p class="permisos-nota-superadmin" id="nota-superadmin-nuevo" hidden>
+            El super administrador tiene acceso total a todos los modulos automaticamente.
+          </p>
+          <div class="arbol-roles arbol-roles-formulario" id="arbol-permisos-nuevo"></div>
         </fieldset>
 
         <button type="submit">Crear usuario</button>
@@ -76,13 +85,7 @@
           <tr>
             <th>Usuario</th>
             <th>Rol</th>
-            <th>Permiso registro</th>
-            <th>Permiso tablas</th>
-            <th>Permiso usuarios</th>
-            <th>Permiso máquinas</th>
-            <th>Permiso operarios</th>
-            <th>Permiso reportes</th>
-            <th>Permiso alertas</th>
+            <th>Permisos</th>
             <th>Nueva contrasena</th>
             <th>Acciones</th>
           </tr>

@@ -1,13 +1,124 @@
-const express=require('express');
-const {requireAnyPermission,requirePermission}=require('../../shared/infrastructure/security');
-const {registrarAuditoria}=require('../../shared/infrastructure/audit');
-function crearRutasRegistros(s,reports,db){const r=express.Router();
- r.get('/analitica/maquinas',requirePermission('reportes'),async(q,x,n)=>{try{const hoy=new Date();const a=hoy.getFullYear();const inicio=q.query.fechaInicio||`${a}-01-01`;const fin=q.query.fechaFin||`${a}-12-31`;x.json(await s.machineConsumptionStats(inicio,fin));}catch(e){n(e)}});
- r.get('/registros',requireAnyPermission(['registro','tablas','reportes']),async(q,x,n)=>{try{x.json(await s.list())}catch(e){n(e)}});
- r.get('/cierre-dia/estado',requirePermission('registro'),async(q,x,n)=>{try{x.json(await s.getDailyMeterState(q.query.fecha))}catch(e){n(e)}});
- r.post('/registros',requirePermission('registro'),async(q,x,n)=>{try{const data=await s.create(q.body);await registrarAuditoria(db,{usuarioId:q.user.id,usuario:q.user.usuario,rol:q.user.rol,accion:'CREAR',modulo:'registros',registroId:data.id,detalle:{maquina:q.body.maquina,cantidad:q.body.cantidad}});x.status(201).json(data)}catch(e){n(e)}});
- r.post('/cierre-dia',requirePermission('registro'),async(q,x,n)=>{try{const z=await s.saveDailyClosing(q.body);await reports.generate();await registrarAuditoria(db,{usuarioId:q.user.id,usuario:q.user.usuario,rol:q.user.rol,accion:'CIERRE_DIA',modulo:'surtidor',registroId:z.id,detalle:{fecha:q.body.fecha,m1Final:q.body.m1Final,m2Final:q.body.m2Final}});x.status(201).json(z)}catch(e){n(e)}});
- r.put('/registros/:id',requireAnyPermission(['tablas','registro']),async(q,x,n)=>{try{if(!await s.update(q.params.id,q.body))return x.status(400).json({mensaje:'No hay campos validos para actualizar.'});await registrarAuditoria(db,{usuarioId:q.user.id,usuario:q.user.usuario,rol:q.user.rol,accion:'EDITAR',modulo:'registros',registroId:q.params.id,detalle:q.body});x.json({mensaje:'Registro actualizado.'})}catch(e){n(e)}});
- r.delete('/registros/:id',requireAnyPermission(['tablas','registro']),async(q,x,n)=>{try{await s.remove(q.params.id);await registrarAuditoria(db,{usuarioId:q.user.id,usuario:q.user.usuario,rol:q.user.rol,accion:'ELIMINAR',modulo:'registros',registroId:q.params.id});x.json({mensaje:'Registro eliminado.'})}catch(e){n(e)}});
- return r;
-}module.exports={crearRutasRegistros};
+const express = require('express');
+const { requireAnyPermission, requirePermission } = require('../../shared/infrastructure/security');
+const { registrarAuditoria } = require('../../shared/infrastructure/audit');
+
+function crearRutasRegistros(service, reports, db) {
+  const router = express.Router();
+
+  router.get('/analitica/maquinas', requirePermission('reportes'), async (req, res, next) => {
+    try {
+      const hoy = new Date();
+      const anio = hoy.getFullYear();
+      const inicio = req.query.fechaInicio || `${anio}-01-01`;
+      const fin = req.query.fechaFin || `${anio}-12-31`;
+      res.json(await service.machineConsumptionStats(inicio, fin));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get(
+    '/registros',
+    requireAnyPermission(['registro', 'tablas', 'reportes']),
+    async (req, res, next) => {
+      try {
+        res.json(await service.list());
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.get('/cierre-dia/estado', requirePermission('registro'), async (req, res, next) => {
+    try {
+      res.json(await service.getDailyMeterState(req.query.fecha));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/registros', requirePermission('registro'), async (req, res, next) => {
+    try {
+      const creado = await service.create(req.body);
+      await registrarAuditoria(db, {
+        usuarioId: req.user.id,
+        usuario: req.user.usuario,
+        rol: req.user.rol,
+        accion: 'CREAR',
+        modulo: 'registros',
+        registroId: creado.id,
+        detalle: { maquina: req.body.maquina, cantidad: req.body.cantidad }
+      });
+      res.status(201).json(creado);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/cierre-dia', requirePermission('registro'), async (req, res, next) => {
+    try {
+      const cierre = await service.saveDailyClosing(req.body);
+      await reports.generate();
+      await registrarAuditoria(db, {
+        usuarioId: req.user.id,
+        usuario: req.user.usuario,
+        rol: req.user.rol,
+        accion: 'CIERRE_DIA',
+        modulo: 'surtidor',
+        registroId: cierre.id,
+        detalle: { fecha: req.body.fecha, m1Final: req.body.m1Final, m2Final: req.body.m2Final }
+      });
+      res.status(201).json(cierre);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put(
+    '/registros/:id',
+    requireAnyPermission(['tablas', 'registro']),
+    async (req, res, next) => {
+      try {
+        if (!(await service.update(req.params.id, req.body)))
+          return res.status(400).json({ mensaje: 'No hay campos validos para actualizar.' });
+        await registrarAuditoria(db, {
+          usuarioId: req.user.id,
+          usuario: req.user.usuario,
+          rol: req.user.rol,
+          accion: 'EDITAR',
+          modulo: 'registros',
+          registroId: req.params.id,
+          detalle: req.body
+        });
+        res.json({ mensaje: 'Registro actualizado.' });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.delete(
+    '/registros/:id',
+    requireAnyPermission(['tablas', 'registro']),
+    async (req, res, next) => {
+      try {
+        await service.remove(req.params.id);
+        await registrarAuditoria(db, {
+          usuarioId: req.user.id,
+          usuario: req.user.usuario,
+          rol: req.user.rol,
+          accion: 'ELIMINAR',
+          modulo: 'registros',
+          registroId: req.params.id
+        });
+        res.json({ mensaje: 'Registro eliminado.' });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  return router;
+}
+
+module.exports = { crearRutasRegistros };

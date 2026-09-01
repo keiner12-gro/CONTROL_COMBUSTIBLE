@@ -29,9 +29,36 @@ select:focus { outline: 2px solid #64b878; border-color: #2d9a4b; }
 /* Formulario administrativo para crear usuarios */
 .formulario-usuario { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 14px; align-items: end; }
 /* Grupo de permisos que se asignan a cada usuario */
-.permisos-usuario { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 10px; padding: 14px; }
+.permisos-usuario { display: grid; grid-column: 1 / -1; gap: 12px; padding: 14px; }
+/* Aviso de que el super administrador no necesita seleccionar permisos */
+.permisos-nota-superadmin { grid-column: 1 / -1; margin: 0; padding: 10px 14px; border-radius: 10px; background: #eaf2fb; color: #1f4c7a; font-size: 13px; font-weight: 700; }
+/* Panel de referencia "Mapa de permisos por rol" */
+.panel-mapa-permisos .texto-secundario { margin: 4px 0 16px; }
+/* Contenedor con un bloque de arbol por cada rol */
+.arbol-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.arbol-roles[hidden] { display: none; }
+/* Version compacta usada dentro de la celda de permisos de la tabla */
+.arbol-roles-compacto { margin-top: 10px; grid-template-columns: 1fr; gap: 12px; }
+/* Titulo de cada rol dentro del arbol de permisos */
+.arbol-rol-nombre { margin-bottom: 6px; font-size: 14px; font-weight: 900; color: #193d28; text-transform: uppercase; letter-spacing: 0.03em; }
+/* Lista de permisos de un rol, dibujada como arbol con conectores CSS */
+.arbol-permisos { position: relative; list-style: none; margin: 0; padding: 0; }
+.arbol-permisos li { position: relative; padding: 5px 0 5px 26px; font-size: 13px; color: #1e2a23; }
+/* Conector horizontal hacia cada permiso (la rama "├──" / "└──") */
+.arbol-permisos li::before { content: ''; position: absolute; left: 8px; top: 0; width: 12px; height: 15px; border-left: 2px solid #cfd7da; border-bottom: 2px solid #cfd7da; border-radius: 0 0 0 6px; }
+/* Conector vertical que continua hacia el siguiente permiso */
+.arbol-permisos li::after { content: ''; position: absolute; left: 8px; top: 15px; bottom: -5px; border-left: 2px solid #cfd7da; }
+.arbol-permisos li:last-child::after { display: none; }
+.arbol-permisos label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #1e2a23; }
+/* Celda compacta de permisos en la tabla de usuarios: resumen expandible */
+.celda-permisos { min-width: 200px; vertical-align: top; }
+.permisos-detalle summary { cursor: pointer; font-weight: 800; color: #2c974b; list-style: none; }
+.permisos-detalle summary::-webkit-details-marker { display: none; }
+.permisos-detalle summary::before { content: '▸ '; }
+.permisos-detalle[open] summary::before { content: '▾ '; }
+.chip-permiso-total { display: inline-flex; padding: 4px 10px; border-radius: 999px; background: #eaf2e5; color: #193d28; font-size: 12px; font-weight: 800; }
 /* Tabla de administracion de usuarios */
-.tabla-usuarios { min-width: 1120px; }
+.tabla-usuarios { min-width: 900px; }
 /* Botones de guardar/eliminar dentro de la tabla de usuarios */
 .acciones-usuario { display: flex; gap: 8px; justify-content: center; }
 /* Formulario para agregar tractores a la tabla tractores */
@@ -424,7 +451,7 @@ tbody tr:hover td { background: #f0f8f3; }
   .registros { overflow: hidden; }
   .resumen { text-align: left; }
   .formulario-usuario, .formulario-tractor, .formulario-operario, .controles-tabla, .formulario-busqueda-reporte { grid-template-columns: 1fr; }
-  .permisos-usuario { grid-template-columns: 1fr 1fr; }
+  .arbol-roles { grid-template-columns: 1fr 1fr; }
   .cartas-reportes { grid-template-columns: 1fr; }
 }
 /* Ajustes para celulares pequenos */
@@ -436,7 +463,6 @@ tbody tr:hover td { background: #f0f8f3; }
   .ubicacion-compacta strong, .ubicacion-compacta span { font-size: 11px; }
   .suministro { grid-template-columns: 1fr; }
   .campo-ancho { grid-column: auto; }
-  .permisos-usuario { grid-template-columns: 1fr; }
   .acciones-firma { flex-direction: column; }
   .acciones-firma button { width: 100%; }
   .hoja-firma { padding: 14px; }

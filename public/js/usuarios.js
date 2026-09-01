@@ -4,23 +4,135 @@ const contrasenaNueva = document.getElementById('contrasena-nueva');
 const rolNuevo = document.getElementById('rol-nuevo');
 const cuerpoTablaUsuarios = document.getElementById('cuerpo-tabla-usuarios');
 const cantidadUsuarios = document.getElementById('cantidad-usuarios');
+const arbolPermisosNuevo = document.getElementById('arbol-permisos-nuevo');
+const notaSuperadminNuevo = document.getElementById('nota-superadmin-nuevo');
+const mapaPermisosRoles = document.getElementById('mapa-permisos-roles');
 
-const vistasPermisos = ['registro', 'tablas', 'usuarios', 'tractores', 'operarios', 'reportes', 'alertas'];
+// Jerarquia de permisos: que rol suele necesitar cada vista del sistema.
+// Es la base tanto del mapa de referencia como de la sugerencia automatica
+// al crear/editar un usuario; el super administrador siempre tiene acceso total.
+const GRUPOS_PERMISOS = [
+  {
+    rol: 'operario',
+    etiquetaRol: 'Operario',
+    permisos: [{ vista: 'registro', etiqueta: 'Crear registros de combustible' }]
+  },
+  {
+    rol: 'supervisor',
+    etiquetaRol: 'Supervisor',
+    permisos: [
+      { vista: 'tablas', etiqueta: 'Ver registros' },
+      { vista: 'reportes', etiqueta: 'Ver reportes' },
+      { vista: 'alertas', etiqueta: 'Justificar alertas' }
+    ]
+  },
+  {
+    rol: 'administrador',
+    etiquetaRol: 'Administrador',
+    permisos: [
+      { vista: 'tractores', etiqueta: 'Administrar máquinas' },
+      { vista: 'operarios', etiqueta: 'Administrar operarios' },
+      { vista: 'usuarios', etiqueta: 'Administrar usuarios' }
+    ]
+  }
+];
+
+const vistasPermisos = GRUPOS_PERMISOS.flatMap((grupo) => grupo.permisos.map((p) => p.vista));
 
 // Lee la sesion para enviar el rol al servidor en APIs administrativas.
 function obtenerCabecerasAdmin() {
-  const sesion = obtenerSesionActual();
+  return { 'Content-Type': 'application/json' };
+}
 
-  return {
-    'Content-Type': 'application/json',
-    
+// Construye el arbol de solo lectura "Mapa de permisos por rol".
+function construirMapaPermisosRoles() {
+  mapaPermisosRoles.innerHTML = '';
+
+  GRUPOS_PERMISOS.forEach((grupo) => {
+    mapaPermisosRoles.appendChild(crearGrupoArbol(grupo, { editable: false }));
+  });
+
+  const grupoSuperAdmin = {
+    etiquetaRol: 'Super administrador',
+    permisos: [{ etiqueta: 'Acceso total a todos los módulos' }]
   };
+  mapaPermisosRoles.appendChild(crearGrupoArbol(grupoSuperAdmin, { editable: false }));
+}
+
+// Crea un bloque "Rol -> lista de permisos" con conectores de arbol via CSS.
+// Si editable=true, cada permiso es un checkbox marcable; si no, es solo texto.
+function crearGrupoArbol(grupo, { editable, permisosActivos, deshabilitado, usuarioId }) {
+  const contenedor = document.createElement('div');
+  contenedor.className = 'grupo-permiso-rol';
+  if (grupo.rol) contenedor.dataset.rol = grupo.rol;
+
+  const titulo = document.createElement('div');
+  titulo.className = 'arbol-rol-nombre';
+  titulo.textContent = grupo.etiquetaRol;
+  contenedor.appendChild(titulo);
+
+  const lista = document.createElement('ul');
+  lista.className = 'arbol-permisos';
+
+  grupo.permisos.forEach((permiso) => {
+    const item = document.createElement('li');
+
+    if (!editable || !permiso.vista) {
+      item.textContent = permiso.etiqueta;
+    } else {
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = permiso.vista;
+      checkbox.dataset.vista = permiso.vista;
+      checkbox.checked = Boolean(permisosActivos && permisosActivos.includes(permiso.vista));
+      checkbox.disabled = Boolean(deshabilitado);
+      if (usuarioId !== undefined) checkbox.dataset.usuarioId = usuarioId;
+      label.appendChild(checkbox);
+      label.append(' ' + permiso.etiqueta);
+      item.appendChild(label);
+    }
+
+    lista.appendChild(item);
+  });
+
+  contenedor.appendChild(lista);
+  return contenedor;
+}
+
+// Construye el arbol editable de permisos, usado en el formulario de creacion
+// y en cada fila de la tabla de usuarios.
+function construirArbolPermisosEditable(permisosActivos, deshabilitado, usuarioId) {
+  const fragmento = document.createDocumentFragment();
+  GRUPOS_PERMISOS.forEach((grupo) => {
+    fragmento.appendChild(
+      crearGrupoArbol(grupo, { editable: true, permisosActivos, deshabilitado, usuarioId })
+    );
+  });
+  return fragmento;
+}
+
+// Marca solo los permisos sugeridos para el rol elegido en el formulario de creacion.
+function aplicarSugerenciaDeRol() {
+  const rolSeleccionado = rolNuevo.value;
+  const esSuperAdmin = rolSeleccionado === 'super_administrador';
+
+  notaSuperadminNuevo.hidden = !esSuperAdmin;
+  arbolPermisosNuevo.hidden = esSuperAdmin;
+
+  const grupo = GRUPOS_PERMISOS.find((g) => g.rol === rolSeleccionado);
+  const sugeridos = grupo ? grupo.permisos.map((p) => p.vista) : [];
+
+  arbolPermisosNuevo.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = sugeridos.includes(checkbox.value);
+  });
 }
 
 // Obtiene los permisos marcados en el formulario de crear usuario.
 function obtenerPermisosFormulario() {
-  return Array.from(document.querySelectorAll('.permisos-usuario input:checked'))
-    .map((permiso) => permiso.value);
+  return Array.from(arbolPermisosNuevo.querySelectorAll('input:checked')).map(
+    (permiso) => permiso.value
+  );
 }
 
 // Carga usuarios desde MySQL usando la API de Express.
@@ -38,16 +150,35 @@ async function cargarUsuarios() {
   pintarUsuarios(usuarios);
 }
 
-// Crea un checkbox de permiso para editar una vista especifica.
-function crearCheckboxPermiso(usuario, vista) {
-  const checkbox = document.createElement('input');
+// Construye la celda de permisos: un resumen compacto que se expande al
+// arbol editable, en vez de siete columnas fijas de checkboxes.
+function crearCeldaPermisos(usuario) {
+  const celda = document.createElement('td');
+  celda.className = 'celda-permisos';
 
-  checkbox.type = 'checkbox';
-  checkbox.checked = usuario.permisos.includes(vista);
-  checkbox.disabled = usuario.rol === 'super_administrador';
-  checkbox.dataset.vista = vista;
+  if (usuario.rol === 'super_administrador') {
+    const chip = document.createElement('span');
+    chip.className = 'chip-permiso-total';
+    chip.textContent = 'Acceso total';
+    celda.appendChild(chip);
+    return celda;
+  }
 
-  return checkbox;
+  const detalle = document.createElement('details');
+  detalle.className = 'permisos-detalle';
+
+  const resumen = document.createElement('summary');
+  const cantidad = usuario.permisos.length;
+  resumen.textContent = cantidad === 1 ? '1 permiso' : `${cantidad} permisos`;
+  detalle.appendChild(resumen);
+
+  const arbol = document.createElement('div');
+  arbol.className = 'arbol-roles arbol-roles-compacto';
+  arbol.appendChild(construirArbolPermisosEditable(usuario.permisos, false, usuario.id));
+  detalle.appendChild(arbol);
+
+  celda.appendChild(detalle);
+  return celda;
 }
 
 // Pinta la tabla de usuarios y permite editar permisos.
@@ -77,12 +208,7 @@ function pintarUsuarios(usuarios) {
     celdaRol.appendChild(selectorRol);
     fila.appendChild(celdaUsuario);
     fila.appendChild(celdaRol);
-
-    vistasPermisos.forEach((vista) => {
-      const celdaPermiso = document.createElement('td');
-      celdaPermiso.appendChild(crearCheckboxPermiso(usuario, vista));
-      fila.appendChild(celdaPermiso);
-    });
+    fila.appendChild(crearCeldaPermisos(usuario));
 
     entradaContrasena.type = 'password';
     entradaContrasena.placeholder = 'Dejar vacio si no cambia';
@@ -122,8 +248,9 @@ function crearCeldaConElemento(elemento) {
 
 // Lee los permisos marcados en una fila de la tabla.
 function obtenerPermisosFila(fila) {
-  return Array.from(fila.querySelectorAll('input[type="checkbox"]:checked'))
-    .map((checkbox) => checkbox.dataset.vista);
+  return Array.from(fila.querySelectorAll('input[type="checkbox"]:checked')).map(
+    (checkbox) => checkbox.dataset.vista
+  );
 }
 
 // Guarda cambios de rol, contrasena y permisos de un usuario.
@@ -176,8 +303,12 @@ formularioUsuario.addEventListener('submit', async (evento) => {
   });
 
   formularioUsuario.reset();
+  aplicarSugerenciaDeRol();
   await cargarUsuarios();
   mostrarAlertaExito('Usuario creado', 'El usuario fue creado correctamente.');
 });
 
+arbolPermisosNuevo.appendChild(construirArbolPermisosEditable([], false));
+rolNuevo.addEventListener('change', aplicarSugerenciaDeRol);
+construirMapaPermisosRoles();
 cargarUsuarios();

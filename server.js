@@ -7,10 +7,14 @@ const { autenticarSolicitud } = require('./src/shared/infrastructure/security');
 const { MySQLUserRepository } = require('./src/users/infrastructure/mysql-user.repository');
 const { UserService } = require('./src/users/application/user.service');
 const { crearRutasUsuarios } = require('./src/users/infrastructure/user.routes');
-const { MySQLTractorRepository } = require('./src/tractors/infrastructure/mysql-tractor.repository');
+const {
+  MySQLTractorRepository
+} = require('./src/tractors/infrastructure/mysql-tractor.repository');
 const { TractorService } = require('./src/tractors/application/tractor.service');
 const { crearRutasTractores } = require('./src/tractors/infrastructure/tractor.routes');
-const { MySQLOperatorRepository } = require('./src/operators/infrastructure/mysql-operator.repository');
+const {
+  MySQLOperatorRepository
+} = require('./src/operators/infrastructure/mysql-operator.repository');
 const { OperatorService } = require('./src/operators/application/operator.service');
 const { crearRutasOperarios } = require('./src/operators/infrastructure/operator.routes');
 const { MySQLRecordRepository } = require('./src/records/infrastructure/mysql-record.repository');
@@ -66,9 +70,23 @@ app.use((req, res, next) => {
 app.use(express.static(root, { index: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const paginas = ['login', 'menu', 'index', 'tablas', 'usuarios', 'tractores', 'operarios', 'reportes', 'reporte-detalle', 'alertas', 'cambiar-contrasena'];
-app.get('/', (q, s) => s.sendFile(path.join(root, 'html', 'login.html')));
-paginas.forEach(p => app.get(`/${p}.html`, (q, s) => s.sendFile(path.join(root, 'html', `${p}.html`))));
+const paginas = [
+  'login',
+  'menu',
+  'index',
+  'tablas',
+  'usuarios',
+  'tractores',
+  'operarios',
+  'reportes',
+  'reporte-detalle',
+  'alertas',
+  'cambiar-contrasena'
+];
+app.get('/', (req, res) => res.sendFile(path.join(root, 'html', 'login.html')));
+paginas.forEach((pagina) =>
+  app.get(`/${pagina}.html`, (req, res) => res.sendFile(path.join(root, 'html', `${pagina}.html`)))
+);
 
 const userService = new UserService(new MySQLUserRepository(db));
 const tractorRepository = new MySQLTractorRepository(db);
@@ -82,7 +100,9 @@ const recordService = new RecordService(recordRepository, tractorRepository, ale
 
 // Evita que un arranque en frío atienda peticiones a la API antes de que el
 // esquema (tablas/columnas nuevas) termine de prepararse.
-app.use('/api', (req, res, next) => { tablasListas.then(() => next()); });
+app.use('/api', (req, res, next) => {
+  tablasListas.then(() => next());
+});
 
 // Login es la única API pública. Todas las demás APIs pasan por sesión HttpOnly.
 app.use('/api', (req, res, next) => {
@@ -100,17 +120,23 @@ app.use('/api', crearRutasAlertas(alertService, db));
 app.use((err, req, res, next) => {
   console.error(err);
   if (res.headersSent) return next(err);
-  res.status(err.status || 500).json({ mensaje: err.status ? err.message : 'Error interno del servidor.' });
+  res
+    .status(err.status || 500)
+    .json({ mensaje: err.status ? err.message : 'Error interno del servidor.' });
 });
 
 // Prepara/actualiza el esquema siempre (idempotente): en local y también en
 // cada arranque en frío de la función serverless de Vercel, ya que ahí nunca
 // se ejecuta este archivo como script y de lo contrario el esquema en
 // producción queda desactualizado (columnas nuevas nunca se crean).
-const tablasListas = prepararTablas(db).catch(e => console.error('Error al preparar tablas:', e.message));
+const tablasListas = prepararTablas(db).catch((error) =>
+  console.error('Error al preparar tablas:', error.message)
+);
 
 if (process.env.NODE_ENV !== 'production') {
-  tablasListas.then(() => app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`)));
+  tablasListas.then(() =>
+    app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`))
+  );
 }
 
 module.exports = app;
