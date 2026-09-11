@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     tablas.html — HISTORIAL DE SUMINISTROS
+     Muestra los registros guardados como tarjetas editables. La lógica
+     (búsqueda, edición, anulación y exportación) está en ../js/tablas.js.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -9,6 +14,7 @@
 </head>
 <body>
   <main class="pantalla">
+    <!-- Encabezado estándar de las pantallas internas -->
     <header class="encabezado encabezado-compacto">
       <div class="encabezado-control">
         <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
@@ -18,15 +24,20 @@
       <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
     </header>
 
+    <!-- BARRA DE FILTROS: búsqueda por texto, filtro por fecha y exportaciones.
+         Los tres botones y los dos campos se conectan al final de tablas.js. -->
     <section class="panel controles-tabla tarjetas-controles">
       <div class="control-busqueda"><label for="buscar-registro">Buscar registro</label><input type="search" id="buscar-registro" placeholder="Operario o máquina" autocomplete="off"></div>
       <div><label for="buscar-fecha">Fecha</label><input type="date" id="buscar-fecha" autocomplete="off"></div>
       <div class="botones-tabla"><button type="button" id="boton-limpiar-busqueda">Limpiar</button><button type="button" id="boton-exportar-excel">Exportar Excel</button><button type="button" id="boton-exportar-pdf">Exportar PDF</button></div>
     </section>
 
+    <!-- LISTADO: el encabezado muestra los totales y el div de abajo recibe
+         las tarjetas que crea tablas.js -->
     <section class="panel registros tarjetas-registros-panel">
       <div class="titulo-tabla titulo-tarjetas-registros">
         <div><span class="eyebrow-dashboard">ACTIVIDAD</span><h2>Historial de suministros</h2><p class="texto-secundario">Cada registro se muestra como una tarjeta para facilitar la lectura en celular y computador.</p></div>
+        <!-- Contadores: cantidad de registros y suma de galones mostrados -->
         <div class="resumen-tarjetas"><strong><span id="cantidad-registros">0</span></strong><small>registros</small><strong><span id="resumen-tabla-general">0.00</span></strong><small>galones</small></div>
       </div>
       <div id="cuerpo-registros-tarjetas" class="grid-registros-tarjetas"></div>
@@ -37,6 +48,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/shell.js"></script>
+  <!-- Control de acceso: exige el permiso 'tablas' antes de cargar los datos -->
   <script>if (protegerVista('tablas')) { aplicarPermisosEnlaces(); }</script>
   <script src="../js/tablas.js"></script>
 </body>

@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     operarios.html — ADMINISTRACIÓN DE OPERARIOS
+     Formulario de alta arriba y tarjetas de los operarios activos abajo.
+     Lógica en ../js/operarios.js. Requiere el permiso 'operarios'.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -17,7 +22,7 @@
       </div>
       <div class="ubicacion ubicacion-compacta">
         <strong>Barranca de Upia, Meta</strong>
-        <span data-fecha-encabezado></span>
+        <span data-fecha-encabezado></span> <!-- Fecha puesta por shell.js -->
       </div>
       <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -29,11 +34,13 @@
       <form id="formulario-operario" class="formulario-operario" autocomplete="off">
         <div>
           <label for="operario-nombre">Nombre del operario</label>
+          <!-- maxlength coincide con VARCHAR(120) de la columna "nombre" -->
           <input type="text" id="operario-nombre" maxlength="120" autocomplete="off" required>
         </div>
 
         <div>
           <label for="operario-cedula">Cedula</label>
+          <!-- type="number" muestra el teclado numérico en el celular -->
           <input type="number" id="operario-cedula" min="0" autocomplete="off" required>
         </div>
 
@@ -50,6 +57,7 @@
         </div>
         <strong class="contador-registros"><span id="cantidad-operarios">0</span> operarios</strong>
       </div>
+      <!-- Contenedor que llena operarios.js con una tarjeta por operario -->
       <div id="cuerpo-tabla-operarios" class="cartas-registros cartas-operarios"></div>
     </section>
   </main>
@@ -58,6 +66,7 @@
   <script src="../js/auth.js"></script>
   <script src="../js/shell.js"></script>
   <script>
+    // Sin el permiso 'operarios' el usuario es devuelto a su vista anterior.
     if (protegerVista('operarios')) {
       aplicarPermisosEnlaces();
     }

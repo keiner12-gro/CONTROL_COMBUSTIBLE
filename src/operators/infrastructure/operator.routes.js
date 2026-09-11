@@ -1,3 +1,11 @@
+// ============================================================================
+// operator.routes.js (INFRAESTRUCTURA) — ENDPOINTS HTTP DE OPERARIOS
+// ----------------------------------------------------------------------------
+//   GET    /api/operarios      -> listar (pantalla o selector del registro)
+//   POST   /api/operarios      -> crear
+//   DELETE /api/operarios/:id  -> anular (requiere motivo)
+// ============================================================================
+
 const express = require('express');
 const { requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
@@ -5,6 +13,9 @@ const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 function crearRutasOperarios(service, db) {
   const router = express.Router();
 
+  // --- GET /api/operarios --------------------------------------------------
+  // Igual que en tractores: ?selector=1 lo usa el formulario de registro y
+  // basta con el permiso 'registro'; si no, se exige el permiso 'operarios'.
   router.get('/operarios', async (req, res, next) => {
     const permiso = req.query.selector === '1' ? 'registro' : 'operarios';
     try {
@@ -16,6 +27,7 @@ function crearRutasOperarios(service, db) {
     }
   });
 
+  // --- POST /api/operarios: crear operario ---------------------------------
   router.post('/operarios', requirePermission('operarios'), async (req, res, next) => {
     try {
       const creado = await service.create(req.body);
@@ -34,6 +46,7 @@ function crearRutasOperarios(service, db) {
     }
   });
 
+  // --- DELETE /api/operarios/:id: anulación lógica -------------------------
   router.delete('/operarios/:id', requirePermission('operarios'), async (req, res, next) => {
     try {
       const motivo = String(req.body?.motivo || '').trim();

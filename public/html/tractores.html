@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     tractores.html — ADMINISTRACIÓN DE MAQUINARIA
+     Alta de máquinas y fichas con su consumo del mes.
+     Lógica en ../js/tractores.js. Requiere el permiso 'tractores'.
+     RECUERDA: la "capacidad galones" que se captura aquí es la que dispara las
+     alertas de sobrecapacidad al registrar un suministro.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,17 +32,21 @@
     </header>
 
     <!-- Formulario para agregar tractores a la tabla tractores de MySQL -->
+    <!-- El número de "item" no se pide: lo calcula solo el servidor -->
     <section class="panel">
       <form id="formulario-tractor" class="formulario-tractor" autocomplete="off">
 
 
         <div>
           <label for="tractor-maquina">Maquina</label>
+          <!-- Código corto de la máquina; se guarda en mayúsculas -->
           <input type="text" id="tractor-maquina" maxlength="20" autocomplete="off" required>
         </div>
 
         <div>
           <label for="tractor-descripcion-form">Descripcion</label>
+          <!-- La PRIMERA PALABRA de la descripción se usa como "tipo de máquina"
+               en los reportes (Tractor, Camión, Excavadora...) -->
           <input type="text" id="tractor-descripcion-form" maxlength="150" autocomplete="off" required>
         </div>
 
@@ -46,6 +57,7 @@
 
         <div>
           <label for="tractor-capacidad-form">Capacidad galones</label>
+          <!-- Capacidad del tanque: base de las alertas de sobrecapacidad -->
           <input type="number" id="tractor-capacidad-form" min="0" step="0.01" autocomplete="off" required>
         </div>
 
@@ -62,6 +74,7 @@
         </div>
         <strong class="contador-registros"><span id="cantidad-tractores">0</span> máquinas</strong>
       </div>
+      <!-- Contenedor que llena tractores.js con una ficha por máquina -->
       <div id="cuerpo-tabla-tractores" class="cartas-registros cartas-tractores"></div>
     </section>
   </main>

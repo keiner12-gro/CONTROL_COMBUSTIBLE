@@ -1,16 +1,23 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     login.html — PANTALLA DE INICIO DE SESIÓN
+     Es la página de entrada del sistema (también responde en la raíz "/").
+     Su lógica está en ../js/login.js.
+     ========================================================================== -->
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="../css/styles.css">
-  <link rel="stylesheet" href="../css/theme.css">
+  <meta charset="UTF-8"> <!-- Permite tildes y ñ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Diseño adaptable a celular -->
+  <link rel="stylesheet" href="../css/styles.css"> <!-- Estilos generales -->
+  <link rel="stylesheet" href="../css/theme.css"> <!-- Colores y tema visual -->
   <title>Inicio de sesion</title>
 </head>
+<!-- La clase "pagina-login" activa el fondo especial de esta pantalla -->
 <body class="pagina-login">
   <main class="contenedor-login">
     <!-- Tarjeta principal del inicio de sesion -->
     <section class="panel tarjeta-login">
+      <!-- Encabezado con el logo de la empresa -->
       <div class="marca-login">
         <img src="/assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="">
         <div>
@@ -19,6 +26,7 @@
       </div>
 
       <!-- Formulario de acceso. Mas adelante aqui se conectara la base de datos -->
+      <!-- login.js captura el envío de este formulario (id="formulario-login") -->
       <form id="formulario-login" autocomplete="off">
         <div>
           <label for="usuario">Usuario</label>
@@ -27,11 +35,13 @@
 
         <div>
           <label for="contrasena">Contrasena</label>
+          <!-- type="password" oculta lo que se escribe -->
           <input type="password" id="contrasena" name="contrasena" autocomplete="new-password" required>
         </div>
 
 
 
+        <!-- Aquí login.js escribe el mensaje de error si falla el acceso -->
         <p class="mensaje-login" id="mensaje-login"></p>
 
         <button type="submit">Ingresar</button>
@@ -39,6 +49,7 @@
     </section>
   </main>
 
+  <!-- SweetAlert2: librería de ventanas emergentes; debe cargarse ANTES de los scripts propios -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/login.js"></script>
 </body>

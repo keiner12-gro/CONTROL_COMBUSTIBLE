@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     auditoria.html — BITÁCORA DEL SISTEMA
+     Cuatro bloques: filtros, tarjetas de resumen, tabla paginada de eventos y
+     la ventana emergente de detalle (al final del archivo).
+     Lógica en ../js/auditoria.js. Acceso para administrador, supervisor y
+     super administrador; los botones de modificar/eliminar solo para este último.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,6 +32,7 @@
       </button>
     </header>
 
+    <!-- BLOQUE 1: FILTROS DE BÚSQUEDA -->
     <section class="panel">
       <div class="titulo-tabla">
         <div>
@@ -33,10 +41,16 @@
         </div>
         <div class="botones-tabla">
           <button type="button" class="boton-secundario" id="boton-limpiar-filtros">Limpiar filtros</button>
+          <!-- Botón de exportación DESACTIVADO. Para reactivarlo hay que quitar
+               los signos de comentario Y mover la ruta /auditoria/export por
+               encima de /auditoria/:id en auditoria.routes.js (si no, Express
+               interpreta "export" como un id). -->
           <!-- <button type="button" id="boton-exportar-auditoria">Exportar CSV</button> -->
         </div>
       </div>
 
+      <!-- Cinco filtros en una rejilla: rango de fechas, usuario, acción y módulo.
+           Estos se aplican al pulsar "Aplicar filtros". -->
       <div class="formulario-usuario" style="grid-template-columns: repeat(5, minmax(150px, 1fr));">
         <div>
           <label for="filtro-fecha-desde">Desde</label>
@@ -52,6 +66,8 @@
         </div>
         <div>
           <label for="filtro-accion">Acción</label>
+          <!-- Estos valores son los mismos que registra el backend en la
+               columna "accion" (ver registrarAuditoria en cada router) -->
           <select id="filtro-accion">
             <option value="">Todas</option>
             <option value="LOGIN">Login</option>
@@ -69,6 +85,7 @@
         </div>
         <div>
           <label for="filtro-modulo">Módulo</label>
+          <!-- Un módulo por cada carpeta de src/ que registra auditoría -->
           <select id="filtro-modulo">
             <option value="">Todos</option>
             <option value="usuarios">Usuarios</option>
@@ -82,6 +99,7 @@
         </div>
       </div>
 
+      <!-- Búsqueda libre: esta sí recarga la tabla mientras se escribe -->
       <div class="formulario-usuario" style="grid-template-columns: 1fr auto; margin-top: 12px; align-items: end;">
         <div>
           <label for="filtro-busqueda">Búsqueda</label>
@@ -91,6 +109,8 @@
       </div>
     </section>
 
+    <!-- BLOQUE 2: TARJETAS DE RESUMEN. Los cuatro números los calcula el
+         servidor sobre los filtros activos y los escribe auditoria.js. -->
     <section class="panel resumen-dashboard" id="resumen-dashboard" style="margin-top: 14px;">
       <div class="resumen-dashboard-card">
         <span>📌</span>
@@ -126,6 +146,7 @@
       </div>
     </section>
 
+    <!-- BLOQUE 3: TABLA DE EVENTOS CON PAGINACIÓN -->
     <section class="panel registros" style="margin-top: 14px;">
       <div class="titulo-tabla">
         <div>
@@ -135,6 +156,7 @@
         <div class="contador-registros"><span id="cantidad-auditoria">0</span> registros</div>
       </div>
 
+      <!-- overflow-x:auto permite desplazar la tabla horizontalmente en celular -->
       <div style="overflow-x:auto;">
         <table>
           <thead>
@@ -144,15 +166,17 @@
               <th>Rol</th>
               <th>Acción</th>
               <th>Módulo</th>
-              <th>Registro</th>
-              <th>Detalle</th>
+              <th>Registro</th> <!-- Id del elemento afectado -->
+              <th>Detalle</th> <!-- Vista previa del JSON; el resto en el tooltip -->
               <th>Acciones</th>
             </tr>
           </thead>
+          <!-- Las filas las genera auditoria.js -->
           <tbody id="tabla-auditoria"></tbody>
         </table>
       </div>
 
+      <!-- Controles de paginación (20 eventos por página) -->
       <div class="resumen" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
         <span>Mostrando <strong id="rango-registros">0</strong></span>
         <div class="botones-tabla">
@@ -164,6 +188,9 @@
     </section>
   </main>
 
+  <!-- BLOQUE 4: VENTANA DE DETALLE. Nace oculta (hidden) y auditoria.js la
+       muestra al pulsar "Ver detalle", llenando el div de contenido con el
+       comparativo antes/después del evento. -->
   <div id="detalle-auditoria-modal" class="fondo-firma" hidden>
     <div class="hoja-firma" style="max-width: 760px;">
       <h2>Detalle del evento</h2>

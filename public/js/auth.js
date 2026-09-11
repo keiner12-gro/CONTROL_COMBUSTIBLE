@@ -1,9 +1,22 @@
+// ============================================================================
+// auth.js — SEGURIDAD Y UTILIDADES COMPARTIDAS DEL FRONTEND
+// ----------------------------------------------------------------------------
+// Este archivo se carga en TODAS las páginas protegidas (antes que el script
+// propio de cada pantalla). Aporta:
+//   * Lectura de la sesión guardada en sessionStorage.
+//   * protegerVista(): el portero de cada página.
+//   * Las alertas visuales (SweetAlert) que usa todo el sistema.
+//   * El monitor que avisa de nuevas alertas cada 5 segundos.
+// IMPORTANTE: los permisos aquí son solo para la interfaz (ocultar botones).
+// La seguridad real la aplica el backend en cada endpoint.
+// ============================================================================
+
 // Escapa texto antes de insertarlo con innerHTML para evitar XSS con datos
 // que vienen de la base de datos (nombres de máquinas, operarios, etc.).
 function escapeHtml(valor = '') {
   const div = document.createElement('div');
-  div.textContent = String(valor);
-  return div.innerHTML;
+  div.textContent = String(valor); // textContent nunca interpreta HTML
+  return div.innerHTML; // Devuelve el texto ya con < > & convertidos
 }
 
 // Lee la sesion guardada por login.js.
@@ -11,10 +24,12 @@ function obtenerSesionActual() {
   try {
     return JSON.parse(sessionStorage.getItem('sesionCombustible')) || null;
   } catch (error) {
-    return null;
+    return null; // Si el dato está corrupto, se trata como "sin sesión"
   }
 }
 
+// Reservadas por compatibilidad: la sesión real vive en la cookie HttpOnly
+// que maneja el servidor, así que aquí no hay nada que activar ni limpiar.
 function activarSesionEnNavegador() {}
 
 function limpiarSesionEnNavegador() {}
@@ -26,6 +41,7 @@ function esPaginaLogin() {
 }
 
 // Envia al login reemplazando el historial actual.
+// replace (en lugar de href) evita que el botón "atrás" regrese a la vista.
 function irAlLogin() {
   window.location.replace('login');
 }
@@ -36,6 +52,7 @@ function usuarioTienePermiso(vista) {
 
   if (!sesion) return false;
 
+  // El menú principal siempre es accesible para cualquier usuario con sesión.
   if (String(vista || '').trim().toLowerCase() === 'menu') return true;
 
   const rol = String(sesion.rol || '').trim().toLowerCase();
@@ -43,8 +60,10 @@ function usuarioTienePermiso(vista) {
     ? sesion.permisos.map((permiso) => String(permiso).trim().toLowerCase())
     : [];
 
-  if (rol === 'super_administrador') return true;
+  if (rol === 'super_administrador') return true; // Acceso total
 
+  // La auditoría es un caso especial: administrador y supervisor entran por su
+  // rol, aunque no tengan el permiso asignado explícitamente.
   if (String(vista || '').trim().toLowerCase() === 'auditoria') {
     return ['administrador', 'supervisor'].includes(rol) || permisos.includes('auditoria');
   }
@@ -56,6 +75,8 @@ function usuarioTienePermiso(vista) {
 }
 
 // Muestra aviso cuando un usuario intenta abrir una vista sin permiso.
+// Todas las funciones de alerta siguen el mismo patrón: usan SweetAlert si
+// está cargado y, si no, caen al alert() nativo del navegador.
 function mostrarAlertaSinPermiso() {
   const mensaje = 'No tienes permiso para entrar a esta vista.';
 
@@ -69,7 +90,7 @@ function mostrarAlertaSinPermiso() {
   }
 
   alert(mensaje);
-  return Promise.resolve();
+  return Promise.resolve(); // Se devuelve promesa para poder encadenar .then()
 }
 
 // Muestra una alerta de exito con SweetAlert y deja respaldo si la libreria no carga.
@@ -103,6 +124,7 @@ function mostrarAlertaError(titulo, texto) {
 }
 
 // Confirma una accion delicada, como eliminar registros.
+// Devuelve true si el usuario confirmó, false si canceló.
 async function confirmarAccion(titulo, texto, textoConfirmar = 'Si, eliminar') {
   if (window.Swal) {
     const resultado = await Swal.fire({
@@ -112,7 +134,7 @@ async function confirmarAccion(titulo, texto, textoConfirmar = 'Si, eliminar') {
       showCancelButton: true,
       confirmButtonText: textoConfirmar,
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#ef6259',
+      confirmButtonColor: '#ef6259', // Rojo: acción destructiva
       cancelButtonColor: '#2b3136'
     });
 
@@ -130,12 +152,14 @@ async function solicitarMotivoAnulacion(titulo, texto) {
     const resultado = await Swal.fire({
       icon: 'warning',
       title: titulo,
+      // Se inyecta un textarea dentro del cuadro de diálogo.
       html: `<p style="margin:0 0 12px;text-align:left">${texto}</p><textarea id="motivo-anulacion" class="swal2-textarea" placeholder="Motivo de la anulación (obligatorio)"></textarea>`,
       showCancelButton: true,
       confirmButtonText: 'Anular',
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#ef6259',
       cancelButtonColor: '#2b3136',
+      // preConfirm valida antes de cerrar: sin motivo no deja continuar.
       preConfirm: () => {
         const motivo = String(document.getElementById('motivo-anulacion').value || '').trim();
         if (!motivo) {
@@ -146,7 +170,7 @@ async function solicitarMotivoAnulacion(titulo, texto) {
       }
     });
 
-    return resultado.isConfirmed ? resultado.value : null;
+    return resultado.isConfirmed ? resultado.value : null; // null = canceló
   }
 
   const motivo = prompt(`${texto}\n\nMotivo de la anulación:`);
@@ -160,19 +184,23 @@ function guardarUltimaVistaPermitida() {
 }
 
 // Protege una pagina completa. Si no tiene permiso, avisa y regresa a la ultima vista permitida.
+// CADA PANTALLA DEBE LLAMAR A ESTA FUNCIÓN AL INICIAR (p. ej. protegerVista('tablas')).
 function protegerVista(vista) {
   const sesion = obtenerSesionActual();
 
+  // 1) Sin sesión -> al login.
   if (!sesion) {
     irAlLogin();
     return false;
   }
 
+  // 2) Con contraseña temporal -> obligado a cambiarla primero.
   if (sesion.debeCambiarContrasena && vista !== 'cambiar-contrasena') {
     window.location.replace('cambiar-contrasena');
     return false;
   }
 
+  // 3) Sin permiso sobre esta vista -> aviso y regreso a donde estaba.
   if (!usuarioTienePermiso(vista)) {
     const ultimaVista = sessionStorage.getItem('ultimaVistaPermitida') || 'menu';
 
@@ -183,7 +211,7 @@ function protegerVista(vista) {
   }
 
   guardarUltimaVistaPermitida();
-  return true;
+  return true; // Vía libre: la pantalla puede cargar sus datos
 }
 
 // Protege el menu principal sin exigir un permiso especifico.
@@ -205,6 +233,8 @@ function protegerMenuPrincipal() {
 
 // Cierra la sesion actual y regresa al login.
 async function cerrarSesion() {
+  // Gancho opcional: una pantalla puede definir window.validarAntesDeCerrarSesion
+  // para impedir la salida si hay trabajo sin guardar (lo usa el registro diario).
   if (window.validarAntesDeCerrarSesion) {
     const puedeCerrar = await window.validarAntesDeCerrarSesion();
 
@@ -213,6 +243,8 @@ async function cerrarSesion() {
     }
   }
 
+  // Se avisa al servidor para que borre la sesión y la cookie. Si falla la red
+  // igual se limpia el navegador, para no dejar al usuario atrapado.
   try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
   sessionStorage.clear();
   limpiarSesionEnNavegador();
@@ -226,13 +258,15 @@ function validarSesionAlVolver() {
   }
 }
 
-window.addEventListener('pageshow', validarSesionAlVolver);
-window.addEventListener('popstate', validarSesionAlVolver);
+// Tres momentos en que se revalida la sesión:
+window.addEventListener('pageshow', validarSesionAlVolver); // Al mostrarse la página (incluye caché del "atrás")
+window.addEventListener('popstate', validarSesionAlVolver); // Al navegar con atrás/adelante
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') validarSesionAlVolver();
+  if (document.visibilityState === 'visible') validarSesionAlVolver(); // Al volver a la pestaña
 });
 
 // Bloquea enlaces marcados con data-vista si el usuario no tiene permiso.
+// En el HTML cada botón/enlace lleva data-vista="tablas", data-vista="reportes", etc.
 function aplicarPermisosEnlaces() {
   const sesion = obtenerSesionActual();
   if (!sesion) return;
@@ -253,6 +287,7 @@ function aplicarPermisosEnlaces() {
       esSuperAdministrador ||
       (vista === 'auditoria' ? tieneAccesoAuditoria : permisos.includes(vista));
 
+    // Se oculta de tres maneras para cubrir navegadores y lectores de pantalla.
     elemento.hidden = !permitido;
     elemento.setAttribute('aria-hidden', String(!permitido));
     elemento.style.display = permitido ? '' : 'none';
@@ -261,16 +296,17 @@ function aplicarPermisosEnlaces() {
   // En enlaces internos fuera del menu, se conserva el bloqueo con alerta.
   document.querySelectorAll('[data-vista]:not([data-menu-principal="true"] [data-vista])').forEach((elemento) => {
     if (!usuarioTienePermiso(elemento.dataset.vista)) {
-      elemento.classList.add('sin-permiso');
+      elemento.classList.add('sin-permiso'); // Estilo gris (ver styles.css)
       elemento.setAttribute('aria-disabled', 'true');
       elemento.setAttribute('title', 'No tienes permiso para entrar a esta vista');
       elemento.addEventListener('click', (evento) => {
-        evento.preventDefault();
+        evento.preventDefault(); // Cancela la navegación
         mostrarAlertaSinPermiso();
       });
     }
   });
 
+  // Elementos marcados con data-rol="x" solo se ven si el rol coincide.
   document.querySelectorAll('[data-rol]').forEach((elemento) => {
     if (rol !== String(elemento.dataset.rol || '').trim().toLowerCase()) {
       elemento.hidden = true;
@@ -278,6 +314,7 @@ function aplicarPermisosEnlaces() {
     }
   });
 
+  // Traza en la consola del navegador, útil para depurar permisos.
   console.info('[Permisos] Usuario:', sesion.usuario, '| Rol:', rol, '| Permisos:', permisos);
 }
 
@@ -285,9 +322,9 @@ function aplicarPermisosEnlaces() {
 // Vigila nuevas alertas de sobrecapacidad mientras cualquier usuario autorizado
 // permanece dentro de una vista. No se ejecuta en alertas.html para evitar que
 // la misma notificación vuelva a abrirse mientras se está consultando la tabla.
-let monitorAlertasIniciado = false;
-let monitorRevisionEnCurso = false;
-const alertasNotificadasEnSesion = new Set();
+let monitorAlertasIniciado = false; // Evita montar el monitor dos veces
+let monitorRevisionEnCurso = false; // Evita consultas superpuestas
+const alertasNotificadasEnSesion = new Set(); // Ids ya mostrados en esta sesión
 
 function iniciarMonitorAlertas() {
   if (monitorAlertasIniciado) return;
@@ -295,27 +332,29 @@ function iniciarMonitorAlertas() {
   const paginaActual = window.location.pathname.split('/').pop();
   const rolesPermitidos = ['super_administrador', 'supervisor', 'administrador'];
 
+  // Condiciones para NO activar el monitor.
   if (!sesion || !usuarioTienePermiso('alertas')) return;
-  if (paginaActual === 'alertas') return;
-  if (!window.fetch) return;
+  if (paginaActual === 'alertas') return; // Ya está viendo las alertas
+  if (!window.fetch) return; // Navegador demasiado antiguo
 
   monitorAlertasIniciado = true;
 
   const revisar = async () => {
-    if (monitorRevisionEnCurso) return;
+    if (monitorRevisionEnCurso) return; // Aún respondiendo la consulta anterior
     const sesionActual = obtenerSesionActual();
     if (!sesionActual || !usuarioTienePermiso('alertas')) return;
 
     monitorRevisionEnCurso = true;
     try {
       const respuesta = await fetch('/api/notificaciones', {
-        
-        cache: 'no-store'
+
+        cache: 'no-store' // Siempre datos frescos, nunca de la caché
       });
       if (!respuesta.ok) return;
 
       const notificaciones = await respuesta.json();
       const pendientes = notificaciones.filter((n) => Number(n.leida) === 0);
+      // Solo se muestra una alerta por ciclo y nunca la misma dos veces.
       const nueva = pendientes.find((n) => !alertasNotificadasEnSesion.has(String(n.id)));
       if (!nueva || !window.Swal) return;
 
@@ -328,7 +367,7 @@ function iniciarMonitorAlertas() {
         showCancelButton: true,
         confirmButtonText: 'Ver alerta',
         cancelButtonText: 'Después',
-        allowOutsideClick: false
+        allowOutsideClick: false // Obliga a decidir
       });
 
       if (!resultado.isConfirmed) return;
@@ -343,8 +382,8 @@ function iniciarMonitorAlertas() {
     }
   };
 
-  revisar();
-  window.setInterval(revisar, 5000);
+  revisar(); // Primera revisión inmediata
+  window.setInterval(revisar, 5000); // Y luego cada 5 segundos (cambiar aquí la frecuencia)
 }
 
 // auth.js se carga en las vistas protegidas y SweetAlert se carga antes de este archivo.

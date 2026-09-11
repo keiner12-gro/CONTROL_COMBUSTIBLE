@@ -1,5 +1,17 @@
+// ============================================================================
+// audit.js — BITÁCORA DE AUDITORÍA
+// ----------------------------------------------------------------------------
+// Función única que guarda una línea en la tabla auditoria_combustible cada vez
+// que alguien crea, edita, anula o consulta algo importante. Los routers la
+// llaman después de completar la operación.
+// La vista que muestra estos datos es /auditoria (auditoria.routes.js).
+// ============================================================================
+
 async function registrarAuditoria(
   db,
+  // usuarioId/usuario/rol: quién lo hizo (salen de req.user).
+  // accion: CREAR, EDITAR, ANULAR, LOGIN... | modulo: registros, tractores...
+  // registroId: id del elemento afectado | detalle: objeto libre con el contexto.
   { usuarioId, usuario, rol, accion, modulo, registroId = null, detalle = null }
 ) {
   try {
@@ -12,10 +24,12 @@ async function registrarAuditoria(
         accion,
         modulo,
         registroId || null,
-        detalle ? JSON.stringify(detalle) : null
+        detalle ? JSON.stringify(detalle) : null // La columna "detalle" es de tipo JSON
       ]
     );
   } catch (error) {
+    // La auditoría nunca debe tumbar la operación principal: si falla, solo se
+    // advierte en los logs y la petición del usuario continúa con éxito.
     console.warn('No se pudo registrar la auditoría:', error.message);
   }
 }

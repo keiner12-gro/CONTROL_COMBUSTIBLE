@@ -1,3 +1,13 @@
+// ============================================================================
+// tractores.js — PANTALLA DE MÁQUINAS (public/html/tractores.html)
+// ----------------------------------------------------------------------------
+// Administra el catálogo de maquinaria: crear, editar, anular y ver el consumo
+// del mes de cada equipo.
+// DATO CLAVE: la "capacidad del tanque" que se edita aquí es la que usa el
+// backend para generar las alertas de sobrecapacidad (ver record.service.js).
+// ============================================================================
+
+// Elementos del formulario de alta y del listado.
 const formularioTractor = document.getElementById('formulario-tractor');
 const tractorMaquina = document.getElementById('tractor-maquina');
 const tractorDescripcion = document.getElementById('tractor-descripcion-form');
@@ -7,12 +17,14 @@ const cuerpoTablaTractores = document.getElementById('cuerpo-tabla-tractores');
 const cantidadTractores = document.getElementById('cantidad-tractores');
 
 // Envia el rol en la cabecera para permitir acciones administrativas.
+// (El rol ya no viaja en cabeceras: el servidor lo lee de la cookie de sesión.
+// La función se mantiene para centralizar las cabeceras de los envíos.)
 function obtenerCabecerasTractores() {
   const sesion = obtenerSesionActual();
 
   return {
     'Content-Type': 'application/json',
-    
+
   };
 }
 
@@ -21,13 +33,14 @@ function obtenerCabecerasTractores() {
 // silencio y las tarjetas simplemente no muestran esa seccion.
 async function obtenerConsumoDelMes() {
   const hoy = new Date();
-  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
-  const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10); // Día 1 del mes
+  const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10); // Último día
 
   try {
     const respuesta = await fetch(`/api/analitica/maquinas?fechaInicio=${inicio}&fechaFin=${fin}`);
-    if (!respuesta.ok) return new Map();
+    if (!respuesta.ok) return new Map(); // Sin permiso: mapa vacío, sin errores en pantalla
     const estadisticas = await respuesta.json();
+    // Se indexa por nombre de máquina en mayúsculas para cruzarlo rápido después.
     return new Map(estadisticas.map((item) => [String(item.maquina || '').toUpperCase(), item]));
   } catch (_) {
     return new Map();
@@ -35,6 +48,8 @@ async function obtenerConsumoDelMes() {
 }
 
 // Consulta los tractores guardados en MySQL.
+// Promise.all lanza las dos consultas a la vez (catálogo y consumo) en lugar
+// de esperar una después de la otra.
 async function cargarTractores() {
   const [respuesta, consumoPorMaquina] = await Promise.all([fetch('/api/tractores'), obtenerConsumoDelMes()]);
   const tractores = await respuesta.json();
@@ -45,7 +60,7 @@ async function cargarTractores() {
 // Extrae el tipo de maquina (Tractor, Camion, Excavadora, etc.) a partir de la
 // descripcion ya existente, sin crear un campo nuevo en la base de datos.
 function tipoDeMaquina(descripcion) {
-  const palabra = String(descripcion || '').trim().split(/\s+/)[0] || '';
+  const palabra = String(descripcion || '').trim().split(/\s+/)[0] || ''; // Primera palabra
   return palabra ? palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase() : 'Máquina';
 }
 
@@ -54,6 +69,7 @@ function pintarTractores(tractores, consumoPorMaquina = new Map()) {
   cuerpoTablaTractores.innerHTML = '';
   cantidadTractores.textContent = tractores.length;
 
+  // Estado vacío cuando aún no hay maquinaria cargada.
   if (!tractores.length) {
     cuerpoTablaTractores.innerHTML = `
       <div class="estado-vacio-cartas">
@@ -65,12 +81,15 @@ function pintarTractores(tractores, consumoPorMaquina = new Map()) {
   }
 
   tractores.forEach((tractor) => {
+    // "??" cubre los dos nombres posibles del campo según de dónde venga el dato.
     const capacidad = Number(tractor.capacidad_galones ?? tractor.capacidad ?? 0);
     const consumo = consumoPorMaquina.get(String(tractor.maquina || '').toUpperCase());
     const tarjeta = document.createElement('article');
     tarjeta.className = 'carta-registro carta-tractor';
     tarjeta.dataset.tractorId = tractor.id;
 
+    // Se arma la estructura vacía y los textos se colocan abajo con
+    // textContent, para no inyectar datos directamente en el HTML.
     tarjeta.innerHTML = `
       <div class="carta-tractor-top">
         <div>
@@ -94,6 +113,7 @@ function pintarTractores(tractores, consumoPorMaquina = new Map()) {
     tarjeta.querySelector('.centro-registro').textContent = tractor.centro_costo || '—';
     tarjeta.querySelector('.capacidad-registro').textContent = `${Number.isFinite(capacidad) ? capacidad.toFixed(2) : '0.00'} gal`;
 
+    // Bloque de consumo mensual con barra comparativa contra la capacidad.
     const bloqueConsumo = tarjeta.querySelector('.consumo-tractor-card');
     if (consumo && Number(consumo.registros) > 0) {
       const totalMes = Number(consumo.totalGalones || 0);
@@ -107,6 +127,7 @@ function pintarTractores(tractores, consumoPorMaquina = new Map()) {
       bloqueConsumo.innerHTML = `<p class="consumo-tractor-vacio">Sin movimientos este mes.</p>`;
     }
 
+    // Botones de la tarjeta: Editar (transforma la tarjeta) y Eliminar (anula).
     const botonEditar = document.createElement('button');
     botonEditar.type = 'button';
     botonEditar.textContent = 'Editar';
@@ -124,6 +145,7 @@ function pintarTractores(tractores, consumoPorMaquina = new Map()) {
   });
 }
 
+// Convierte la tarjeta en un mini formulario de edición en el mismo lugar.
 function activarEdicionTractor(tarjeta, tractor) {
   const capacidad = Number(tractor.capacidad_galones ?? tractor.capacidad ?? 0);
   tarjeta.classList.add('carta-en-edicion');
@@ -140,6 +162,7 @@ function activarEdicionTractor(tarjeta, tractor) {
     </div>
     <div class="acciones-registro"></div>`;
 
+  // Los valores actuales se cargan con .value (no dentro del HTML).
   tarjeta.querySelector('.ed-maquina').value = tractor.maquina ?? '';
   tarjeta.querySelector('.ed-descripcion').value = tractor.descripcion ?? '';
   tarjeta.querySelector('.ed-centro').value = tractor.centro_costo ?? '';
@@ -155,10 +178,12 @@ function activarEdicionTractor(tarjeta, tractor) {
   botonCancelar.type = 'button';
   botonCancelar.textContent = 'Cancelar';
   botonCancelar.className = 'boton-secundario';
-  botonCancelar.addEventListener('click', cargarTractores);
+  botonCancelar.addEventListener('click', cargarTractores); // Recargar descarta los cambios
 
   acciones.append(botonGuardar, botonCancelar);
 }
+
+// Envía la edición al servidor (PUT /api/tractores/:id).
 async function guardarEdicionTractor(tarjeta, tractor) {
   const datos = {
     maquina: tarjeta.querySelector('.ed-maquina').value.trim().toUpperCase(),
@@ -167,6 +192,7 @@ async function guardarEdicionTractor(tarjeta, tractor) {
     capacidad_galones: Number(tarjeta.querySelector('.ed-capacidad').value || 0)
   };
 
+  // Validación en pantalla antes de gastar una petición al servidor.
   if (!datos.maquina || !datos.descripcion || !datos.centro_costo || !Number.isFinite(datos.capacidad_galones)) {
     mostrarAlertaError('Datos incompletos', 'Completa todos los campos de la máquina.');
     return;
@@ -196,6 +222,7 @@ formularioTractor.addEventListener('submit', async (evento) => {
     method: 'POST',
     headers: obtenerCabecerasTractores(),
     body: JSON.stringify({
+      // Todo en mayúsculas para que coincida con el resto del sistema.
       maquina: tractorMaquina.value.trim().toUpperCase(),
       descripcion: tractorDescripcion.value.trim().toUpperCase(),
       centro_costo: tractorCentroCosto.value.trim().toUpperCase(),
@@ -222,13 +249,13 @@ async function eliminarTractor(id) {
   );
 
   if (!motivo) {
-    return;
+    return; // Cancelado por el usuario
   }
 
   const respuesta = await fetch(`/api/tractores/${id}`, {
     method: 'DELETE',
     headers: obtenerCabecerasTractores(),
-    body: JSON.stringify({ motivo })
+    body: JSON.stringify({ motivo }) // Motivo obligatorio para el backend
   });
 
   if (!respuesta.ok) {
@@ -241,4 +268,4 @@ async function eliminarTractor(id) {
   mostrarAlertaExito('Máquina anulada', 'La máquina fue anulada correctamente.');
 }
 
-cargarTractores();
+cargarTractores(); // Carga inicial de la pantalla

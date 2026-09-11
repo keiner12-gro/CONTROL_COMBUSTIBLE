@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     menu.html — PANEL DE INICIO (DASHBOARD)
+     Primera pantalla tras iniciar sesión. Casi todos sus números y gráficas
+     los rellena ../js/menu.js; aquí solo está la estructura y los contenedores
+     vacíos identificados con id.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -9,6 +15,7 @@
 </head>
 <body>
   <main class="pantalla dashboard-inicio">
+    <!-- ENCABEZADO: logo, títulos, ubicación con fecha y botón de menú móvil -->
     <header class="encabezado encabezado-compacto">
       <div class="encabezado-control">
         <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
@@ -18,6 +25,9 @@
       <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
     </header>
 
+    <!-- SALUDO: menu.js reemplaza el nombre, el rol y el mensaje según quién entre.
+         El botón "Registrar combustible" lleva data-vista="registro": si el
+         usuario no tiene ese permiso, auth.js lo bloquea. -->
     <section class="bienvenida-dashboard">
       <div><span class="eyebrow-dashboard">INICIO</span><h2>Buenos días, <span id="nombre-usuario-dashboard">usuario</span> 👋</h2><p id="mensaje-rol-dashboard">Selecciona una acción para continuar.</p></div>
       <div class="cabecera-acciones">
@@ -26,6 +36,7 @@
       </div>
     </section>
 
+    <!-- INDICADORES (KPI): los cuatro valores se actualizan desde menu.js -->
     <section class="panel resumen-dashboard" id="resumen-dashboard">
       <div class="resumen-dashboard-card"><span>⛽</span><div><small>Hoy</small><strong id="dashboard-galones">0.00 GAL</strong><label>Combustible registrado</label></div></div>
       <div class="resumen-dashboard-card"><span>📝</span><div><small>Hoy</small><strong id="dashboard-registros">0</strong><label>Registros</label></div></div>
@@ -33,6 +44,7 @@
       <div class="resumen-dashboard-card card-alertas"><span>🔔</span><div><small>Atención</small><strong id="dashboard-alertas">0</strong><label>Alertas pendientes</label></div></div>
     </section>
 
+    <!-- RANKING DE MÁQUINAS DEL MES: las barras las genera menu.js -->
     <section class="panel tarjeta-consumo-maquinas" id="tarjeta-consumo-maquinas">
       <h2>Consumo por máquina</h2>
       <p class="texto-secundario">Top de máquinas por galones despachados este mes</p>
@@ -40,22 +52,29 @@
       <p class="ranking-consumo-vacio" id="ranking-consumo-vacio" hidden>Aún no hay registros este mes.</p>
     </section>
 
+    <!-- DOS TARJETAS LADO A LADO: gráfica semanal y alertas recientes -->
     <div class="grid-inicio-dos">
       <section class="panel tarjeta-consumo-semana">
         <h2>Consumo · últimos 7 días</h2>
         <p class="texto-secundario">Galones despachados por día</p>
+        <!-- SVG vacío: menu.js dibuja dentro la línea y el área del consumo.
+             El viewBox 0 0 400 150 define el sistema de coordenadas que usa. -->
         <svg class="grafica-svg" id="grafica-consumo-semana" viewBox="0 0 400 150" preserveAspectRatio="none" aria-hidden="true"></svg>
         <p class="grafica-vacia" id="grafica-consumo-vacia" hidden>Aún no hay suficientes registros esta semana.</p>
       </section>
       <section class="panel tarjeta-alertas-recientes" id="tarjeta-alertas-recientes">
         <h2>Alertas recientes</h2>
         <p class="texto-secundario">Requieren revisión</p>
-        <div id="lista-alertas-recientes"></div>
+        <div id="lista-alertas-recientes"></div> <!-- Las 3 alertas más recientes -->
         <p class="alertas-recientes-vacio" id="alertas-recientes-vacio" hidden>No hay alertas pendientes.</p>
         <a class="ver-todas-alertas" href="alertas" data-vista="alertas">Ver todas las alertas →</a>
       </section>
     </div>
 
+    <!-- BLOQUE DESACTIVADO: antiguos accesos rápidos. Se dejó comentado porque
+         la navegación ahora la construye shell.js (menú lateral y barra inferior).
+         Para reactivarlo habría que quitar los <!- - y - -> y actualizar los
+         enlaces, que todavía apuntan a las rutas viejas con .html -->
     <!-- <section class="panel tarjeta-menu dashboard-acciones">
       <div class="titulo-seccion-dashboard"><div><span class="eyebrow-dashboard">OTRAS SECCIONES</span><h2>Accesos rápidos</h2></div></div>
       <div class="grid-accesos" data-menu-principal="true">
@@ -67,12 +86,14 @@
       </div>
     </section> -->
 
+    <!-- Nota informativa fija al pie del panel -->
     <section class="panel consejo-dashboard"><span>💡</span><div><strong>Tu menú se adapta a tus permisos.</strong><p>Solo aparecen las funciones que tu usuario está autorizado a utilizar.</p></div></section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/shell.js"></script>
+  <!-- protegerMenuPrincipal: basta con tener sesión (no exige un permiso concreto) -->
   <script>if (protegerMenuPrincipal()) aplicarPermisosEnlaces();</script>
   <script src="../js/menu.js"></script>
 </body>

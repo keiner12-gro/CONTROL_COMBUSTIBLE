@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     reportes.html — LISTADO DE REPORTES Y ANÁLISIS
+     Tres bloques: gráfica de los últimos 7 días, análisis de promedio por
+     máquina y las cartas mensuales (que abren reporte-detalle.html).
+     Lógica en ../js/reportes.js. Requiere el permiso 'reportes'.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,6 +31,7 @@
     </header>
 
     <!-- Consumo real de los ultimos 7 dias, todas las maquinas -->
+    <!-- El SVG está vacío: reportes.js dibuja dentro la línea del consumo -->
     <section class="panel tarjeta-consumo-semana">
       <h2>Consumo · últimos 7 días</h2>
       <p class="texto-secundario">Galones despachados por día, todas las máquinas</p>
@@ -33,6 +40,7 @@
     </section>
 
     <!-- Cartas mensuales generadas automaticamente desde registros_combustible -->
+    <!-- Ranking de consumo por máquina del año, con promedio y máximo -->
     <section class="panel panel-analitica-reportes">
       <div class="titulo-tabla">
         <div><span class="eyebrow-dashboard">ANÁLISIS DE CONSUMO</span><h2>Promedio por máquina</h2><p class="texto-secundario">El promedio ayuda a detectar suministros fuera del comportamiento habitual.</p></div>
@@ -41,6 +49,8 @@
       <div id="analitica-maquinas" class="grid-analitica-maquinas"></div>
     </section>
 
+    <!-- Una carta por mes más la carta "general". Al pulsarlas se navega a
+         reporte-detalle con los parámetros correspondientes en la URL. -->
     <section class="panel">
       <div class="titulo-tabla">
         <h2>Cartas de reportes</h2>

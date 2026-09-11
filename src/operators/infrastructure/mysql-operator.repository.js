@@ -1,3 +1,9 @@
+// ============================================================================
+// mysql-operator.repository.js (INFRAESTRUCTURA) — SQL DE OPERARIOS
+// ----------------------------------------------------------------------------
+// Consultas sobre la tabla "operarios".
+// ============================================================================
+
 const { OperatorRepository } = require('../domain/operator.repository');
 
 class MySQLOperatorRepository extends OperatorRepository {
@@ -6,6 +12,7 @@ class MySQLOperatorRepository extends OperatorRepository {
     this.db = db;
   }
 
+  // Solo operarios activos, ordenados alfabéticamente para el selector.
   async list() {
     const [filas] = await this.db.query(
       "SELECT id,nombre,cedula FROM operarios WHERE estado<>'ANULADO' ORDER BY nombre ASC"
@@ -13,11 +20,14 @@ class MySQLOperatorRepository extends OperatorRepository {
     return filas;
   }
 
+  // Fila completa, incluidos estado y datos de anulación.
   async findById(id) {
     const [filas] = await this.db.query('SELECT * FROM operarios WHERE id=?', [id]);
     return filas[0] || null;
   }
 
+  // Alta: el nombre se guarda en mayúsculas para que coincida con lo que se
+  // almacena en los registros de combustible.
   async create(datos) {
     const nombre = String(datos.nombre || '')
       .trim()

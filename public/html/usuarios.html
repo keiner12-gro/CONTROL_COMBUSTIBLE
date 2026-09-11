@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     usuarios.html — ADMINISTRACIÓN DE USUARIOS Y PERMISOS
+     Tres secciones: mapa de permisos por rol (solo consulta), formulario de
+     creación y tabla de usuarios existentes con edición en línea.
+     Lógica en ../js/usuarios.js. Requiere el permiso 'usuarios'.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,6 +31,7 @@
     </header>
 
     <!-- Referencia visual: que puede hacer cada rol, en forma de arbol -->
+    <!-- El árbol lo genera usuarios.js desde la constante GRUPOS_PERMISOS -->
     <section class="panel panel-mapa-permisos">
       <div class="titulo-tabla">
         <h2>Mapa de permisos por rol</h2>
@@ -41,16 +48,22 @@
       <form id="formulario-usuario" class="formulario-usuario" autocomplete="off">
         <div>
           <label for="usuario-nuevo">Usuario</label>
+          <!-- Mínimo 3 caracteres (lo valida el servidor); se guarda en minúsculas -->
           <input type="text" id="usuario-nuevo" autocomplete="off" required>
         </div>
 
         <div>
           <label for="contrasena-nueva">Contrasena</label>
+          <!-- Viene con 123456 por defecto: al entrar con ella, el sistema
+               obliga al usuario a cambiarla en cambiar-contrasena.html -->
           <input type="password" id="contrasena-nueva" value="123456" autocomplete="new-password" required>
         </div>
 
         <div>
           <label for="rol-nuevo">Rol</label>
+          <!-- Al cambiar el rol, usuarios.js marca los permisos sugeridos.
+               La opción "super_administrador" se elimina del selector si quien
+               está usando la pantalla no lo es. -->
           <select id="rol-nuevo" required>
             <option value="">Seleccione un rol</option>
             <option value="super_administrador">Super administrador</option>
@@ -63,9 +76,11 @@
         <!-- Permisos de acceso agrupados por rol, con sugerencia automatica -->
         <fieldset class="permisos-usuario">
           <legend>Permisos de acceso (sugeridos segun el rol, ajustables)</legend>
+          <!-- Este aviso solo se ve al elegir "Super administrador" -->
           <p class="permisos-nota-superadmin" id="nota-superadmin-nuevo" hidden>
             El super administrador tiene acceso total a todos los modulos automaticamente.
           </p>
+          <!-- Árbol de casillas que genera usuarios.js -->
           <div class="arbol-roles arbol-roles-formulario" id="arbol-permisos-nuevo"></div>
         </fieldset>
 
@@ -84,12 +99,13 @@
         <thead>
           <tr>
             <th>Usuario</th>
-            <th>Rol</th>
-            <th>Permisos</th>
-            <th>Nueva contrasena</th>
-            <th>Acciones</th>
+            <th>Rol</th> <!-- Selector desplegable por fila -->
+            <th>Permisos</th> <!-- Desplegable con las casillas -->
+            <th>Nueva contrasena</th> <!-- Vacío = no se cambia -->
+            <th>Acciones</th> <!-- Guardar / Eliminar -->
           </tr>
         </thead>
+        <!-- Las filas las genera usuarios.js -->
         <tbody id="cuerpo-tabla-usuarios"></tbody>
       </table>
     </section>

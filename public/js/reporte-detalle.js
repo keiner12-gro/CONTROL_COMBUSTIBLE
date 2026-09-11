@@ -1,3 +1,15 @@
+// ============================================================================
+// reporte-detalle.js — DETALLE DE UN REPORTE (public/html/reporte-detalle.html)
+// ----------------------------------------------------------------------------
+// Esta pantalla tiene DOS MODOS, según los parámetros de la URL:
+//   * ?tipo=general        -> reporte anual con rango de fechas editable.
+//   * ?anio=2026&mes=9     -> reporte de un mes concreto.
+// Muestra: indicadores (KPI), gráficas con Chart.js, checklist diario,
+// lecturas de mangueras, registros del periodo, alertas y consumo por máquina.
+// Se refresca solo cada 10 segundos y permite exportar a PDF (impresión).
+// ============================================================================
+
+// --- Elementos de la pantalla ----------------------------------------------
 const tituloReporteMensual = document.getElementById('titulo-reporte-mensual');
 const totalManguerasReporte = document.getElementById('total-mangueras-reporte');
 const tituloChequeoReporte = document.getElementById('titulo-chequeo-reporte');
@@ -8,7 +20,7 @@ const cantidadRegistrosMes = document.getElementById('cantidad-registros-mes');
 const cuerpoRegistrosMes = document.getElementById('cuerpo-registros-mes');
 const mensajeRegistrosMes = document.getElementById('mensaje-registros-mes');
 const cuerpoAlertasReporte = document.getElementById('cuerpo-alertas-reporte');
-const rangoFechasReporte = document.getElementById('rango-fechas-reporte');
+const rangoFechasReporte = document.getElementById('rango-fechas-reporte'); // Solo en modo general
 const fechaInicioReporte = document.getElementById('fecha-inicio-reporte');
 const fechaFinReporte = document.getElementById('fecha-fin-reporte');
 const buscarMaquinaReporte = document.getElementById('buscar-maquina-reporte');
@@ -19,8 +31,8 @@ const botonExportarPdfReporte = document.getElementById('boton-exportar-pdf-repo
 // Las graficas de Chart.js no heredan el CSS del tema; sin esto, sus textos
 // y lineas de cuadricula quedarian ilegibles sobre el fondo claro del panel.
 if (typeof Chart !== 'undefined') {
-  Chart.defaults.color = '#5a6f62';
-  Chart.defaults.borderColor = 'rgba(24,51,39,.08)';
+  Chart.defaults.color = '#5a6f62'; // Color del texto de ejes y leyendas
+  Chart.defaults.borderColor = 'rgba(24,51,39,.08)'; // Líneas de la cuadrícula
   Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif';
 }
 
@@ -39,11 +51,13 @@ const nombresMesesDetalle = [
   'Diciembre'
 ];
 
+// --- Lectura de los parámetros de la URL ------------------------------------
 const parametrosReporte = new URLSearchParams(window.location.search);
-const esReporteGeneral = parametrosReporte.get('tipo') === 'general';
+const esReporteGeneral = parametrosReporte.get('tipo') === 'general'; // Modo anual
 const anioReporte = Number(parametrosReporte.get('anio'));
 const mesReporte = Number(parametrosReporte.get('mes'));
-let registrosMensuales = [];
+let registrosMensuales = []; // Registros descargados del periodo
+// Referencias a las gráficas de Chart.js (hay que destruirlas antes de redibujar).
 let graficaConsumoFecha = null;
 let graficaM1M2 = null;
 let graficaMaquinas = null;
@@ -51,7 +65,7 @@ let graficaMaquinas = null;
 const kpisReporte = document.getElementById('kpis-reporte');
 const cuerpoConsumoMaquina = document.getElementById('cuerpo-consumo-maquina');
 const mensajeConsumoMaquina = document.getElementById('mensaje-consumo-maquina');
-const ordenConsumoMaquina = document.getElementById('orden-consumo-maquina');
+const ordenConsumoMaquina = document.getElementById('orden-consumo-maquina'); // Selector de orden
 const cuerpoResumenAlertasTipo = document.getElementById('cuerpo-resumen-alertas-tipo');
 const tendenciaConsumo = document.getElementById('tendencia-consumo');
 
@@ -64,10 +78,11 @@ const ETIQUETAS_TIPO_ALERTA = {
 };
 const ORDEN_TIPOS_ALERTA_REPORTE = ['sobrecapacidad', 'promedio', 'horometro_irregular', 'inspeccion_pendiente'];
 
-let alertasDelReporte = [];
-let registrosFiltradosActuales = [];
-let tipoPorMaquina = {};
+let alertasDelReporte = []; // Alertas del periodo (ya filtradas)
+let registrosFiltradosActuales = []; // Lo que se está viendo ahora
+let tipoPorMaquina = {}; // Mapa máquina -> tipo (Tractor, Camión...)
 
+// Textos y contenedores del bloque de gráficas.
 const subtituloGraficasReporte = document.getElementById('subtitulo-graficas-reporte');
 const totalConsumoGrafica = document.getElementById('total-consumo-grafica');
 const resumenRegistrosGrafica = document.getElementById('resumen-registros-grafica');
@@ -76,6 +91,7 @@ const resumenMaquinaGrafica = document.getElementById('resumen-maquina-grafica')
 const tituloGraficaConsumo = document.getElementById('titulo-grafica-consumo');
 const bloqueGraficaMaquinas = document.getElementById('bloque-grafica-maquinas');
 
+// Convierte a número cualquier valor, devolviendo 0 si no es válido.
 function numeroGrafica(valor) {
   if (valor === null || valor === undefined || valor === '') {
     return 0;
@@ -93,6 +109,8 @@ function numeroGrafica(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
+// Obtiene los galones de un registro probando varios campos en orden de
+// prioridad, para que funcione tanto con suministros como con cierres de día.
 function obtenerConsumoRegistro(registro) {
   // En los suministros, cantidad representa el combustible entregado.
   const cantidad = numeroGrafica(registro.cantidad);
@@ -124,6 +142,8 @@ function obtenerConsumoMaquina(registro) {
   return numeroGrafica(registro.galones);
 }
 
+// Chart.js exige destruir una gráfica antes de volver a dibujarla sobre el
+// mismo canvas; si no, quedan superpuestas y el tooltip se vuelve loco.
 function destruirGraficas() {
   [graficaConsumoFecha, graficaM1M2, graficaMaquinas].forEach((grafica) => {
     if (grafica) grafica.destroy();
@@ -133,6 +153,8 @@ function destruirGraficas() {
   graficaMaquinas = null;
 }
 
+// Suma los galones por fecha y devuelve pares [fecha, total] ordenados
+// cronológicamente (para la gráfica de línea).
 function agruparConsumoPorFecha(registros) {
   const mapa = new Map();
   registros.forEach((registro) => {
@@ -143,6 +165,7 @@ function agruparConsumoPorFecha(registros) {
   return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
+// Calcula cuánto salió por cada manguera restando final - inicial en cada cierre.
 function calcularConsumoM1M2(registros) {
   let m1 = 0;
   let m2 = 0;
@@ -153,6 +176,7 @@ function calcularConsumoM1M2(registros) {
     const inicialM2 = numeroGrafica(registro.m2Inicial);
     const finalM2 = numeroGrafica(registro.m2Final);
 
+    // Solo se suma si la lectura final es mayor (descarta datos incoherentes).
     if (finalM1 > inicialM1) m1 += finalM1 - inicialM1;
     if (finalM2 > inicialM2) m2 += finalM2 - inicialM2;
   });
@@ -168,6 +192,7 @@ function calcularConsumoM1M2(registros) {
   return { m1, m2 };
 }
 
+// Total de galones por máquina, de mayor a menor.
 function agruparConsumoPorMaquina(registros) {
   const mapa = new Map();
 
@@ -207,17 +232,18 @@ async function cargarTipoPorMaquina() {
       const maquina = String(x.maquina || '').trim().toUpperCase();
       if (maquina) tipoPorMaquina[maquina] = primeraPalabraCapitalizada(x.descripcion);
     });
-  } catch (_) {}
+  } catch (_) {} // Silencioso: sin este dato la columna "Tipo" dirá "Sin tipo"
 }
 
 // KPIs del periodo: consumo total, registros, promedio, alertas y maquina top.
 function renderizarKpisReporte(registros, alertas) {
   if (!kpisReporte) return;
+  // Los cierres de día no cuentan como suministros.
   const suministros = registros.filter((registro) => !esCierreDia(registro));
   const totalGalones = suministros.reduce((total, registro) => total + obtenerConsumoRegistro(registro), 0);
   const totalRegistros = suministros.length;
   const promedio = totalRegistros ? totalGalones / totalRegistros : 0;
-  const top = agruparConsumoPorMaquina(registros)[0];
+  const top = agruparConsumoPorMaquina(registros)[0]; // La de mayor consumo
 
   const tarjetas = [
     { clase: 'kpi-consumo', icon: '⛽', label: 'Consumo total', valor: `${totalGalones.toFixed(2)} GAL` },
@@ -236,8 +262,9 @@ function renderizarKpisReporte(registros, alertas) {
 }
 
 // Tendencia de consumo comparando la primera y la segunda mitad del periodo filtrado.
+// Variaciones menores al 5% se consideran "estable".
 function calcularTendencia(consumoFechas) {
-  if (consumoFechas.length < 2) return null;
+  if (consumoFechas.length < 2) return null; // Con un solo día no hay tendencia
   const mitad = Math.floor(consumoFechas.length / 2) || 1;
   const promedio = (arr) => arr.reduce((total, [, valor]) => total + valor, 0) / (arr.length || 1);
   const promedioInicial = promedio(consumoFechas.slice(0, mitad));
@@ -248,6 +275,7 @@ function calcularTendencia(consumoFechas) {
   return { tipo: variacion > 0 ? 'aumento' : 'disminucion', variacion };
 }
 
+// Muestra la tendencia como una etiqueta con flecha y porcentaje.
 function renderizarTendencia(consumoFechas) {
   if (!tendenciaConsumo) return;
   const tendencia = calcularTendencia(consumoFechas);
@@ -263,6 +291,7 @@ function renderizarTendencia(consumoFechas) {
 // Resumen de consumo por maquina: registros, galones, promedio y alertas asociadas.
 function calcularResumenPorMaquina(registros, alertas) {
   const mapa = new Map();
+  // Primera pasada: se acumulan registros y galones por máquina.
   registros.forEach((registro) => {
     const maquina = String(registro.maquina || '').trim().toUpperCase();
     if (!maquina || esCierreDia(registro)) return;
@@ -272,11 +301,13 @@ function calcularResumenPorMaquina(registros, alertas) {
     entrada.registros += 1;
     entrada.galones += Number.isFinite(consumo) ? consumo : 0;
   });
+  // Segunda pasada: se cuentan las alertas de cada máquina.
   alertas.forEach((alerta) => {
     const maquina = String(alerta.maquina || '').trim().toUpperCase();
     if (!maquina || !mapa.has(maquina)) return;
     mapa.get(maquina).alertas += 1;
   });
+  // Se agregan el tipo de máquina y el promedio por suministro.
   return [...mapa.values()].map((entrada) => ({
     ...entrada,
     tipo: tipoPorMaquina[entrada.maquina] || 'Sin tipo',
@@ -284,14 +315,16 @@ function calcularResumenPorMaquina(registros, alertas) {
   }));
 }
 
+// Ordena la tabla según el criterio elegido en el selector.
 function ordenarResumenMaquina(lista, criterio) {
-  const copia = [...lista];
+  const copia = [...lista]; // Copia para no alterar el arreglo original
   if (criterio === 'consumo-asc') return copia.sort((a, b) => a.galones - b.galones);
   if (criterio === 'registros-desc') return copia.sort((a, b) => b.registros - a.registros);
   if (criterio === 'alertas-desc') return copia.sort((a, b) => b.alertas - a.alertas);
-  return copia.sort((a, b) => b.galones - a.galones);
+  return copia.sort((a, b) => b.galones - a.galones); // Por defecto: mayor consumo primero
 }
 
+// Dibuja la tabla de consumo por máquina.
 function renderizarConsumoPorMaquina(registros, alertas) {
   if (!cuerpoConsumoMaquina) return;
   const criterio = ordenConsumoMaquina ? ordenConsumoMaquina.value : 'consumo-desc';
@@ -310,6 +343,7 @@ function renderizarConsumoPorMaquina(registros, alertas) {
 }
 
 // Resumen de alertas por categoria, usando las mismas etiquetas del panel de alertas.
+// Siempre se muestran los cuatro tipos, aunque alguno esté en cero.
 function renderizarResumenAlertasTipo(alertas) {
   if (!cuerpoResumenAlertasTipo) return;
   cuerpoResumenAlertasTipo.innerHTML = '';
@@ -333,8 +367,10 @@ function actualizarPanelesDerivados() {
   renderizarResumenAlertasTipo(alertasDelReporte);
 }
 
+// Dibuja las tres gráficas de Chart.js: consumo por fecha (línea), reparto
+// M1/M2 (barras) y consumo por máquina (barras horizontales).
 function actualizarGraficas(registros) {
-  if (typeof Chart === 'undefined') return;
+  if (typeof Chart === 'undefined') return; // La librería no cargó (CDN bloqueado)
 
   destruirGraficas();
 
@@ -348,11 +384,14 @@ function actualizarGraficas(registros) {
 
   renderizarTendencia(consumoFechas);
 
+  // Cifras del encabezado del bloque de gráficas.
   totalConsumoGrafica.textContent = totalConsumo.toFixed(2);
   resumenConsumoGrafica.textContent = totalConsumo.toFixed(2);
   resumenRegistrosGrafica.textContent = String(lista.filter((registro) => !esCierreDia(registro)).length);
   resumenMaquinaGrafica.textContent = maquinaSeleccionada.toUpperCase();
 
+  // Con búsqueda activa los títulos se personalizan y la gráfica comparativa
+  // entre máquinas se oculta (no tiene sentido con una sola máquina).
   if (busqueda) {
     subtituloGraficasReporte.textContent = `Consumo filtrado de ${busqueda.toUpperCase()}`;
     tituloGraficaConsumo.textContent = `Consumo de ${busqueda.toUpperCase()} por fecha`;
@@ -363,6 +402,7 @@ function actualizarGraficas(registros) {
     bloqueGraficaMaquinas.hidden = false;
   }
 
+  // Opciones compartidas: las gráficas se adaptan al tamaño del contenedor.
   const opcionesComunes = {
     responsive: true,
     maintainAspectRatio: false,
@@ -371,6 +411,7 @@ function actualizarGraficas(registros) {
     }
   };
 
+  // GRÁFICA 1: evolución del consumo día a día (línea con área rellena).
   graficaConsumoFecha = new Chart(document.getElementById('grafica-consumo-fecha'), {
     type: 'line',
     data: {
@@ -378,7 +419,7 @@ function actualizarGraficas(registros) {
       datasets: [{
         label: 'Galones consumidos',
         data: consumoFechas.map(([, consumo]) => Number(consumo.toFixed(2))),
-        tension: 0.25,
+        tension: 0.25, // Curvatura suave de la línea
         fill: true,
         borderColor: '#f5a524',
         backgroundColor: 'rgba(245,165,36,.14)',
@@ -389,6 +430,7 @@ function actualizarGraficas(registros) {
     options: opcionesComunes
   });
 
+  // GRÁFICA 2: cuánto salió por cada manguera del surtidor.
   graficaM1M2 = new Chart(document.getElementById('grafica-m1-m2'), {
     type: 'bar',
     data: {
@@ -409,10 +451,11 @@ function actualizarGraficas(registros) {
   // La grafica es horizontal. Ajustamos su altura segun la cantidad de
   // maquinas para que las etiquetas y las barras no se amontonen.
   if (contenedorMaquinas) {
-    const alturaMaquinas = Math.max(320, consumoMaquinas.length * 30 + 70);
+    const alturaMaquinas = Math.max(320, consumoMaquinas.length * 30 + 70); // 30 px por máquina
     contenedorMaquinas.style.height = `${alturaMaquinas}px`;
   }
 
+  // GRÁFICA 3: ranking de máquinas (barras horizontales por indexAxis:'y').
   graficaMaquinas = new Chart(canvasMaquinas, {
     type: 'bar',
     data: {
@@ -428,7 +471,7 @@ function actualizarGraficas(registros) {
     },
     options: {
       ...opcionesComunes,
-      indexAxis: 'y',
+      indexAxis: 'y', // Esto convierte las barras en horizontales
       scales: {
         x: {
           beginAtZero: true,
@@ -442,7 +485,7 @@ function actualizarGraficas(registros) {
         },
         y: {
           ticks: {
-            autoSkip: false
+            autoSkip: false // Muestra TODAS las máquinas, sin saltarse etiquetas
           }
         }
       }
@@ -462,7 +505,7 @@ function normalizarTexto(texto) {
   return String(texto || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '') // Quita los acentos separados por NFD
     .replace(/\s+/g, '');
 }
 
@@ -471,7 +514,7 @@ function filtrarRegistrosPorBusqueda(registros, textoBusqueda) {
   const busqueda = normalizarTexto(textoBusqueda);
 
   if (!busqueda) {
-    return registros;
+    return registros; // Sin búsqueda se devuelve todo
   }
 
   return registros.filter((registro) => {
@@ -498,6 +541,7 @@ async function cargarReporteGeneral() {
 
   const respuesta = await fetch(`/api/reportes-general/registros?${parametros.toString()}`);
   const registros = await respuesta.json();
+  // El filtro por texto se aplica en el navegador, no en el servidor.
   registrosMensuales = filtrarRegistrosPorBusqueda(registros, buscarMaquinaReporte.value);
   pintarVistaReporte(registrosMensuales);
   await cargarAlertasReporte();
@@ -505,8 +549,10 @@ async function cargarReporteGeneral() {
 
 // Carga los registros del mes indicado en la URL o el reporte general.
 
+// Carga y pinta la tabla de alertas del periodo.
 async function cargarAlertasReporte() {
   if (!cuerpoAlertasReporte) return;
+  // La URL depende del modo: todas las alertas o solo las del mes.
   let url='';
   if (esReporteGeneral) {
     url='/api/alertas';
@@ -519,6 +565,11 @@ async function cargarAlertasReporte() {
     cuerpoAlertasReporte.innerHTML='';
     if(!lista.length){cuerpoAlertasReporte.innerHTML='<tr><td colspan="9">No hay alertas registradas.</td></tr>';}
     else{
+      // Una fila por alerta: fecha, tipo, máquina, cifras, estado, justificación
+      // y el enlace al soporte adjunto si existe.
+      // NOTA: aquí el enlace usa reporte_ruta (ruta directa del archivo). En la
+      // pantalla de alertas se usa /api/alertas/:id/soporte, que es la vía
+      // protegida; si el adjunto no abre desde el reporte, ese es el motivo.
       lista.forEach(a=>{const fila=document.createElement('tr');const etiqueta=ETIQUETAS_TIPO_ALERTA[a.tipo_alerta]?.label||'Otra alerta';[a.fecha,etiqueta,a.maquina,Number(a.cantidad||0).toFixed(2),Number(a.capacidad_galones||0).toFixed(2),Number(a.exceso_galones||0).toFixed(2),a.estado||'pendiente',a.justificacion||'Sin justificación'].forEach(v=>{const td=document.createElement('td');td.textContent=v;fila.appendChild(td);});const td=document.createElement('td');if(a.reporte_ruta){const link=document.createElement('a');link.href=a.reporte_ruta;link.target='_blank';link.textContent='Abrir reporte';td.appendChild(link);}else td.textContent='Sin reporte';fila.appendChild(td);cuerpoAlertasReporte.appendChild(fila);});
     }
 
@@ -534,8 +585,11 @@ async function cargarAlertasReporte() {
     actualizarPanelesDerivados();
   } catch(e){console.warn('No se pudieron cargar alertas del reporte',e);}
 }
+
+// Arranque: decide qué modo mostrar y carga los datos correspondientes.
 async function cargarDetalleMensual() {
   if (esReporteGeneral) {
+    // MODO GENERAL: títulos genéricos y selector de rango visible.
     tituloReporteMensual.textContent = 'Reporte general anual';
     tituloChequeoReporte.textContent = 'Chequeo del reporte';
     tituloRegistrosReporte.textContent = 'Registros del reporte';
@@ -546,11 +600,13 @@ async function cargarDetalleMensual() {
     return;
   }
 
+  // Sin año y mes válidos no hay nada que mostrar.
   if (!anioReporte || !mesReporte) {
     tituloReporteMensual.textContent = 'Reporte no encontrado';
     return;
   }
 
+  // MODO MENSUAL: título con el nombre del mes y carga del mes concreto.
   tituloReporteMensual.textContent = `${nombresMesesDetalle[mesReporte - 1]} ${anioReporte}`;
 
   const respuesta = await fetch(`/api/reportes/${anioReporte}/${mesReporte}/registros`);
@@ -562,6 +618,8 @@ async function cargarDetalleMensual() {
 }
 
 // Filtra por maquina o por nombre del operario.
+// En modo general vuelve a consultar al servidor (porque cambió el rango);
+// en modo mensual filtra en memoria lo que ya está descargado.
 function buscarReporteMensual() {
   if (esReporteGeneral) {
     cargarReporteGeneral();
@@ -577,7 +635,7 @@ function limpiarBusquedaReporte() {
   buscarMaquinaReporte.value = '';
 
   if (esReporteGeneral) {
-    prepararRangoAnual();
+    prepararRangoAnual(); // También restablece el rango de fechas
     cargarReporteGeneral();
     return;
   }
@@ -587,6 +645,7 @@ function limpiarBusquedaReporte() {
 }
 
 // Abre todas las secciones para que el PDF incluya el reporte completo.
+// Después de imprimir se restaura cómo estaban (abiertas o cerradas).
 function exportarPdfReporte() {
   const secciones = [...document.querySelectorAll('.desplegable-reporte')];
   const estadosOriginales = secciones.map((seccion) => seccion.open);
@@ -599,11 +658,11 @@ function exportarPdfReporte() {
     secciones.forEach((seccion, indice) => {
       seccion.open = estadosOriginales[indice];
     });
-    window.removeEventListener('afterprint', restaurarSecciones);
+    window.removeEventListener('afterprint', restaurarSecciones); // Se limpia a sí mismo
   };
 
-  window.addEventListener('afterprint', restaurarSecciones);
-  window.print();
+  window.addEventListener('afterprint', restaurarSecciones); // Se dispara al cerrar la impresión
+  window.print(); // El usuario elige "Guardar como PDF"
 }
 
 // Identifica un cierre de dia de forma robusta.
@@ -611,10 +670,12 @@ function exportarPdfReporte() {
 function esCierreDia(registro) {
   const valor = registro?.cierreDia;
 
+  // Caso normal: la bandera viene marcada (en cualquiera de sus formatos).
   if (valor === true || valor === 1 || valor === '1' || valor === 'true') {
     return true;
   }
 
+  // Caso histórico: tiene las cuatro lecturas de medidores...
   const tieneLecturas = [
     registro?.m1Inicial,
     registro?.m1Final,
@@ -622,6 +683,7 @@ function esCierreDia(registro) {
     registro?.m2Final
   ].every((lectura) => lectura !== null && lectura !== undefined && String(lectura).trim() !== '');
 
+  // ...y no tiene operario ni máquina.
   const sinSuministro =
     !String(registro?.operario || '').trim() &&
     !String(registro?.maquina || '').trim();
@@ -633,8 +695,8 @@ function esCierreDia(registro) {
 // Los cierres no se eliminan: solo se separan visualmente de los suministros.
 function pintarVistaReporte(registros) {
   const lista = Array.isArray(registros) ? registros : [];
-  const cierres = lista.filter(esCierreDia);
-  const suministros = lista.filter((registro) => !esCierreDia(registro));
+  const cierres = lista.filter(esCierreDia); // Van a la tabla de mangueras
+  const suministros = lista.filter((registro) => !esCierreDia(registro)); // Van a la tabla de registros
 
   pintarChequeoReporte(lista);
   pintarRegistroDiarioMangueras(cierres);
@@ -646,6 +708,7 @@ function pintarVistaReporte(registros) {
 }
 
 // Pinta los datos del checklist guardado desde el formulario principal.
+// Solo se muestra UN checklist por fecha (el primero encontrado).
 function pintarChequeoReporte(registros) {
   cuerpoChequeoReporte.innerHTML = '';
   const chequeosPorFecha = new Map();
@@ -653,6 +716,7 @@ function pintarChequeoReporte(registros) {
   registros.forEach((registro) => {
     const tieneChequeo = registro.fugaBiodiesel || registro.sistemaElectrico || registro.paradaEmergencia;
 
+    // Se descartan los registros sin checklist y las fechas ya incluidas.
     if (!registro.fecha || !tieneChequeo || chequeosPorFecha.has(registro.fecha)) {
       return;
     }
@@ -681,6 +745,7 @@ function pintarChequeoReporte(registros) {
 
 // Pinta la lectura diaria de mangueras M1 y M2.
 function pintarRegistroDiarioMangueras(registros) {
+  // Total del periodo, mostrado en el encabezado de la sección.
   const totalMangueras = registros.reduce((total, registro) => {
     return total + (Number(registro.totalGalones) || 0);
   }, 0);
@@ -688,6 +753,7 @@ function pintarRegistroDiarioMangueras(registros) {
   totalManguerasReporte.textContent = totalMangueras.toFixed(2);
   cuerpoManguerasReporte.innerHTML = '';
 
+  // Una fila por cierre: inicial, final y galones de cada manguera, más el total.
   registros.forEach((registro) => {
     const fila = document.createElement('tr');
     const datos = [
@@ -715,7 +781,7 @@ function pintarRegistroDiarioMangueras(registros) {
 function pintarRegistrosDelMes(registros) {
   cuerpoRegistrosMes.innerHTML = '';
   cantidadRegistrosMes.textContent = registros.length;
-  mensajeRegistrosMes.hidden = registros.length > 0;
+  mensajeRegistrosMes.hidden = registros.length > 0; // Aviso de "sin registros"
 
   registros.forEach((registro) => {
     const fila = document.createElement('tr');
@@ -740,17 +806,20 @@ function pintarRegistrosDelMes(registros) {
   });
 }
 
+// --- Eventos de la pantalla -------------------------------------------------
 botonBuscarMaquina.addEventListener('click', buscarReporteMensual);
 botonLimpiarBusqueda.addEventListener('click', limpiarBusquedaReporte);
 botonExportarPdfReporte.addEventListener('click', exportarPdfReporte);
 buscarMaquinaReporte.addEventListener('keydown', (evento) => {
   if (evento.key === 'Enter') {
-    buscarReporteMensual();
+    buscarReporteMensual(); // Enter también busca
   }
 });
 
+// Cambiar el orden de la tabla no requiere volver a consultar el servidor.
 ordenConsumoMaquina?.addEventListener('change', () => renderizarConsumoPorMaquina(registrosFiltradosActuales, alertasDelReporte));
 
+// Carga inicial: primero los datos, luego el mapa de tipos de máquina.
 cargarDetalleMensual();
 cargarTipoPorMaquina().then(() => renderizarConsumoPorMaquina(registrosFiltradosActuales, alertasDelReporte));
 
@@ -765,9 +834,10 @@ setInterval(async () => {
       const respuesta = await fetch(`/api/reportes/${anioReporte}/${mesReporte}/registros`);
       const registros = await respuesta.json();
       registrosMensuales = registros;
+      // Se conserva el filtro de búsqueda que el usuario tuviera activo.
       pintarVistaReporte(filtrarRegistrosPorBusqueda(registrosMensuales, buscarMaquinaReporte.value));
     }
   } catch (error) {
     console.warn('No fue posible actualizar automaticamente el reporte:', error);
   }
-}, 10000);
+}, 10000); // Cada 10 segundos

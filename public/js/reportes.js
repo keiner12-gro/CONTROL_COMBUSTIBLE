@@ -1,8 +1,19 @@
+// ============================================================================
+// reportes.js — PANTALLA DE REPORTES (public/html/reportes.html)
+// ----------------------------------------------------------------------------
+// Tres secciones independientes:
+//   1. Cartas mensuales: una por cada mes con registros + la carta "general".
+//      Al hacer clic llevan a reporte-detalle.
+//   2. Gráfica de consumo de los últimos 7 días.
+//   3. Analítica por máquina: ranking del año con promedios y máximos.
+// ============================================================================
+
 const cartasReportes = document.getElementById('cartas-reportes');
 const botonActualizarReportes = document.getElementById('boton-actualizar-reportes');
 const botonActualizarAnalitica = document.getElementById('boton-actualizar-analitica');
 const analiticaMaquinas = document.getElementById('analitica-maquinas');
 
+// Nombres de meses para mostrar (el índice 0 corresponde a enero).
 const nombresMeses = [
   'Enero',
   'Febrero',
@@ -20,7 +31,7 @@ const nombresMeses = [
 
 // Consulta las cartas mensuales generadas automaticamente en MySQL.
 async function cargarReportes() {
-  const respuesta = await fetch('/api/reportes');
+  const respuesta = await fetch('/api/reportes'); // El servidor regenera los totales al consultarlos
   const reportes = await respuesta.json();
   pintarCartasReportes(reportes);
 }
@@ -40,12 +51,14 @@ function pintarCartasReportes(reportes) {
     <em>GENERAL</em>
   `;
 
+  // La carta general abre el detalle en modo "general" (rango libre de fechas).
   cartaGeneral.addEventListener('click', () => {
     window.location.href = 'reporte-detalle?tipo=general';
   });
 
   cartasReportes.appendChild(cartaGeneral);
 
+  // Una carta por mes con su rango, fecha de cierre, totales y estado.
   reportes.forEach((reporte) => {
     const carta = document.createElement('button');
     carta.type = 'button';
@@ -58,6 +71,7 @@ function pintarCartasReportes(reportes) {
       <em>${reporte.estado}</em>
     `;
 
+    // El año y el mes viajan por la URL hacia la pantalla de detalle.
     carta.addEventListener('click', () => {
       window.location.href = `reporte-detalle?anio=${reporte.anio}&mes=${reporte.mes}`;
     });
@@ -66,10 +80,11 @@ function pintarCartasReportes(reportes) {
 }
 
 botonActualizarReportes.addEventListener('click', cargarReportes);
-cargarReportes();
+cargarReportes(); // Carga inicial
 
 // Grafica de area con los galones despachados en los ultimos 7 dias,
 // calculada con los registros reales del año en curso.
+// (Es la misma técnica de SVG a mano que se usa en menu.js.)
 async function cargarConsumoSemanaReportes() {
   const grafica = document.getElementById('grafica-consumo-reportes');
   const vacio = document.getElementById('grafica-consumo-reportes-vacia');
@@ -80,6 +95,7 @@ async function cargarConsumoSemanaReportes() {
     if (!respuesta.ok) return;
     const registros = await respuesta.json();
 
+    // Los últimos 7 días, del más antiguo a hoy.
     const dias = [];
     for (let i = 6; i >= 0; i--) {
       const fecha = new Date();
@@ -87,6 +103,7 @@ async function cargarConsumoSemanaReportes() {
       dias.push(fecha.toISOString().slice(0, 10));
     }
 
+    // Galones por día (sin contar los cierres de día).
     const totalesPorDia = dias.map((fecha) =>
       registros
         .filter((r) => String(r.fecha || '').slice(0, 10) === fecha && !Number(r.cierreDia))
@@ -94,6 +111,7 @@ async function cargarConsumoSemanaReportes() {
     );
     const totalSemana = totalesPorDia.reduce((a, b) => a + b, 0);
 
+    // Sin datos: se oculta la gráfica y se muestra el aviso.
     if (totalSemana <= 0) {
       grafica.hidden = true;
       if (vacio) vacio.hidden = false;
@@ -102,17 +120,18 @@ async function cargarConsumoSemanaReportes() {
     grafica.hidden = false;
     if (vacio) vacio.hidden = true;
 
+    // Conversión de los valores a coordenadas del SVG.
     const ancho = 400;
     const alto = 150;
-    const maximo = Math.max(...totalesPorDia, 1);
-    const paso = ancho / (totalesPorDia.length - 1);
+    const maximo = Math.max(...totalesPorDia, 1); // Escala: el mayor llega arriba
+    const paso = ancho / (totalesPorDia.length - 1); // Distancia entre puntos
     const puntos = totalesPorDia.map((valor, indice) => {
       const x = indice * paso;
-      const y = alto - (valor / maximo) * (alto - 20) - 10;
+      const y = alto - (valor / maximo) * (alto - 20) - 10; // En SVG, Y crece hacia abajo
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
     const linea = puntos.join(' ');
-    const relleno = `0,${alto} ${linea} ${ancho},${alto}`;
+    const relleno = `0,${alto} ${linea} ${ancho},${alto}`; // Cierra el área contra la base
 
     grafica.innerHTML = `
       <polygon points="${relleno}" fill="#f5a524" opacity=".14"></polygon>
@@ -126,6 +145,8 @@ async function cargarConsumoSemanaReportes() {
 cargarConsumoSemanaReportes();
 
 
+// Ranking de las máquinas con mayor consumo del año, con barra comparativa,
+// promedio, máximo y capacidad del tanque. Se muestran las 8 primeras.
 async function cargarAnaliticaMaquinas(){
   if(!analiticaMaquinas)return;
   try{
@@ -134,11 +155,14 @@ async function cargarAnaliticaMaquinas(){
     const datos=await r.json();
     analiticaMaquinas.innerHTML='';
     if(!datos.length){analiticaMaquinas.innerHTML='<div class="estado-vacio-selector">No hay suficientes registros para mostrar análisis.</div>';return;}
-    const maxTotal=Math.max(...datos.map(x=>Number(x.totalGalones)||0),1);
+    const maxTotal=Math.max(...datos.map(x=>Number(x.totalGalones)||0),1); // Referencia del 100% de la barra
     datos.slice(0,8).forEach((x,i)=>{
       const card=document.createElement('article');
+      // Si el consumo PROMEDIO ya llega al 85% de la capacidad del tanque, la
+      // tarjeta se marca en modo advertencia (posible consumo anómalo).
       const variacion=x.capacidadGalones>0?(Number(x.promedioGalones)/Number(x.capacidadGalones))*100:0;
       const estado=variacion>=85?'advertencia':'normal';
+      // El tipo de máquina se deduce de la primera palabra de la descripción.
       const tipoMaquina=String(x.descripcion||'').trim().split(/\s+/)[0]||'';
       const tipoEtiqueta=tipoMaquina?tipoMaquina.charAt(0).toUpperCase()+tipoMaquina.slice(1).toLowerCase():'';
       card.className=`analitica-maquina-card ${estado}`;

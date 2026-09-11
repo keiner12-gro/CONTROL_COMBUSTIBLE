@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     reporte-detalle.html — DETALLE DE UN REPORTE
+     Se abre desde las cartas de reportes.html y funciona en dos modos según
+     la URL: ?tipo=general (anual) o ?anio=&mes= (mensual).
+     Secciones: buscador, indicadores, gráficas y cinco desplegables
+     (chequeo, cierres M1/M2, registros, consumo por máquina y alertas).
+     Toda la lógica está en ../js/reporte-detalle.js.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -10,6 +18,7 @@
 <body>
   <main class="pantalla">
     <!-- Encabezado de la tabla mensual seleccionada desde una carta de reportes -->
+    <!-- El <h1> cambia según el modo: "Reporte general anual" o el mes elegido -->
     <header class="encabezado encabezado-compacto">
       <div class="encabezado-control">
         <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
@@ -28,6 +37,7 @@
     <section class="panel controles-reporte">
       <div class="formulario-busqueda-reporte">
         <!-- Rango usado por el reporte general para consultar periodos continuos -->
+        <!-- Nace oculto: solo se muestra en modo general (lo destapa el JS) -->
         <div id="rango-fechas-reporte" hidden>
           <label for="fecha-inicio-reporte">Desde</label>
           <input type="date" id="fecha-inicio-reporte" autocomplete="off">
@@ -40,11 +50,13 @@
         <input type="search" id="buscar-maquina-reporte" placeholder="Escribe maquina u operario" autocomplete="off">
         <button type="button" id="boton-buscar-maquina">Buscar</button>
         <button type="button" id="boton-limpiar-busqueda">Limpiar</button>
+        <!-- "Exportar PDF" abre todos los desplegables y lanza la impresión -->
         <button type="button" id="boton-exportar-pdf-reporte">Exportar PDF</button>
       </div>
     </section>
 
     <!-- Indicadores/KPIs del periodo seleccionado -->
+    <!-- Las cinco tarjetas las genera renderizarKpisReporte() -->
     <section class="panel">
       <div class="titulo-tabla">
         <div><span class="eyebrow-dashboard">INDICADORES</span><h2>Resumen del periodo</h2></div>
@@ -53,6 +65,7 @@
     </section>
 
     <!-- Graficas automaticas del consumo -->
+    <!-- <details>/<summary>: bloque plegable nativo del navegador -->
     <details class="desplegable-reporte desplegable-graficas-reporte">
       <summary>
         <span class="icono-desplegable">📊</span>
@@ -71,6 +84,7 @@
           <strong><span id="total-consumo-grafica">0.00</span> galones</strong>
         </div>
 
+        <!-- Tres cifras de contexto sobre las gráficas -->
         <div class="resumen-graficas">
           <div class="tarjeta-grafica-resumen">
             <span>Registros</span>
@@ -86,8 +100,10 @@
           </div>
         </div>
 
+        <!-- Los tres <canvas> los dibuja Chart.js desde reporte-detalle.js -->
         <div class="contenedor-graficas-reporte">
           <article class="tarjeta-grafica">
+            <!-- El chip de tendencia (📈/📉/➖) aparece dentro de este título -->
             <h3 id="titulo-grafica-consumo">Consumo de combustible por fecha<span id="tendencia-consumo" class="tendencia-chip" hidden></span></h3>
             <div class="lienzo-grafica">
               <canvas id="grafica-consumo-fecha"></canvas>
@@ -101,6 +117,7 @@
             </div>
           </article>
 
+          <!-- Este bloque se oculta cuando hay una búsqueda activa por máquina -->
           <article class="tarjeta-grafica tarjeta-grafica-general" id="bloque-grafica-maquinas">
             <h3>Consumo acumulado por máquina</h3>
             <div class="lienzo-grafica">
@@ -112,8 +129,10 @@
     </details>
 
     <!-- Tres secciones del reporte en formato de botones desplegables -->
+    <!-- (hoy son cinco: chequeo, cierres, registros, consumo y alertas) -->
     <section class="desplegables-reporte" aria-label="Secciones del reporte">
       <!-- Chequeo del reporte -->
+      <!-- Un renglón por día con checklist diligenciado -->
       <details class="desplegable-reporte">
         <summary>
           <span class="icono-desplegable">🔍</span>
@@ -144,6 +163,7 @@
       </details>
 
       <!-- Cierre diario M1 y M2 -->
+      <!-- Solo las filas marcadas como cierre de día -->
       <details class="desplegable-reporte">
         <summary>
           <span class="icono-desplegable">⛽</span>
@@ -179,6 +199,7 @@
       </details>
 
       <!-- Registros del reporte -->
+      <!-- Los suministros del periodo (sin los cierres de día) -->
       <details class="desplegable-reporte">
         <summary>
           <span class="icono-desplegable">📋</span>
@@ -227,6 +248,7 @@
         <div class="contenido-desplegable">
           <div class="titulo-tabla">
             <h2>Consumo por máquina</h2>
+            <!-- Cambiar el orden reordena la tabla sin volver a consultar el servidor -->
             <select id="orden-consumo-maquina">
               <option value="consumo-desc">Mayor consumo</option>
               <option value="consumo-asc">Menor consumo</option>
@@ -238,7 +260,7 @@
             <thead>
               <tr>
                 <th>Máquina</th>
-                <th>Tipo</th>
+                <th>Tipo</th> <!-- Primera palabra de la descripción de la máquina -->
                 <th>Registros</th>
                 <th>Galones consumidos</th>
                 <th>Promedio por suministro</th>
@@ -251,6 +273,7 @@
         </div>
       </details>
 
+      <!-- Alertas: primero el conteo por tipo y luego el detalle completo -->
       <details class="desplegable-reporte">
         <summary><span class="icono-desplegable">⚠️</span><span class="texto-desplegable"><strong>Alertas del sistema</strong><small>Sobrecapacidad, consumo, horómetro e inspecciones</small></span><span class="flecha-desplegable" aria-hidden="true">⌄</span></summary>
         <div class="contenido-desplegable">
@@ -267,6 +290,8 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Chart.js: única pantalla que lo usa. Debe cargarse ANTES de
+       reporte-detalle.js, que configura sus colores al arrancar. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/shell.js"></script>

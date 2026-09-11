@@ -1,4 +1,23 @@
+/* ============================================================================
+   styles.css - ESTILOS BASE DE TODA LA APLICACION
+   ----------------------------------------------------------------------------
+   Hoja principal: estructura, formularios, tablas, tarjetas, menu y vistas.
+   Se carga ANTES de theme.css, que ajusta encima los colores del tema.
+   Organizacion del archivo (de arriba abajo):
+     1. Elementos base: logo, titulos, campos, botones.
+     2. Formularios administrativos (usuarios, tractores, operarios).
+     3. Arbol de permisos y tablas.
+     4. Detalle de reportes: graficas y secciones desplegables.
+     5. Impresion (@media print) para exportar a PDF.
+     6. Variables de color, encabezado, menu lateral y login.
+     7. Tarjetas de operarios/maquinas y panel de inicio.
+     8. Asistente de registro por pasos y control del surtidor.
+     9. Ajustes de SweetAlert2 y barra lateral de shell.js.
+   Las @media (max-width: ...) adaptan el diseno a tablet y celular.
+   ============================================================================ */
+
 * { box-sizing: border-box; }
+/* --- 1. ELEMENTOS BASE: marca, logo, titulos y ubicacion --- */
 /* Marca o nombre de la empresa */
 .marca { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; font-weight: 900; text-transform: uppercase; }
 /* Contenedor del logo de la empresa en los encabezados: placa clara fija
@@ -27,6 +46,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: auto; pad
 /* Estilo cuando el usuario selecciona un campo */
 input:focus { outline: 2px solid #f5a524; border-color: #f5a524; }
 select:focus { outline: 2px solid #f5a524; border-color: #f5a524; }
+/* --- 2. FORMULARIOS ADMINISTRATIVOS Y ARBOL DE PERMISOS --- */
 /* Formulario administrativo para crear usuarios */
 .formulario-usuario { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 14px; align-items: end; }
 /* Grupo de permisos que se asignan a cada usuario */
@@ -72,6 +92,7 @@ select:focus { outline: 2px solid #f5a524; border-color: #f5a524; }
 .tabla-operarios { min-width: 620px; }
 .carta-reporte strong { font-size: 20px; text-transform: uppercase; }
 .carta-reporte span { color: #5a6f62; font-weight: 700; }
+/* --- 3. DETALLE DE REPORTES: graficas y bloques desplegables --- */
 /* Graficas automaticas del detalle de reportes */
 .desplegable-graficas-reporte { margin-top: 18px; }
 .desplegable-graficas-reporte .titulo-tabla p { margin: 4px 0 0; opacity: 0.75; font-size: 0.9rem; }
@@ -114,6 +135,7 @@ select:focus { outline: 2px solid #f5a524; border-color: #f5a524; }
 /* Rango de fechas usado solamente por el reporte general anual */
 #rango-fechas-reporte { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(180px, 1fr) auto minmax(180px, 1fr); gap: 10px; align-items: center; }
 #rango-fechas-reporte[hidden] { display: none; }
+/* --- 4. TABLAS, FILTROS Y ESTADOS DE PERMISO --- */
 /* Accesos visibles pero bloqueados cuando el rol no tiene permiso */
 .sin-permiso { cursor: not-allowed; opacity: 0.5; filter: grayscale(0.2); }
 .sin-permiso:hover { transform: none; box-shadow: 0 10px 24px rgba(23,47,32,.1); }
@@ -136,6 +158,7 @@ tbody tr:hover { background: #edf5ef; }
 .hoja-firma h2 { margin-bottom: 14px; }
 .linea-firma { width: min(100%, 520px); height: 1px; margin: 16px auto 8px; background: #dfe7df; }
 .acciones-firma { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+/* --- ADAPTACION A PANTALLAS MEDIANAS (hasta 1180 px) --- */
 /* En pantallas medianas se mantienen los tres botones en fila */
 @media (max-width: 1180px) {
   .encabezado { grid-template-columns: 1fr 1fr; }
@@ -168,6 +191,7 @@ tbody tr:hover { background: #edf5ef; }
   .tarjeta-grafica:last-child { page-break-after: auto; }
   .acciones-registro, .registros th:last-child, .registros td:last-child { display: none; }
 }
+/* --- 5. PANEL DE ALERTAS: tarjetas, insignias y filtros por tipo --- */
 .notificacion-item p { margin:8px 0 12px }
 .notificacion-item button { padding:8px 12px }
 .campo-voz-maquina input { width: 100%; box-sizing: border-box; }
@@ -259,6 +283,7 @@ input:focus,select:focus,textarea:focus { outline:0;border-color:#f5a524!importa
 .prioridad-alerta.media-alta { background:var(--cc-naranja-suave);color:#a85818 }
 .prioridad-alerta.media { background:var(--cc-amarillo-suave);color:#7f6121 }
 .prioridad-alerta.seguimiento { background:var(--cc-morado-suave);color:#5b4a8f }
+/* --- 6. MENU LATERAL DESLIZANTE (cajon movil que arma shell.js) --- */
 .ubicacion-compacta strong, .ubicacion-compacta span { white-space: nowrap; }
 .menu-overlay { position: fixed; z-index: 9998; inset: 0; background: rgba(0, 0, 0, .58); opacity: 0; transition: opacity .22s ease; }
 .menu-overlay.visible { opacity: 1; }
@@ -312,6 +337,8 @@ body.menu-lateral-abierto { overflow: hidden; }
    Capa de mejoras visuales sin modificar la lógica JS.
    ========================================================== */
 :root { --brand: #d96a3d; --brand-soft: #f9ece6; --ink: #183327; --muted: #5a6f62; --line: #dfe7df; --surface: #ffffff; --shadow: 0 12px 28px rgba(23,47,32,.08); --brand-dark: #c95d33; --brand-soft-2: #edf4fb; --accent: #d96a3d; --accent-soft: #f9ece6; --danger: #d95a4a; --surface-2: #f7faf7; --shadow-soft: 0 12px 28px rgba(23,47,32,.08); --shadow-card: 0 12px 28px rgba(23,47,32,.08); }
+/* Segundo juego de variables (--brand, --ink, --line...). Conviven con las
+   --cc-* de theme.css: ambas se usan en distintas partes del CSS. */
 html { scroll-behavior: smooth; }
 /* Configuracion general de la pagina */
 body { margin: 0; min-height: 100vh; padding: 20px; background: linear-gradient(180deg, #f4f6f3 0%, #edf1ee 100%); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
@@ -397,6 +424,7 @@ tbody tr:hover td { background: #edf5ef; }
 .menu-item-lateral.activo { background: linear-gradient(90deg, #eaf3eb, #dfeee1); color: #2d5a41; box-shadow: inset 0 0 0 1px rgba(79,139,94,.12), 0 5px 14px rgba(23,47,32,.06); }
 .menu-alerta-badge { width: 10px; height: 10px; margin-left: auto; border-radius: 50%; background: #f5a524; box-shadow: 0 0 0 3px rgba(245,165,36,.2); }
 .menu-lateral-pie { margin-top: auto; padding: 18px 0 20px; border-top: 1px solid rgba(255,255,255,.1); border-color: rgba(255,255,255,.1); }
+/* --- 7. PANTALLA DE LOGIN Y VENTANA DE FIRMA --- */
 /* Login: aspecto más limpio y centrado. */
 .pagina-login { display: grid; place-items: center; overflow-x: hidden; padding: 18px; background: linear-gradient(180deg, #f4f6f3 0%, #edf1ee 100%); }
 /* Contenedor que centra la tarjeta del login */
@@ -539,6 +567,7 @@ tbody tr:hover td { background: #edf5ef; }
   .cartas-registros { grid-template-columns: 1fr; gap: 12px; }
   .carta-registro { padding: 15px; }
 }
+/* --- 8. PANEL DE INICIO: saludo, indicadores, ranking y graficas --- */
 /* ===== V2 UX móvil / flujo guiado ===== */
 .subtitulo-encabezado { margin:2px 0 0;color:var(--muted);font-size:12px;font-weight:600 }
 .bienvenida-dashboard { display:flex;justify-content:space-between;align-items:center;gap:20px;padding:26px 4px 18px }
@@ -632,6 +661,7 @@ tbody tr:hover td { background: #edf5ef; }
 .consejo-dashboard { display:flex;gap:12px;align-items:center;color:var(--ink);background:#ffffff;border:1px solid var(--line) }
 .consejo-dashboard>span { font-size:22px }
 .consejo-dashboard p { margin:3px 0 0;font-size:11px;color:var(--muted) }
+/* --- 9. ASISTENTE DE REGISTRO POR PASOS (index.html) --- */
 .flujo-registro { margin-top:12px }
 .pasos-registro { display:flex;align-items:center;justify-content:center;gap:0;margin:0 auto 16px;max-width:680px }
 .paso-registro { position:relative;display:flex;align-items:center;gap:7px;color:#5a6f62;font-size:10px;font-weight:800;padding:0 18px }
@@ -681,6 +711,7 @@ tbody tr:hover td { background: #edf5ef; }
 .confirmacion-linea div { display:grid;gap:2px }
 .confirmacion-linea small,.confirmacion-linea em { font-size:10px;color:var(--muted);font-style:normal }
 .confirmacion-linea strong { font-size:13px;color:var(--ink) }
+/* --- 10. CONTROL DEL SURTIDOR: mangueras M1/M2, total y checklist --- */
 .control-surtidor { margin-top:16px }
 .seccion-surtidor-titulo { display:flex;justify-content:space-between;gap:20px;align-items:flex-start }
 .seccion-surtidor-titulo h2 { margin:4px 0;font-size:19px;color:var(--ink) }
@@ -713,6 +744,7 @@ tbody tr:hover td { background: #edf5ef; }
 .checklist-grid label>span { display:inline-flex;gap:5px;font-weight:600 }
 .checklist-grid input[type=date] { min-height:38px }
 .nav-movil-inferior { display:none }
+/* --- ADAPTACION A CELULAR: una columna y barra de navegacion inferior --- */
 @media(max-width:700px) {
   .pantalla { padding:10px 10px 84px }
   .encabezado { padding:10px 8px }

@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     cambiar-contrasena.html — CAMBIO OBLIGATORIO DE CONTRASEÑA
+     El sistema envía aquí automáticamente a quien entra con la clave temporal
+     123456. Lógica en ../js/cambiar-contrasena.js.
+     ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -7,6 +12,7 @@
   <link rel="stylesheet" href="../css/theme.css">
   <title>Cambiar contraseña</title>
 </head>
+<!-- Reutiliza el mismo estilo visual de la pantalla de login -->
 <body class="pagina-login">
   <main class="contenedor-login">
     <section class="panel tarjeta-login">
@@ -15,26 +21,31 @@
       </div>
       <p>Por seguridad, debes cambiar la contraseña temporal <strong>123456</strong> antes de continuar.</p>
       <form id="formulario-cambiar-contrasena" autocomplete="off">
+        <!-- Contraseña actual: el servidor la valida antes de permitir el cambio -->
         <div>
           <label for="contrasena-actual">Contraseña actual</label>
           <input type="password" id="contrasena-actual" autocomplete="current-password" required>
         </div>
+        <!-- minlength="6" es la validación del navegador; el servidor la repite -->
         <div>
           <label for="nueva-contrasena">Nueva contraseña</label>
           <input type="password" id="nueva-contrasena" autocomplete="new-password" minlength="6" required>
         </div>
+        <!-- Confirmación: el JS verifica que ambas coincidan -->
         <div>
           <label for="confirmar-contrasena">Confirmar nueva contraseña</label>
           <input type="password" id="confirmar-contrasena" autocomplete="new-password" minlength="6" required>
         </div>
+        <!-- Línea donde se escriben los mensajes de error -->
         <p class="mensaje-login" id="mensaje-cambiar-contrasena"></p>
         <button type="submit">Cambiar contraseña y continuar</button>
+        <!-- Salida de emergencia: cerrarSesion() está definida en auth.js -->
         <button type="button" class="boton-sesion" onclick="cerrarSesion()">Cerrar sesión</button>
       </form>
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="../js/auth.js"></script>
+  <script src="../js/auth.js"></script> <!-- Utilidades de sesión y alertas -->
   <script src="../js/cambiar-contrasena.js"></script>
 </body>
 </html>
