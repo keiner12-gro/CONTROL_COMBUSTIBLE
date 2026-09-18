@@ -25,15 +25,15 @@ function crearRutasUsuarios(service, db) {
   const router = express.Router(); // Router aislado que se monta en server.js
 
   // --- POST /api/login: única ruta pública de la API -----------------------
-  router.post('/login', limitarIntentosLogin, async (req, res, next) => {
+  router.post('/login', limitarIntentosLogin(db), async (req, res, next) => {
     try {
       const resultadoLogin = await service.login(req.body.usuario, req.body.contrasena);
       if (!resultadoLogin) {
-        registrarIntentoLoginFallido(req); // Suma un intento al contador anti fuerza bruta
+        await registrarIntentoLoginFallido(db, req); // Suma un intento al contador anti fuerza bruta
         // Mensaje genérico a propósito: no revela si falló el usuario o la clave.
         return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
       }
-      limpiarIntentosLogin(req); // Login correcto: se reinicia el contador
+      await limpiarIntentosLogin(db, req); // Login correcto: se reinicia el contador
       // Permisos del usuario (con respaldo por si el repositorio no los trajo).
       const permisos =
         (await service.repository?.getPermissions?.(resultadoLogin.id, resultadoLogin.rol)) ||

@@ -4,18 +4,31 @@
 // Dos responsabilidades principales:
 //   1. create(): crear la alerta evitando duplicados.
 //   2. update(): justificar una alerta, validando y guardando en disco el
-//      archivo de soporte adjunto (PDF o imagen).
+//      archivo de soporte adjunto (PDF o imagen) mediante la capa de storage.
 // PARA CAMBIAR LOS TIPOS DE ARCHIVO O EL PESO MÁXIMO permitidos en el soporte
-// -> arreglo "permitidos" y la validación de 8 MB dentro de update().
+// -> arreglo "permitidos" y la constante MAX_SOPORTE_BYTES.
 // ============================================================================
 
-const fs = require('fs/promises'); // Escritura de archivos en disco (versión con promesas)
-const path = require('path'); // Rutas del sistema de archivos
-const crypto = require('crypto'); // Sufijo aleatorio para los nombres de archivo
+// Peso máximo del soporte. Vercel rechaza cuerpos de más de 4,5 MB y el archivo
+// viaja en base64 (+33 %), por eso el límite real es 3 MB. Si se cambia aquí,
+// cambiar también el texto y la validación en public/js/alertas.js.
+const MAX_SOPORTE_BYTES = 3 * 1024 * 1024;
+
+// Comprueba que los primeros bytes del archivo correspondan al tipo declarado
+// (no basta con confiar en el tipo MIME que manda el navegador).
+function coincideFirma(mime, b) {
+  if (mime === 'application/pdf') return b.subarray(0, 5).toString('latin1') === '%PDF-';
+  if (mime === 'image/png') return b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (mime === 'image/jpeg') return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  if (mime === 'image/webp')
+    return b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP';
+  return false;
+}
 
 class AlertService {
-  constructor(repository) {
+  constructor(repository, storage) {
     this.repository = repository;
+    this.storage = storage; // Capa de almacenamiento (ver shared/infrastructure/storage.js)
   }
 
   // Todas las alertas (la pantalla las filtra en el navegador).
@@ -73,10 +86,16 @@ class AlertService {
           status: 400
         });
 
-      // VALIDACIÓN 2: peso máximo 8 MB y archivo no vacío.
+      // VALIDACIÓN 2: peso máximo 3 MB y archivo no vacío.
       const buffer = Buffer.from(data || '', 'base64');
-      if (!buffer.length || buffer.length > 8 * 1024 * 1024)
-        throw Object.assign(new Error('El reporte debe pesar máximo 8 MB.'), { status: 400 });
+      if (!buffer.length || buffer.length > MAX_SOPORTE_BYTES)
+        throw Object.assign(new Error('El reporte debe pesar máximo 3 MB.'), { status: 400 });
+
+      // VALIDACIÓN 2b: el contenido real debe coincidir con el tipo declarado.
+      if (!coincideFirma(mime, buffer))
+        throw Object.assign(new Error('El contenido del archivo no corresponde a su tipo.'), {
+          status: 400
+        });
 
       // Extensión deducida del tipo real, no del nombre que envió el usuario.
       const ext =
@@ -90,14 +109,11 @@ class AlertService {
         /[^a-zA-Z0-9._-]/g,
         '_'
       );
-      // Nombre físico único: marca de tiempo + aleatorio + nombre limpio.
-      const nombre = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${nombreOriginal}`;
-      const carpeta = path.join(__dirname, '../../../uploads/reportes_alertas');
-      await fs.mkdir(carpeta, { recursive: true }); // Crea la carpeta si no existe
-      await fs.writeFile(path.join(carpeta, nombre), buffer);
+      // Se guarda mediante la capa de almacenamiento y se conserva la ruta devuelta.
+      const ruta = await this.storage.guardar(buffer, { nombre: nombreOriginal, tipo: mime });
 
       actualizado.reporteNombre = nombreOriginal; // Nombre que se muestra al usuario
-      actualizado.reporteRuta = `/uploads/reportes_alertas/${nombre}`; // Ubicación real
+      actualizado.reporteRuta = ruta; // Ubicación real (db:<id>)
       actualizado.reporteTipo = mime;
     }
 

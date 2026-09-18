@@ -167,10 +167,48 @@ function crearRutasAuditoria(db) {
     }
   });
 
+  // --- GET /api/auditoria/export: descarga en CSV -------------------------
+  // Va ANTES de '/auditoria/:id' para que Express no la tome como id="export".
+  router.get('/auditoria/export', getAuditoriaAccess, async (req, res, next) => {
+    try {
+      const filtros = buildFiltros(req); // Exporta respetando los filtros activos
+      const sql = `SELECT a.id, a.usuario, a.rol, a.accion, a.modulo, a.registro_id, a.detalle, a.creado_en FROM auditoria_combustible a WHERE 1=1 ${filtros.condiciones.length ? `AND ${filtros.condiciones.join(' AND ')}` : ''} ORDER BY a.creado_en DESC`;
+      const [rows] = await db.query(sql, filtros.parametros);
+      // Primera fila del CSV: los encabezados de columna.
+      const csv = [
+        ['id', 'usuario', 'rol', 'accion', 'modulo', 'registro_id', 'fecha', 'detalle']
+      ];
+
+      rows.forEach((fila) => {
+        csv.push([
+          fila.id,
+          fila.usuario || '',
+          fila.rol || '',
+          fila.accion || '',
+          fila.modulo || '',
+          fila.registro_id || '',
+          fila.creado_en || '',
+          JSON.stringify(parseDetalle(fila.detalle))
+        ]);
+      });
+
+      // Cada celda se encierra en comillas y las comillas internas se duplican
+      // ("") según el estándar CSV, para que no se rompan las columnas.
+      const contenido = csv
+        .map((fila) => fila.map((valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="auditoria_combustible.csv"'); // attachment = fuerza la descarga
+      res.send(contenido);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // --- GET /api/auditoria/:id: un evento concreto -------------------------
-  // OJO: esta ruta va antes que /auditoria/export en el archivo, y Express
-  // resuelve por orden de declaración; ten presente ese detalle si alguna vez
-  // agregas rutas con nombre fijo debajo de esta.
+  // OJO: Express resuelve por orden de declaración. Cualquier ruta con nombre
+  // fijo (como /auditoria/export) debe declararse ARRIBA de esta.
   router.get('/auditoria/:id', getAuditoriaAccess, async (req, res, next) => {
     try {
       const [rows] = await db.query(
@@ -266,48 +304,6 @@ function crearRutasAuditoria(db) {
       });
 
       res.json({ mensaje: 'Registro de auditoría eliminado.' });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // --- GET /api/auditoria/export: descarga en CSV -------------------------
-  // ATENCIÓN: esta ruta está declarada DESPUÉS de '/auditoria/:id', y Express
-  // evalúa en orden, así que una petición a /api/auditoria/export entra por
-  // '/auditoria/:id' con id="export". Si algún día necesitas que la exportación
-  // funcione, mueve este bloque ARRIBA de la ruta '/auditoria/:id'.
-  router.get('/auditoria/export', getAuditoriaAccess, async (req, res, next) => {
-    try {
-      const filtros = buildFiltros(req); // Exporta respetando los filtros activos
-      const sql = `SELECT a.id, a.usuario, a.rol, a.accion, a.modulo, a.registro_id, a.detalle, a.creado_en FROM auditoria_combustible a WHERE 1=1 ${filtros.condiciones.length ? `AND ${filtros.condiciones.join(' AND ')}` : ''} ORDER BY a.creado_en DESC`;
-      const [rows] = await db.query(sql, filtros.parametros);
-      // Primera fila del CSV: los encabezados de columna.
-      const csv = [
-        ['id', 'usuario', 'rol', 'accion', 'modulo', 'registro_id', 'fecha', 'detalle']
-      ];
-
-      rows.forEach((fila) => {
-        csv.push([
-          fila.id,
-          fila.usuario || '',
-          fila.rol || '',
-          fila.accion || '',
-          fila.modulo || '',
-          fila.registro_id || '',
-          fila.creado_en || '',
-          JSON.stringify(parseDetalle(fila.detalle))
-        ]);
-      });
-
-      // Cada celda se encierra en comillas y las comillas internas se duplican
-      // ("") según el estándar CSV, para que no se rompan las columnas.
-      const contenido = csv
-        .map((fila) => fila.map((valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="auditoria_combustible.csv"'); // attachment = fuerza la descarga
-      res.send(contenido);
     } catch (error) {
       next(error);
     }

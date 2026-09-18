@@ -8,11 +8,25 @@
 // y se creará sola en local y en producción sin ejecutar SQL a mano.
 // ============================================================================
 
-const fs = require('fs'); // Lectura de archivos (data/maquinaria.json) y creación de carpetas
+const fs = require('fs'); // Lectura de archivos (data/maquinaria.json)
 const path = require('path'); // Construcción de rutas del sistema de archivos
 const { hashPassword, esHashSeguro } = require('./security'); // Para migrar contraseñas antiguas
 
+// Versión del esquema. SUBE ESTE VALOR cada vez que agregues tablas/columnas
+// en prepararTablas(): el arranque compara con la versión guardada en la base
+// y, si ya coincide, se salta todo el trabajo (arranques en frío rápidos en Vercel).
+const VERSION_ESQUEMA = '2026-09-18-a';
+
 async function prepararTablas(db) {
+  // La tabla de configuración se crea primero: guarda la versión del esquema.
+  await db.query(
+    `CREATE TABLE IF NOT EXISTS configuracion_combustible(clave VARCHAR(100) PRIMARY KEY,valor VARCHAR(255) NOT NULL)`
+  );
+  const [versionGuardada] = await db.query(
+    `SELECT valor FROM configuracion_combustible WHERE clave='schema_version' LIMIT 1`
+  );
+  if (versionGuardada[0]?.valor === VERSION_ESQUEMA) return; // Esquema al día: nada que hacer
+
   // Helper: agrega una columna e ignora el error si ya existe.
   // Es la forma de "migrar" el esquema sin scripts manuales.
   const agregarColumnaSiFalta = async (tabla, columna, definicion) => {
@@ -165,20 +179,30 @@ async function prepararTablas(db) {
     `CREATE TABLE IF NOT EXISTS auditoria_combustible(id BIGINT AUTO_INCREMENT PRIMARY KEY,usuario_id INT NULL,usuario VARCHAR(80),rol VARCHAR(40),accion VARCHAR(40) NOT NULL,modulo VARCHAR(60) NOT NULL,registro_id BIGINT NULL,detalle JSON NULL,creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX idx_auditoria_fecha(creado_en),INDEX idx_auditoria_modulo(modulo),FOREIGN KEY(usuario_id) REFERENCES usuarios_combustible(id) ON DELETE SET NULL)`
   );
 
+  // --- TABLA soportes_combustible: archivos adjuntos de las alertas ---------
+  // Provisional hasta migrar a Cloudflare R2 (ver shared/infrastructure/storage.js).
+  await db.query(
+    `CREATE TABLE IF NOT EXISTS soportes_combustible(id BIGINT AUTO_INCREMENT PRIMARY KEY,nombre VARCHAR(255) NOT NULL,tipo VARCHAR(100) NOT NULL,contenido LONGBLOB NOT NULL,creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
+  );
+
+  // --- TABLA intentos_login_combustible: contador anti fuerza bruta ---------
+  await db.query(
+    `CREATE TABLE IF NOT EXISTS intentos_login_combustible(clave VARCHAR(250) PRIMARY KEY,intentos INT NOT NULL,primer_intento DATETIME NOT NULL)`
+  );
+
   await sincronizarMaquinariaInicial(db); // Carga inicial del catálogo de máquinas
-  // Carpeta donde se guardan los soportes adjuntos de las alertas.
-  fs.mkdirSync(path.join(__dirname, '../../../uploads/reportes_alertas'), { recursive: true });
+
+  // Todo listo: se guarda la versión para no repetir este trabajo en el próximo arranque.
+  await db.query(
+    `INSERT INTO configuracion_combustible(clave,valor) VALUES('schema_version',?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,
+    [VERSION_ESQUEMA]
+  );
 }
 
 // Carga por única vez el listado de maquinaria desde data/maquinaria.json.
 // Se ejecuta una sola vez gracias a la marca guardada en configuracion_combustible;
 // para volver a importar hay que borrar esa fila ('maquinaria_excel_2026_08').
 async function sincronizarMaquinariaInicial(db) {
-  const [marcadores] = await db.query(`SELECT COUNT(*) AS total FROM usuarios_combustible`);
-  // La sincronización se controla mediante una tabla de configuración mínima.
-  await db.query(
-    `CREATE TABLE IF NOT EXISTS configuracion_combustible(clave VARCHAR(100) PRIMARY KEY,valor VARCHAR(255) NOT NULL)`
-  );
   const [estado] = await db.query(
     `SELECT valor FROM configuracion_combustible WHERE clave='maquinaria_excel_2026_08' LIMIT 1`
   );
@@ -190,11 +214,14 @@ async function sincronizarMaquinariaInicial(db) {
   if (!Array.isArray(maquinaria) || !maquinaria.length) return; // Archivo vacío o mal formado
 
   // Todo dentro de una transacción: o se importa completo o no se importa nada.
-  await db.query('START TRANSACTION');
+  // Se usa UNA conexión dedicada: con el pool, cada query podría caer en una
+  // conexión distinta y START TRANSACTION/COMMIT no tendrían efecto real.
+  const conexion = await db.getConnection();
   try {
-    await db.query('DELETE FROM tractores'); // Reemplazo total del catálogo
+    await conexion.beginTransaction();
+    await conexion.query('DELETE FROM tractores'); // Reemplazo total del catálogo
     for (const equipo of maquinaria) {
-      await db.query(
+      await conexion.query(
         'INSERT INTO tractores(item,maquina,descripcion,centro_costo,capacidad_galones) VALUES(?,?,?,?,?)',
         [
           equipo.item,
@@ -206,15 +233,17 @@ async function sincronizarMaquinariaInicial(db) {
       );
     }
     // Deja la marca para que esta importación no se repita en el próximo arranque.
-    await db.query(
+    await conexion.query(
       `INSERT INTO configuracion_combustible(clave,valor) VALUES('maquinaria_excel_2026_08',?)`,
       [String(maquinaria.length)]
     );
-    await db.query('COMMIT');
+    await conexion.commit();
     console.log(`Maquinaria inicial sincronizada: ${maquinaria.length} equipos.`);
   } catch (error) {
-    await db.query('ROLLBACK'); // Deshace la importación parcial ante cualquier fallo
+    await conexion.rollback(); // Deshace la importación parcial ante cualquier fallo
     throw error;
+  } finally {
+    conexion.release(); // Devuelve la conexión al pool
   }
 }
 

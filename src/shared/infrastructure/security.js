@@ -2,7 +2,7 @@
 // security.js — SEGURIDAD: CONTRASEÑAS, SESIONES Y PERMISOS
 // ----------------------------------------------------------------------------
 // Todo lo relacionado con "quién eres" y "qué puedes hacer" vive aquí:
-//  1. Freno de fuerza bruta en el login.
+//  1. Freno de fuerza bruta en el login (contador en la base de datos).
 //  2. Cifrado y verificación de contraseñas (scrypt).
 //  3. Creación/destrucción de sesiones con cookie HttpOnly.
 //  4. Middlewares de permisos usados por los routers (requirePermission...).
@@ -16,11 +16,11 @@ const COOKIE_NAME = 'cc_session'; // Nombre de la cookie donde viaja el token de
 const SESSION_HOURS = 8; // Duración de la sesión en horas (jornada laboral)
 
 // Protección contra fuerza bruta en /api/login: bloquea por IP+usuario tras
-// varios intentos fallidos dentro de una ventana de tiempo. En memoria por
-// instancia; es una capa de defensa adicional, no un reemplazo de un WAF.
+// varios intentos fallidos dentro de una ventana de tiempo. El contador vive en
+// la tabla intentos_login_combustible (y no en memoria) porque en Vercel cada
+// petición puede caer en una instancia distinta que no comparte memoria.
 const LOGIN_MAX_INTENTOS = 8; // Intentos fallidos permitidos antes de bloquear
 const LOGIN_VENTANA_MS = 15 * 60 * 1000; // Ventana de 15 minutos para contar esos intentos
-const intentosLogin = new Map(); // Contador en memoria: "ip:usuario" -> { count, primerIntento }
 
 // Arma la llave del contador combinando IP real y nombre de usuario.
 // Así un atacante no bloquea a otros usuarios desde otra IP.
@@ -31,43 +31,60 @@ function claveIntentoLogin(req) {
   const usuario = String(req.body?.usuario || '')
     .trim()
     .toLowerCase(); // Normaliza para que "Juan" y "juan" cuenten igual
-  return `${ip}:${usuario}`;
+  return `${ip}:${usuario}`.slice(0, 250);
 }
 
 // Middleware que se pone ANTES del login: corta la petición si ya se superó el límite.
-function limitarIntentosLogin(req, res, next) {
-  if (intentosLogin.size > 5000) intentosLogin.clear(); // Válvula de escape para no llenar la memoria
-  const clave = claveIntentoLogin(req);
-  const ahora = Date.now();
-  const registro = intentosLogin.get(clave);
-
-  // Bloquea solo si los intentos están dentro de la ventana y superan el máximo.
-  if (
-    registro &&
-    ahora - registro.primerIntento < LOGIN_VENTANA_MS &&
-    registro.count >= LOGIN_MAX_INTENTOS
-  ) {
-    const restanteMin = Math.ceil((LOGIN_VENTANA_MS - (ahora - registro.primerIntento)) / 60000);
-    return res.status(429).json({
-      // 429 = demasiadas peticiones
-      mensaje: `Demasiados intentos fallidos. Intenta de nuevo en ${restanteMin} minuto(s).`
-    });
-  }
-  next();
+// Si la base falla no se bloquea a nadie (el login mismo fallaría igual).
+function limitarIntentosLogin(db) {
+  return async (req, res, next) => {
+    try {
+      const [filas] = await db.query(
+        'SELECT intentos, TIMESTAMPDIFF(SECOND, primer_intento, NOW()) AS segundos FROM intentos_login_combustible WHERE clave=?',
+        [claveIntentoLogin(req)]
+      );
+      const registro = filas[0];
+      // Bloquea solo si los intentos están dentro de la ventana y superan el máximo.
+      if (
+        registro &&
+        registro.segundos * 1000 < LOGIN_VENTANA_MS &&
+        registro.intentos >= LOGIN_MAX_INTENTOS
+      ) {
+        const restanteMin = Math.ceil((LOGIN_VENTANA_MS - registro.segundos * 1000) / 60000);
+        return res.status(429).json({
+          // 429 = demasiadas peticiones
+          mensaje: `Demasiados intentos fallidos. Intenta de nuevo en ${restanteMin} minuto(s).`
+        });
+      }
+    } catch (error) {
+      console.error('Rate limit de login no disponible:', error.message);
+    }
+    next();
+  };
 }
 
 // Suma un intento fallido. Si la ventana ya venció, reinicia el contador.
-function registrarIntentoLoginFallido(req) {
-  const clave = claveIntentoLogin(req);
-  const ahora = Date.now();
-  const registro = intentosLogin.get(clave);
-  if (registro && ahora - registro.primerIntento < LOGIN_VENTANA_MS) registro.count += 1;
-  else intentosLogin.set(clave, { count: 1, primerIntento: ahora });
+async function registrarIntentoLoginFallido(db, req) {
+  try {
+    await db.query(
+      `INSERT INTO intentos_login_combustible(clave,intentos,primer_intento) VALUES(?,1,NOW())
+       ON DUPLICATE KEY UPDATE
+         intentos = IF(TIMESTAMPDIFF(SECOND, primer_intento, NOW()) >= ?, 1, intentos + 1),
+         primer_intento = IF(TIMESTAMPDIFF(SECOND, primer_intento, NOW()) >= ?, NOW(), primer_intento)`,
+      [claveIntentoLogin(req), LOGIN_VENTANA_MS / 1000, LOGIN_VENTANA_MS / 1000]
+    );
+  } catch (error) {
+    console.error('No se pudo registrar el intento de login:', error.message);
+  }
 }
 
 // Borra el contador cuando el usuario acierta la contraseña.
-function limpiarIntentosLogin(req) {
-  intentosLogin.delete(claveIntentoLogin(req));
+async function limpiarIntentosLogin(db, req) {
+  try {
+    await db.query('DELETE FROM intentos_login_combustible WHERE clave=?', [claveIntentoLogin(req)]);
+  } catch (error) {
+    console.error('No se pudo limpiar el contador de login:', error.message);
+  }
 }
 
 // Convierte una contraseña en texto plano a un hash seguro con scrypt.

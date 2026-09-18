@@ -26,7 +26,14 @@ Sistema de control diario de combustible con Node.js, Express y MySQL/MariaDB.
 4. Ejecuta `npm start`.
 5. Abre `http://localhost:3000`.
 
-La aplicación crea/migra las tablas necesarias al iniciar. Si ya existen usuarios con contraseñas antiguas en texto plano, el esquema las convierte a hash scrypt.
+La aplicación crea/migra las tablas necesarias al iniciar (solo cuando cambia `VERSION_ESQUEMA` en `src/shared/infrastructure/schema.js`; si agregas tablas o columnas, sube ese valor). Si ya existen usuarios con contraseñas antiguas en texto plano, el esquema las convierte a hash scrypt.
+
+## Despliegue en Vercel
+
+- Variables de entorno obligatorias en Vercel: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (y `DB_PORT` si no es 4000). Vercel define `NODE_ENV=production` por sí mismo.
+- El disco de Vercel es de solo lectura: los soportes de alertas se guardan en la base (`soportes_combustible`) mediante `src/shared/infrastructure/storage.js`. Máximo 3 MB por archivo (Vercel limita el cuerpo a 4,5 MB). Para migrar a Cloudflare R2 solo hay que reemplazar `guardar()` y `leer()` en ese archivo.
+- El límite de intentos de login se guarda en la tabla `intentos_login_combustible` (funciona entre instancias serverless).
+- La carpeta `uploads/` y los archivos `data/usuarios.json` y `data/registros.json` ya no se versionan (están en `.gitignore`).
 
 ## Seguridad
 

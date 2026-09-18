@@ -3,3 +3,10 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Archivos subidos en local (en produccion se guardan en la base / R2)
+uploads/
+
+# Datos locales de prueba (contienen contrasenas en texto plano)
+data/usuarios.json
+data/registros.json

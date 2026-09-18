@@ -2,7 +2,7 @@
 // alert.routes.js (INFRAESTRUCTURA) — ENDPOINTS HTTP DE ALERTAS
 // ----------------------------------------------------------------------------
 //   GET /api/alertas                    -> todas las alertas
-//   GET /api/alertas/:id/soporte        -> descarga protegida del adjunto
+//   GET /api/alertas/:id/soporte        -> descarga protegida del adjunto (vía storage)
 //   GET /api/alertas/reportes/:anio/:mes-> alertas de un mes
 //   GET /api/notificaciones             -> avisos de la campanita por rol
 //   PUT /api/notificaciones/:id/leida   -> marcar aviso como leído
@@ -11,15 +11,10 @@
 // ============================================================================
 
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const { requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
-// Carpeta física donde viven los soportes subidos.
-const CARPETA_SOPORTES = path.join(__dirname, '../../../uploads');
-
-function crearRutasAlertas(service, db) {
+function crearRutasAlertas(service, db, storage) {
   const router = express.Router();
 
   // --- GET /api/alertas: listado completo ---------------------------------
@@ -39,21 +34,17 @@ function crearRutasAlertas(service, db) {
       if (!alerta || !alerta.reporte_ruta)
         return res.status(404).json({ mensaje: 'Esta alerta no tiene un soporte adjunto.' });
 
-      // La ruta guardada es "/uploads/reportes_alertas/archivo.pdf": se le quita
-      // el prefijo para armar la ruta física real.
-      const rutaRelativa = String(alerta.reporte_ruta).replace(/^\/?uploads\//, '');
-      const rutaAbsoluta = path.join(CARPETA_SOPORTES, rutaRelativa);
-
-      // Evita path traversal: la ruta resuelta debe quedar dentro de la carpeta de soportes.
-      if (!rutaAbsoluta.startsWith(CARPETA_SOPORTES + path.sep))
-        return res.status(400).json({ mensaje: 'Ruta de soporte inválida.' });
-      if (!fs.existsSync(rutaAbsoluta))
+      // La ruta guardada es "db:<id>" (o una ruta vieja /uploads/...); la capa
+      // de storage sabe leer ambos formatos.
+      const archivo = await storage.leer(alerta.reporte_ruta);
+      if (!archivo)
         return res.status(404).json({ mensaje: 'El archivo de soporte ya no está disponible.' });
 
       // Se limpia el nombre para que no rompa la cabecera HTTP.
       const nombreDescarga = String(alerta.reporte_nombre || 'soporte').replace(/[^\w.\- ]/g, '_');
       res.setHeader('Content-Disposition', `inline; filename="${nombreDescarga}"`); // inline = se abre en el navegador
-      res.sendFile(rutaAbsoluta);
+      res.setHeader('Content-Type', alerta.reporte_tipo || 'application/octet-stream');
+      res.send(archivo.buffer);
     } catch (error) {
       next(error);
     }
