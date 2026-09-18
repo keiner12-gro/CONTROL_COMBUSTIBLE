@@ -3,8 +3,8 @@
 // ----------------------------------------------------------------------------
 // Consulta la bitácora del sistema: quién hizo qué, cuándo y en qué módulo.
 // Incluye filtros (fechas, usuario, acción, módulo, búsqueda libre), tarjetas
-// de resumen, paginación, ventana de detalle con "antes/después" y, solo para
-// el super administrador, las acciones de modificar y eliminar eventos.
+// de resumen, paginación y ventana de detalle con "antes/después".
+// La bitácora es de solo lectura: no se pueden modificar ni eliminar eventos.
 // ============================================================================
 
 // Estado de la pantalla: página actual, tamaño de página y total de páginas.
@@ -37,13 +37,6 @@ const formFields = {
   modulo: document.getElementById('filtro-modulo'),
   busqueda: document.getElementById('filtro-busqueda')
 };
-
-// Solo el super administrador ve los botones de modificar/eliminar.
-// (El backend vuelve a validarlo: ocultar el botón no es la seguridad real.)
-function puedeModificarAuditoria() {
-  const sesion = obtenerSesionActual();
-  return String(sesion?.rol || '').toLowerCase() === 'super_administrador';
-}
 
 // Arma la cadena de consulta (?page=1&limit=20&usuario=...) a partir de los
 // filtros que estén llenos. Se usa tanto para cargar la tabla como para exportar.
@@ -171,8 +164,6 @@ function renderTabla(registros) {
       <td>
         <div class="acciones-registro" style="display:flex; flex-wrap:wrap; justify-content:flex-start;">
           <button type="button" class="boton-accion-card boton-secundario" data-accion="detalle" data-id="${registro.id}">Ver detalle</button>
-          ${puedeModificarAuditoria() ? `<button type="button" class="boton-accion-card boton-secundario" data-accion="editar" data-id="${registro.id}">Modificar</button>` : ''}
-          ${puedeModificarAuditoria() ? `<button type="button" class="boton-accion-card boton-eliminar" data-accion="eliminar" data-id="${registro.id}">Eliminar</button>` : ''}
         </div>
       </td>
     `;
@@ -186,13 +177,6 @@ function renderTabla(registros) {
     boton.addEventListener('click', () => abrirDetalleAuditoria(Number(boton.dataset.id)));
   });
 
-  tablaAuditoria.querySelectorAll('[data-accion="editar"]').forEach((boton) => {
-    boton.addEventListener('click', () => editarAuditoria(Number(boton.dataset.id)));
-  });
-
-  tablaAuditoria.querySelectorAll('[data-accion="eliminar"]').forEach((boton) => {
-    boton.addEventListener('click', () => eliminarAuditoria(Number(boton.dataset.id)));
-  });
 }
 
 // Descarga la página actual de eventos aplicando los filtros vigentes.
@@ -234,73 +218,16 @@ async function abrirDetalleAuditoria(id) {
       <div class="confirmacion-linea"><span>📝</span><div><small>Motivo</small><strong>${escapeHtml(detalle.motivo || 'Sin motivo registrado')}</strong><em>${escapeHtml(item.accion || '—')}</em></div></div>
       <div class="panel" style="grid-column:1 / -1; width:100%;">
         <h3>Antes</h3>
-        <pre style="margin:0; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size:11px; color:#c7cfcb;">${escapeHtml(formatearValor(antes))}</pre>
+        <pre style="margin:0; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size:12px; color:#183327;">${escapeHtml(formatearValor(antes))}</pre>
       </div>
       <div class="panel" style="grid-column:1 / -1; width:100%;">
         <h3>Después</h3>
-        <pre style="margin:0; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size:11px; color:#c7cfcb;">${escapeHtml(formatearValor(despues))}</pre>
+        <pre style="margin:0; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size:12px; color:#183327;">${escapeHtml(formatearValor(despues))}</pre>
       </div>
     `;
     modalDetalle.hidden = false; // Muestra la ventana
   } catch (error) {
     mostrarAlertaError('Detalle no disponible', error.message);
-  }
-}
-
-// Modificar un evento (solo super admin): no cambia los datos originales,
-// únicamente agrega/actualiza el motivo dentro del detalle. El cambio genera
-// a su vez un nuevo evento EDITAR_AUDITORIA en la bitácora.
-async function editarAuditoria(id) {
-  const { value: motivo } = await Swal.fire({
-    title: 'Modificar motivo del evento',
-    input: 'text',
-    inputLabel: 'Motivo',
-    inputPlaceholder: 'Describe el motivo de la edición',
-    showCancelButton: true,
-    confirmButtonText: 'Guardar',
-    cancelButtonText: 'Cancelar',
-    preConfirm: (valor) => {
-      const texto = String(valor || '').trim();
-      if (!texto) {
-        Swal.showValidationMessage('El motivo es obligatorio.');
-        return false;
-      }
-      return texto;
-    }
-  });
-
-  if (!motivo) return; // Cancelado
-
-  try {
-    const respuesta = await fetch(`/api/auditoria/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ motivo, detalle: { motivo } })
-    });
-
-    const data = await respuesta.json().catch(() => ({}));
-    if (!respuesta.ok) throw new Error(data.mensaje || 'No se pudo actualizar el registro.');
-    mostrarAlertaExito('Registro actualizado', 'El motivo del evento fue actualizado correctamente.');
-    await cargarAuditoria();
-  } catch (error) {
-    mostrarAlertaError('No se pudo modificar', error.message);
-  }
-}
-
-// Eliminar un evento de la bitácora (solo super admin). Es irreversible,
-// aunque el backend deja constancia de la eliminación en un evento nuevo.
-async function eliminarAuditoria(id) {
-  const confirmado = await confirmarAccion('Eliminar registro de auditoría', 'Esta acción elimina el evento del historial y no se puede deshacer.', 'Sí, eliminar');
-  if (!confirmado) return;
-
-  try {
-    const respuesta = await fetch(`/api/auditoria/${id}`, { method: 'DELETE' });
-    const data = await respuesta.json().catch(() => ({}));
-    if (!respuesta.ok) throw new Error(data.mensaje || 'No se pudo eliminar el evento.');
-    mostrarAlertaExito('Evento eliminado', 'El registro de auditoría fue eliminado correctamente.');
-    await cargarAuditoria();
-  } catch (error) {
-    mostrarAlertaError('No se pudo eliminar', error.message);
   }
 }
 
@@ -347,6 +274,11 @@ function registrarEventos() {
   // Cierre de la ventana de detalle: con la × o haciendo clic fuera del cuadro.
   document.getElementById('cerrar-detalle-auditoria')?.addEventListener('click', () => {
     modalDetalle.hidden = true;
+  });
+
+  // Escape también cierra la ventana de detalle.
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && modalDetalle && !modalDetalle.hidden) modalDetalle.hidden = true;
   });
 
   modalDetalle?.addEventListener('click', (evento) => {

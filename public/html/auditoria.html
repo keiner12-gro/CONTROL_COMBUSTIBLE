@@ -4,7 +4,7 @@
      Cuatro bloques: filtros, tarjetas de resumen, tabla paginada de eventos y
      la ventana emergente de detalle (al final del archivo).
      Lógica en ../js/auditoria.js. Acceso para administrador, supervisor y
-     super administrador; los botones de modificar/eliminar solo para este último.
+     super administrador. La bitácora es de solo lectura (sin editar ni eliminar).
      ========================================================================== -->
 <html lang="es">
 <head>
@@ -51,7 +51,7 @@
 
       <!-- Cinco filtros en una rejilla: rango de fechas, usuario, acción y módulo.
            Estos se aplican al pulsar "Aplicar filtros". -->
-      <div class="formulario-usuario" style="grid-template-columns: repeat(5, minmax(150px, 1fr));">
+      <div class="formulario-usuario filtros-auditoria">
         <div>
           <label for="filtro-fecha-desde">Desde</label>
           <input type="date" id="filtro-fecha-desde" />
@@ -100,7 +100,7 @@
       </div>
 
       <!-- Búsqueda libre: esta sí recarga la tabla mientras se escribe -->
-      <div class="formulario-usuario" style="grid-template-columns: 1fr auto; margin-top: 12px; align-items: end;">
+      <div class="formulario-usuario busqueda-auditoria">
         <div>
           <label for="filtro-busqueda">Búsqueda</label>
           <input type="search" id="filtro-busqueda" placeholder="Buscar evento, usuario, módulo o detalle" />

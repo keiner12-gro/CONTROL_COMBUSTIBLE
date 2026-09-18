@@ -3,9 +3,10 @@
 // ----------------------------------------------------------------------------
 //   GET    /api/auditoria        -> listado paginado con filtros y resumen
 //   GET    /api/auditoria/:id    -> un evento concreto
-//   PUT    /api/auditoria/:id    -> anotar un evento (solo super admin)
-//   DELETE /api/auditoria/:id    -> eliminar un evento (solo super admin)
 //   GET    /api/auditoria/export -> exportar a CSV
+// La bitácora es INMUTABLE: no existen rutas para editar ni borrar eventos,
+// ni siquiera para el super administrador. Solo se agregan eventos nuevos
+// (mediante registrarAuditoria) y se consultan aquí.
 // Este módulo no tiene service ni repository: al ser solo lectura de una tabla
 // con filtros, las consultas van directamente aquí.
 // ============================================================================
@@ -44,16 +45,6 @@ function getAuditoriaAccess(req, res, next) {
   }
   if (['super_administrador', 'administrador', 'supervisor'].includes(rol)) return next();
   return res.status(403).json({ mensaje: 'No tienes permisos suficientes para esta operación.' });
-}
-
-// PERMISO DE ESCRITURA: modificar o borrar la bitácora queda reservado al
-// super administrador, y toda acción de ese tipo se audita a su vez.
-function getAuditoriaWriteAccess(req, res, next) {
-  if (!req.user) return res.status(401).json({ mensaje: 'Sesión no válida.' });
-  if (req.user.rol !== 'super_administrador') {
-    return res.status(403).json({ mensaje: 'Solo el super administrador puede modificar o eliminar auditoría.' });
-  }
-  return next();
 }
 
 // Construye dinámicamente el WHERE a partir de los filtros de la URL.
@@ -226,84 +217,6 @@ function crearRutasAuditoria(db) {
           timeStyle: 'short'
         })
       });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // --- PUT /api/auditoria/:id: anotar un evento (solo super admin) --------
-  // No reescribe la historia: solo agrega/actualiza campos dentro del JSON
-  // "detalle", siempre con un motivo, y deja constancia del cambio creando
-  // otro evento de auditoría (EDITAR_AUDITORIA) con el antes y el después.
-  router.put('/auditoria/:id', getAuditoriaWriteAccess, async (req, res, next) => {
-    try {
-      const [actuales] = await db.query(
-        'SELECT id,usuario,rol,accion,modulo,registro_id,detalle,creado_en FROM auditoria_combustible WHERE id=? LIMIT 1',
-        [req.params.id]
-      );
-      if (!actuales.length) return res.status(404).json({ mensaje: 'Registro de auditoría no encontrado.' });
-
-      const detalleActual = parseDetalle(actuales[0].detalle);
-      // Se fusiona lo que había con lo que llega, y siempre queda un motivo.
-      const detalleNuevo = {
-        ...detalleActual,
-        ...(req.body?.detalle && typeof req.body.detalle === 'object' ? req.body.detalle : {}),
-        motivo: req.body?.motivo || detalleActual.motivo || 'Edición manual por super administrador.'
-      };
-
-      await db.query('UPDATE auditoria_combustible SET detalle=? WHERE id=?', [
-        JSON.stringify(detalleNuevo),
-        req.params.id
-      ]);
-
-      await registrarAuditoria(db, {
-        usuarioId: req.user.id,
-        usuario: req.user.usuario,
-        rol: req.user.rol,
-        accion: 'EDITAR_AUDITORIA',
-        modulo: 'auditoria',
-        registroId: req.params.id,
-        detalle: {
-          motivo: req.body?.motivo || 'Edición manual.',
-          antes: detalleActual,
-          despues: detalleNuevo,
-          registroOriginal: actuales[0].id
-        }
-      });
-
-      res.json({ mensaje: 'Registro de auditoría actualizado.' });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // --- DELETE /api/auditoria/:id: eliminar un evento (solo super admin) ---
-  // Antes de borrar se copia el detalle dentro del nuevo evento
-  // ELIMINAR_AUDITORIA, de modo que quede rastro de lo eliminado.
-  router.delete('/auditoria/:id', getAuditoriaWriteAccess, async (req, res, next) => {
-    try {
-      const [actuales] = await db.query(
-        'SELECT id,usuario,rol,accion,modulo,registro_id,detalle,creado_en FROM auditoria_combustible WHERE id=? LIMIT 1',
-        [req.params.id]
-      );
-      if (!actuales.length) return res.status(404).json({ mensaje: 'Registro de auditoría no encontrado.' });
-
-      await db.query('DELETE FROM auditoria_combustible WHERE id=?', [req.params.id]);
-
-      await registrarAuditoria(db, {
-        usuarioId: req.user.id,
-        usuario: req.user.usuario,
-        rol: req.user.rol,
-        accion: 'ELIMINAR_AUDITORIA',
-        modulo: 'auditoria',
-        registroId: req.params.id,
-        detalle: {
-          motivo: req.body?.motivo || 'Eliminación manual por super administrador.',
-          eliminado: parseDetalle(actuales[0].detalle) // Copia de respaldo de lo borrado
-        }
-      });
-
-      res.json({ mensaje: 'Registro de auditoría eliminado.' });
     } catch (error) {
       next(error);
     }
