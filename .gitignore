@@ -13,3 +13,7 @@ data/registros.json
 
 # Base de datos local embebida (npm run dev:local)
 .pglite-data/
+
+# Cualquier .env.* con secretos queda fuera de git (menos el ejemplo)
+.env.*
+!.env.example
