@@ -29,8 +29,12 @@ class PushService {
   // Prepara la librería la primera vez que se necesita.
   asegurarConfiguracion() {
     if (this.configurado || !this.activo()) return;
+    // El contacto debe ser "mailto:correo" o una URL https. Si escribieron solo el
+    // correo, se le agrega "mailto:" (el servicio de push rechaza el correo suelto).
+    let contacto = String(process.env.VAPID_SUBJECT || 'mailto:admin@example.com').trim();
+    if (/^[^@\s:]+@[^@\s]+$/.test(contacto)) contacto = `mailto:${contacto}`;
     this.webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+      contacto,
       process.env.VAPID_PUBLIC_KEY,
       process.env.VAPID_PRIVATE_KEY
     );
