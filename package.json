@@ -10,7 +10,8 @@
     "generar-vapid": "node scripts/generar-vapid.js",
     "migrar-datos": "node scripts/migrar-datos.js",
     "test": "node --test test/",
-    "dev:local": "node scripts/dev-local.js"
+    "dev:local": "node scripts/dev-local.js",
+    "importar-operarios": "node scripts/importar-operarios.js"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
