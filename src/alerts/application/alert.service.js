@@ -18,17 +18,70 @@ const MAX_SOPORTE_BYTES = 3 * 1024 * 1024;
 // (no basta con confiar en el tipo MIME que manda el navegador).
 function coincideFirma(mime, b) {
   if (mime === 'application/pdf') return b.subarray(0, 5).toString('latin1') === '%PDF-';
-  if (mime === 'image/png') return b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (mime === 'image/png')
+    return b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   if (mime === 'image/jpeg') return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
   if (mime === 'image/webp')
-    return b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP';
+    return (
+      b.subarray(0, 4).toString('latin1') === 'RIFF' &&
+      b.subarray(8, 12).toString('latin1') === 'WEBP'
+    );
   return false;
 }
 
+// Texto del aviso push de cada tipo de alerta (título corto + detalle).
+function describirAlerta(a) {
+  const n = (v) => Number(v || 0).toFixed(2);
+  const maquina = a.maquina || 'Máquina';
+  const operario = a.operario ? ` Operario: ${a.operario}.` : '';
+  switch (a.tipoAlerta) {
+    case 'promedio':
+      return {
+        titulo: `Consumo sobre el promedio: ${maquina}`,
+        cuerpo: `Se suministraron ${n(a.cantidad)} gal, un ${Number(a.porcentajeSobrePromedio || 0).toFixed(0)} % por encima de su promedio (${n(a.promedioGalones)} gal).${operario}`
+      };
+    case 'horometro_irregular':
+      return {
+        titulo: `Horómetro irregular: ${maquina}`,
+        cuerpo: `Se escribió "${a.detalleAlerta || 'sin valor numérico'}" en el horómetro${a.valorReferencia ? ` (último valor válido: ${n(a.valorReferencia)})` : ''}.${operario}`
+      };
+    default:
+      return {
+        titulo: `Sobrecapacidad: ${maquina}`,
+        cuerpo: `Se suministraron ${n(a.cantidad)} gal y la capacidad del tanque es ${n(a.capacidadGalones)} gal.${operario}`
+      };
+  }
+}
+
 class AlertService {
-  constructor(repository, storage) {
+  // notificador: envía las notificaciones push (ver src/push/push.service.js). Puede ser null.
+  constructor(repository, storage, notificador) {
+    this.notificador = notificador;
     this.repository = repository;
     this.storage = storage; // Capa de almacenamiento (ver shared/infrastructure/storage.js)
+  }
+
+  // AVISO INMEDIATO: cuando un registro genera alertas (sobrecapacidad, promedio u
+  // horómetro irregular), les llega una notificación push a los administradores y
+  // supervisores que puedan ver la pantalla de Alertas. Nunca lanza error: un fallo
+  // del aviso no debe deshacer el registro que ya se guardó.
+  // PARA CAMBIAR QUIÉN RECIBE EL AVISO -> arreglo "roles" de abajo.
+  async notificarPush(alertas) {
+    if (!this.notificador || !alertas?.length) return;
+    try {
+      for (const alerta of alertas) {
+        const { titulo, cuerpo } = describirAlerta(alerta);
+        await this.notificador.notificar(
+          {
+            roles: ['supervisor', 'administrador', 'super_administrador'],
+            requiereVista: 'alertas'
+          },
+          { titulo, cuerpo, url: '/alertas', etiqueta: `alerta-${alerta.id}` }
+        );
+      }
+    } catch (error) {
+      console.warn('No se pudo avisar por push la alerta:', error.message);
+    }
   }
 
   // Resuelve las alertas de una jornada (p. ej. "cierre pendiente" al cerrar el día).

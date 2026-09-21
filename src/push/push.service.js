@@ -64,8 +64,8 @@ class PushService {
 
   // Dispositivos que deben recibir un aviso:
   //   roles: cualquiera de esos roles;  vista: quien tenga ese permiso;
-  //   usuarioIds: usuarios concretos.
-  async dispositivos({ roles = [], vista = null, usuarioIds = [] } = {}) {
+  //   usuarioIds: usuarios concretos;  requiereVista: filtro extra por permiso de pantalla.
+  async dispositivos({ roles = [], vista = null, usuarioIds = [], requiereVista = null } = {}) {
     const condiciones = [];
     const parametros = [];
     if (roles.length) {
@@ -83,8 +83,17 @@ class PushService {
       parametros.push(...usuarioIds);
     }
     if (!condiciones.length) return [];
+    // requiereVista: además de cumplir lo anterior, el usuario debe poder ENTRAR a esa
+    // pantalla (el super administrador siempre puede). Así nadie recibe un aviso que
+    // luego no puede abrir.
+    let filtroPermiso = '';
+    if (requiereVista) {
+      filtroPermiso =
+        " AND (u.rol='super_administrador' OR EXISTS (SELECT 1 FROM permisos_usuarios_combustible pv WHERE pv.usuario_id=u.id AND pv.vista=?))";
+      parametros.push(requiereVista);
+    }
     const [filas] = await this.db.query(
-      `SELECT s.id,s.endpoint,s.p256dh,s.auth FROM suscripciones_push s INNER JOIN usuarios_combustible u ON u.id=s.usuario_id WHERE ${condiciones.join(' OR ')}`,
+      `SELECT s.id,s.endpoint,s.p256dh,s.auth FROM suscripciones_push s INNER JOIN usuarios_combustible u ON u.id=s.usuario_id WHERE (${condiciones.join(' OR ')})${filtroPermiso}`,
       parametros
     );
     return filas;

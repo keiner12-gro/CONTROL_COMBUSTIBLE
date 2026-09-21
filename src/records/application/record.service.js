@@ -75,7 +75,14 @@ class RecordService {
 
     // Todo en una transacción: o se guarda el suministro con su jornada y
     // alertas, o no se guarda nada.
-    return this.repository.transaction(async (tx) => {
+    const alertasNuevas = []; // Alertas creadas por este registro (para avisar por push al terminar)
+    const resultado = await this.repository.transaction(async (tx) => {
+      // Crea una alerta dentro de la transacción y la anota si es nueva.
+      const crearAlerta = async (datosAlerta) => {
+        const alerta = await this.alertService.create(datosAlerta, tx);
+        if (alerta?.nueva) alertasNuevas.push(alerta);
+        return alerta;
+      };
       // La jornada del día guarda las lecturas iniciales y el checklist que trae
       // el formulario (sin borrar nada de lo ya guardado).
       const jornada = await this.jornadaService.guardarBorrador(
@@ -99,20 +106,17 @@ class RecordService {
         // ALERTA 1 (sobrecapacidad): se cargó más de lo que cabe en el tanque.
         // Si ya excede la capacidad, no se evalúa el promedio (sería redundante).
         if (capacidad > 0 && cantidad > capacidad) {
-          await this.alertService.create(
-            {
-              registroId: id,
-              fecha,
-              maquina: datos.maquina,
-              operario: datos.operario,
-              cantidad,
-              capacidadGalones: capacidad,
-              excesoGalones: cantidad - capacidad, // Cuánto se pasó
-              observaciones: datos.observaciones,
-              tipoAlerta: 'sobrecapacidad'
-            },
-            tx
-          );
+          await crearAlerta({
+            registroId: id,
+            fecha,
+            maquina: datos.maquina,
+            operario: datos.operario,
+            cantidad,
+            capacidadGalones: capacidad,
+            excesoGalones: cantidad - capacidad, // Cuánto se pasó
+            observaciones: datos.observaciones,
+            tipoAlerta: 'sobrecapacidad'
+          });
         } else {
           // ALERTA 2 (promedio): consumo muy por encima de lo habitual de esa máquina.
           const estadistica = await this.repository.averageQuantityByMachine(datos.maquina, id, tx);
@@ -124,22 +128,19 @@ class RecordService {
             cantidad > estadistica.promedio * factor
           ) {
             const porcentaje = (cantidad / estadistica.promedio - 1) * 100; // % de exceso
-            await this.alertService.create(
-              {
-                registroId: id,
-                fecha,
-                maquina: datos.maquina,
-                operario: datos.operario,
-                cantidad,
-                capacidadGalones: 0,
-                excesoGalones: cantidad - estadistica.promedio,
-                observaciones: datos.observaciones,
-                tipoAlerta: 'promedio',
-                promedioGalones: estadistica.promedio,
-                porcentajeSobrePromedio: porcentaje
-              },
-              tx
-            );
+            await crearAlerta({
+              registroId: id,
+              fecha,
+              maquina: datos.maquina,
+              operario: datos.operario,
+              cantidad,
+              capacidadGalones: 0,
+              excesoGalones: cantidad - estadistica.promedio,
+              observaciones: datos.observaciones,
+              tipoAlerta: 'promedio',
+              promedioGalones: estadistica.promedio,
+              porcentajeSobrePromedio: porcentaje
+            });
           }
         }
 
@@ -147,22 +148,19 @@ class RecordService {
         const horometroTexto = String(datos.horometro || '').trim();
         if (horometroTexto && !HOROMETRO_NUMERICO.test(horometroTexto)) {
           const anterior = await this.repository.latestHourmeter(datos.maquina, tx);
-          await this.alertService.create(
-            {
-              registroId: id,
-              fecha,
-              maquina: datos.maquina,
-              operario: datos.operario,
-              cantidad,
-              capacidadGalones: 0,
-              excesoGalones: 0,
-              observaciones: datos.observaciones,
-              tipoAlerta: 'horometro_irregular',
-              detalle: horometroTexto, // Lo que escribió el usuario
-              valorReferencia: anterior || null // Último valor válido conocido
-            },
-            tx
-          );
+          await crearAlerta({
+            registroId: id,
+            fecha,
+            maquina: datos.maquina,
+            operario: datos.operario,
+            cantidad,
+            capacidadGalones: 0,
+            excesoGalones: 0,
+            observaciones: datos.observaciones,
+            tipoAlerta: 'horometro_irregular',
+            detalle: horometroTexto, // Lo que escribió el usuario
+            valorReferencia: anterior || null // Último valor válido conocido
+          });
         }
       }
 
@@ -173,6 +171,11 @@ class RecordService {
         alertaSobrecapacidad: capacidad > 0 && cantidad > capacidad
       };
     });
+
+    // El registro ya está guardado: se avisa por push a administradores y supervisores.
+    // (Va DESPUÉS de la transacción para no avisar de algo que se pudiera deshacer.)
+    if (this.alertService?.notificarPush) await this.alertService.notificarPush(alertasNuevas);
+    return resultado;
   }
 
   // Galones por máquina en un rango de fechas (gráficas de análisis).

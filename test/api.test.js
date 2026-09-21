@@ -293,6 +293,72 @@ test('cierre: las lecturas finales no pueden ser menores que las iniciales', asy
   assert.equal(r.estado, 400);
 });
 
+test('push inmediato: la alerta avisa a supervisores y administradores con permiso, no al operario', async () => {
+  const supSinAlertas = await crearUsuario('sup2', 'supervisor', ['registro']); // No puede ver Alertas
+  assert.ok(supSinAlertas);
+  const cookieSup2 = await iniciarSesion('sup2');
+  const dispositivos = [
+    [sup, 'https://push.example/sup'],
+    [admin, 'https://push.example/adm'],
+    [op, 'https://push.example/operario'],
+    [cookieSup2, 'https://push.example/sup-sin-alertas']
+  ];
+  for (const [cookie, endpoint] of dispositivos) {
+    const r = await api(
+      'POST',
+      '/api/push/suscribir',
+      { suscripcion: { endpoint, keys: { p256dh: 'p', auth: 'a' } } },
+      cookie
+    );
+    assert.equal(r.estado, 201);
+  }
+  const avisosDeAlertas = () => enviadosPush.filter((p) => p.mensaje.url === '/alertas');
+
+  // 1) Horómetro "dañado" (texto en vez de número) -> alerta de horómetro irregular
+  enviadosPush.length = 0;
+  let r = await api(
+    'POST',
+    '/api/registros',
+    suministro({ horometro: 'DAÑADO', cantidad: '5' }),
+    op
+  );
+  assert.equal(r.estado, 201, JSON.stringify(r.datos));
+  assert.deepEqual(
+    avisosDeAlertas()
+      .map((a) => a.endpoint)
+      .sort(),
+    ['https://push.example/adm', 'https://push.example/sup']
+  );
+  assert.match(avisosDeAlertas()[0].mensaje.titulo, /Horómetro irregular: MA65/);
+  assert.match(avisosDeAlertas()[0].mensaje.cuerpo, /DAÑADO/);
+
+  // 2) Se supera la capacidad del tanque -> alerta de sobrecapacidad
+  enviadosPush.length = 0;
+  r = await api('POST', '/api/registros', suministro({ horometro: '300', cantidad: '45' }), op);
+  assert.equal(r.estado, 201);
+  const sobre = avisosDeAlertas();
+  assert.equal(sobre.length, 2);
+  assert.match(sobre[0].mensaje.titulo, /Sobrecapacidad: MA65/);
+  assert.match(sobre[0].mensaje.cuerpo, /45\.00 gal/);
+
+  // 3) Un registro normal NO avisa a nadie
+  enviadosPush.length = 0;
+  r = await api('POST', '/api/registros', suministro({ horometro: '310', cantidad: '5' }), op);
+  assert.equal(r.estado, 201);
+  assert.equal(avisosDeAlertas().length, 0);
+
+  // 4) Si falla el envío del aviso, el registro se guarda igual
+  const original = app.locals.pushService.webpush.sendNotification;
+  app.locals.pushService.webpush.sendNotification = async () => {
+    throw Object.assign(new Error('caído'), { statusCode: 500 });
+  };
+  r = await api('POST', '/api/registros', suministro({ horometro: '320', cantidad: '46' }), op);
+  app.locals.pushService.webpush.sendNotification = original;
+  assert.equal(r.estado, 201);
+
+  await db.query('DELETE FROM suscripciones_push'); // Limpieza para las pruebas siguientes
+});
+
 test('continuidad: la lectura inicial de hoy es la final del cierre de ayer', async () => {
   const manana = sumarDias(hoy, 0);
   // Se cierra "ayer" (500 -> 600) y se comprueba contra la fecha de hoy.
