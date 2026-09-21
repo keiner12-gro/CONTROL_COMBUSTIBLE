@@ -7,7 +7,7 @@
 
 class TractorService {
   constructor(repository) {
-    this.repository = repository; // MySQLTractorRepository inyectado desde server.js
+    this.repository = repository; // PgTractorRepository inyectado desde server.js
   }
 
   // Máquinas activas (las anuladas no aparecen).

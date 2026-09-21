@@ -1,59 +1,50 @@
 // ============================================================================
-// record.repository.js (DOMINIO) — CONTRATO DEL REPOSITORIO DE REGISTROS
+// record.repository.js (DOMINIO) — CONTRATO DEL REPOSITORIO DE SUMINISTROS
 // ----------------------------------------------------------------------------
 // Lista de operaciones que necesita el módulo de registros de combustible.
-// Implementación real: infrastructure/mysql-record.repository.js.
+// Implementación real: infrastructure/pg-record.repository.js.
+// (Las lecturas M1/M2 y el checklist se manejan en el módulo src/jornadas/.)
 // ============================================================================
+
+const pendiente = () => {
+  throw new Error('Not implemented');
+};
 
 class RecordRepository {
   async list() {
-    // Todos los registros activos
-    throw new Error('Not implemented');
+    return pendiente(); // Todos los suministros activos
   }
 
   async findById() {
-    // Un registro puntual
-    throw new Error('Not implemented');
+    return pendiente(); // Un suministro por id (incluye anulados)
   }
 
   async insert() {
-    // Inserta un registro (carga o cierre de día)
-    throw new Error('Not implemented');
+    return pendiente(); // Guarda un suministro y devuelve su id
   }
 
   async update() {
-    // Edita campos de un registro existente
-    throw new Error('Not implemented');
+    return pendiente(); // Edita los campos permitidos
   }
 
   async remove() {
-    // Anulación lógica del registro
-    throw new Error('Not implemented');
-  }
-
-  async findDailyClosing() {
-    // Busca si una fecha ya tiene cierre de día
-    throw new Error('Not implemented');
-  }
-
-  async hasChecklist() {
-    // Indica si el checklist del día ya fue diligenciado
-    throw new Error('Not implemented');
+    return pendiente(); // Anula (no borra) un suministro
   }
 
   async latestHourmeter() {
-    // Último horómetro registrado de una máquina (para validar que no baje)
-    throw new Error('Not implemented');
+    return pendiente(); // Último horómetro de una máquina (para validar que no baje)
+  }
+
+  async averageQuantityByMachine() {
+    return pendiente(); // Promedio histórico de una máquina (alerta de promedio)
   }
 
   async findByDateRange() {
-    // Registros entre dos fechas (consultas y reportes)
-    throw new Error('Not implemented');
+    return pendiente(); // Suministros entre dos fechas (consultas y reportes)
   }
 
   async summarizeByMonth() {
-    // Totales agrupados por mes (para los cierres mensuales)
-    throw new Error('Not implemented');
+    return pendiente(); // Totales agrupados por mes (reportes mensuales)
   }
 }
 

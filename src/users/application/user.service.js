@@ -2,7 +2,7 @@
 // user.service.js (APLICACIÓN) — REGLAS DE NEGOCIO DE USUARIOS
 // ----------------------------------------------------------------------------
 // Capa intermedia entre las rutas HTTP y la base de datos. Aquí van las reglas
-// que no dependen de MySQL ni de Express (por ejemplo, el largo mínimo de la
+// que no dependen de la base de datos ni de Express (por ejemplo, el largo mínimo de la
 // contraseña o prohibir "123456").
 // SI QUIERES CAMBIAR LAS REGLAS DE CONTRASEÑA -> método changePassword.
 // ============================================================================

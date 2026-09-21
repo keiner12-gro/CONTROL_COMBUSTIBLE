@@ -3,9 +3,8 @@
 // ----------------------------------------------------------------------------
 //   GET    /api/analitica/maquinas -> estadísticas de consumo por máquina
 //   GET    /api/registros          -> listado completo
-//   GET    /api/cierre-dia/estado  -> lecturas de medidores de una fecha
 //   POST   /api/registros          -> crear carga de combustible
-//   POST   /api/cierre-dia         -> guardar el cierre del día
+// (El cierre del día y las lecturas M1/M2 están en src/jornadas/.)
 //   PUT    /api/registros/:id      -> editar
 //   DELETE /api/registros/:id      -> anular (requiere motivo)
 // ============================================================================
@@ -13,16 +12,17 @@
 const express = require('express');
 const { requireAnyPermission, requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
+const { hoyLocal } = require('../../shared/application/fechas');
+const { motivoDeRechazoPorFecha } = require('../../shared/application/retroactivo');
 
-function crearRutasRegistros(service, reports, db) {
+function crearRutasRegistros(service, db) {
   const router = express.Router();
 
   // --- GET /api/analitica/maquinas ----------------------------------------
   // Consumo agrupado por máquina. Sin parámetros devuelve el año en curso.
   router.get('/analitica/maquinas', requirePermission('reportes'), async (req, res, next) => {
     try {
-      const hoy = new Date();
-      const anio = hoy.getFullYear();
+      const anio = Number(hoyLocal().slice(0, 4)); // Año actual en la zona horaria local
       const inicio = req.query.fechaInicio || `${anio}-01-01`; // 1 de enero por defecto
       const fin = req.query.fechaFin || `${anio}-12-31`; // 31 de diciembre por defecto
       res.json(await service.machineConsumptionStats(inicio, fin));
@@ -46,48 +46,26 @@ function crearRutasRegistros(service, reports, db) {
     }
   );
 
-  // --- GET /api/cierre-dia/estado?fecha=YYYY-MM-DD -------------------------
-  // El formulario lo llama al cargar para saber con qué lecturas abrir el día.
-  router.get('/cierre-dia/estado', requirePermission('registro'), async (req, res, next) => {
-    try {
-      res.json(await service.getDailyMeterState(req.query.fecha));
-    } catch (error) {
-      next(error);
-    }
-  });
-
   // --- POST /api/registros: crear una carga de combustible -----------------
   router.post('/registros', requirePermission('registro'), async (req, res, next) => {
     try {
-      const hoy = new Date().toISOString().slice(0, 10);
       const fecha = String(req.body.fecha || '').slice(0, 10);
-      const esCorreccionFecha = Boolean(fecha) && fecha !== hoy; // ¿Registro retroactivo?
+      const esCorreccionFecha = Boolean(fecha) && fecha !== hoyLocal(); // ¿Registro retroactivo?
 
-      // CONTROL DE REGISTROS RETROACTIVOS SEGÚN EL ROL.
-      // Los días permitidos se configuran en .env:
-      //   DIAS_ATRAS_ADMIN (administrador, 30 por defecto)
-      //   DIAS_ATRAS_PERMITIDOS (supervisor, 3 por defecto)
-      // El operario no puede registrar fechas pasadas y el super administrador
-      // no tiene límite.
-      if (esCorreccionFecha && req.user.rol !== 'super_administrador') {
-        const limiteDias =
-          req.user.rol === 'administrador'
-            ? Number(process.env.DIAS_ATRAS_ADMIN || 30)
-            : req.user.rol === 'supervisor'
-              ? Number(process.env.DIAS_ATRAS_PERMITIDOS || 3)
-              : 0; // Operario u otro rol: 0 días hacia atrás
-        const fechaLimite = new Date();
-        fechaLimite.setDate(fechaLimite.getDate() - limiteDias); // Fecha más antigua permitida
-        if (limiteDias <= 0 || fecha < fechaLimite.toISOString().slice(0, 10))
-          return res.status(403).json({
-            mensaje:
-              req.user.rol === 'operario'
-                ? 'Solo puedes registrar suministros con la fecha de hoy.'
-                : `No puedes registrar una fecha con más de ${limiteDias} día(s) de antigüedad.`
-          });
-      }
+      // CONTROL DE REGISTROS RETROACTIVOS SEGÚN EL ROL (ver retroactivo.js).
+      // Los días permitidos se configuran en .env: DIAS_ATRAS_ADMIN (30) y
+      // DIAS_ATRAS_PERMITIDOS (3). El operario solo puede registrar hoy y el
+      // super administrador no tiene límite.
+      const rechazo = motivoDeRechazoPorFecha(req.user, fecha);
+      if (rechazo)
+        return res.status(403).json({
+          mensaje:
+            req.user.rol === 'operario'
+              ? 'Solo puedes registrar suministros con la fecha de hoy.'
+              : rechazo
+        });
 
-      const creado = await service.create(req.body); // Aquí se validan datos y se generan alertas
+      const creado = await service.create(req.body, req.user.usuario); // Aquí se validan datos y se generan alertas
       await registrarAuditoria(db, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
@@ -103,26 +81,6 @@ function crearRutasRegistros(service, reports, db) {
         }
       });
       res.status(201).json(creado);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // --- POST /api/cierre-dia: cerrar la jornada -----------------------------
-  router.post('/cierre-dia', requirePermission('registro'), async (req, res, next) => {
-    try {
-      const cierre = await service.saveDailyClosing(req.body);
-      await reports.generate(); // Recalcula los totales del reporte mensual afectado
-      await registrarAuditoria(db, {
-        usuarioId: req.user.id,
-        usuario: req.user.usuario,
-        rol: req.user.rol,
-        accion: 'CIERRE_DIA',
-        modulo: 'surtidor',
-        registroId: cierre.id,
-        detalle: { fecha: req.body.fecha, m1Final: req.body.m1Final, m2Final: req.body.m2Final }
-      });
-      res.status(201).json(cierre);
     } catch (error) {
       next(error);
     }

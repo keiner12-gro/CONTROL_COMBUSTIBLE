@@ -10,3 +10,6 @@ uploads/
 # Datos locales de prueba (contienen contrasenas en texto plano)
 data/usuarios.json
 data/registros.json
+
+# Base de datos local embebida (npm run dev:local)
+.pglite-data/

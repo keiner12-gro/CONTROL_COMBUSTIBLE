@@ -31,6 +31,11 @@ class AlertService {
     this.storage = storage; // Capa de almacenamiento (ver shared/infrastructure/storage.js)
   }
 
+  // Resuelve las alertas de una jornada (p. ej. "cierre pendiente" al cerrar el día).
+  resolverPorJornada(jornadaId, tipo, usuario, connection) {
+    return this.repository.resolverPorJornada(jornadaId, tipo, usuario, connection);
+  }
+
   // Todas las alertas (la pantalla las filtra en el navegador).
   async list() {
     return this.repository.list();
@@ -45,10 +50,12 @@ class AlertService {
   // que quede todo o nada junto con el registro que la origina.
   async create(alerta, connection) {
     const tipo = alerta.tipoAlerta || 'sobrecapacidad';
-    // Antidruplicados: un registro solo puede tener una alerta de cada tipo.
+    // Antiduplicados: un registro (o una jornada) solo puede tener una alerta de cada tipo.
     const existente = alerta.registroId
       ? await this.repository.findByRegistro(alerta.registroId, tipo, connection)
-      : null;
+      : alerta.jornadaId
+        ? await this.repository.findByJornada(alerta.jornadaId, tipo, connection)
+        : null;
     if (existente) return existente; // Ya existía: se devuelve la misma
     return this.repository.create(alerta, connection);
   }

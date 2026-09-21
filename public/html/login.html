@@ -11,6 +11,15 @@
   <link rel="stylesheet" href="../css/styles.css"> <!-- Estilos generales -->
   <link rel="stylesheet" href="../css/theme.css"> <!-- Colores y tema visual -->
   <title>Inicio de sesion</title>
+  <!-- App instalable (PWA): manifiesto, color de la barra y íconos -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1f4d36">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Combustible">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script src="/js/pwa.js" defer></script>
 </head>
 <!-- La clase "pagina-login" activa el fondo especial de esta pantalla -->
 <body class="pagina-login">
@@ -50,7 +59,7 @@
   </main>
 
   <!-- SweetAlert2: librería de ventanas emergentes; debe cargarse ANTES de los scripts propios -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/vendor/sweetalert2.all.min.js"></script>
   <script src="../js/login.js"></script>
 </body>
 </html>

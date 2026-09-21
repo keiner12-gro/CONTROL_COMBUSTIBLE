@@ -11,6 +11,14 @@
 // La seguridad real la aplica el backend en cada endpoint.
 // ============================================================================
 
+// Fecha "YYYY-MM-DD" según el reloj del equipo (hora local). NO usar
+// toISOString() para "hoy": entrega la fecha en UTC y después de las 7 p. m.
+// en Colombia ya sería mañana.
+function fechaLocalISO(fecha = new Date()) {
+  const dos = (n) => String(n).padStart(2, '0');
+  return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}`;
+}
+
 // Escapa texto antes de insertarlo con innerHTML para evitar XSS con datos
 // que vienen de la base de datos (nombres de máquinas, operarios, etc.).
 function escapeHtml(valor = '') {
@@ -242,6 +250,9 @@ async function cerrarSesion() {
       return;
     }
   }
+
+  // Este equipo deja de recibir las notificaciones push de este usuario (pwa.js).
+  if (window.desactivarPushEnEsteEquipo) await window.desactivarPushEnEsteEquipo();
 
   // Se avisa al servidor para que borre la sesión y la cookie. Si falla la red
   // igual se limpia el navegador, para no dejar al usuario atrapado.

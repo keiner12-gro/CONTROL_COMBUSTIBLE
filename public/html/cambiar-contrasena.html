@@ -11,6 +11,15 @@
   <link rel="stylesheet" href="../css/styles.css">
   <link rel="stylesheet" href="../css/theme.css">
   <title>Cambiar contraseña</title>
+  <!-- App instalable (PWA): manifiesto, color de la barra y íconos -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1f4d36">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Combustible">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script src="/js/pwa.js" defer></script>
 </head>
 <!-- Reutiliza el mismo estilo visual de la pantalla de login -->
 <body class="pagina-login">
@@ -44,7 +53,7 @@
       </form>
     </section>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/vendor/sweetalert2.all.min.js"></script>
   <script src="../js/auth.js"></script> <!-- Utilidades de sesión y alertas -->
   <script src="../js/cambiar-contrasena.js"></script>
 </body>

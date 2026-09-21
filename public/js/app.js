@@ -106,28 +106,35 @@ async function cargarLecturasInicialesDesdeUltimoCierre() {
     aplicarManguera(m1Inicial, estado.m1Anterior, 'M1');
     aplicarManguera(m2Inicial, estado.m2Anterior, 'M2');
 
-    // Si el día YA tiene cierre guardado, se muestran sus valores y se bloquea todo.
-    const cierreActual = estado.cierreActual;
-    if (cierreActual) {
-      if (cierreActual.m1_inicial != null) m1Inicial.value = Number(cierreActual.m1_inicial).toFixed(2);
-      if (cierreActual.m2_inicial != null) m2Inicial.value = Number(cierreActual.m2_inicial).toFixed(2);
-      if (cierreActual.m1_final != null) m1Final.value = Number(cierreActual.m1_final).toFixed(2);
-      if (cierreActual.m2_final != null) m2Final.value = Number(cierreActual.m2_final).toFixed(2);
+    // La jornada del día puede estar guardada como BORRADOR (el operario salió de
+    // la app y volvió) o como CIERRE definitivo. En ambos casos se restaura
+    // lo que el servidor tiene guardado, para que nada se pierda.
+    const jornada = estado.jornada;
+    const estadoEl = document.getElementById('estado-cierre-surtidor');
+    if (jornada) restaurarJornadaEnFormulario(jornada);
+
+    if (jornada && jornada.estado === 'cerrada') {
+      // Día cerrado: lecturas bloqueadas.
       m1Inicial.readOnly = true;
       m2Inicial.readOnly = true;
       m1Final.readOnly = true;
       m2Final.readOnly = true;
       cierreDiaGuardado = true;
-      const estadoEl = document.getElementById('estado-cierre-surtidor');
       if (estadoEl) { estadoEl.textContent = 'Guardado'; estadoEl.className = 'badge-estado-surtidor correcto'; }
     } else {
       // Día abierto: las lecturas finales se pueden capturar.
       m1Final.readOnly = false;
       m2Final.readOnly = false;
       cierreDiaGuardado = false;
-      const estadoEl = document.getElementById('estado-cierre-surtidor');
-      if (estadoEl) { estadoEl.textContent = estado.hayRegistrosDiaAnterior ? 'Sin cierre anterior' : 'Inicial manual'; estadoEl.className = 'badge-estado-surtidor pendiente'; }
+      if (estadoEl) {
+        estadoEl.textContent = jornada ? 'En curso · guardado' : (estado.hayRegistrosDiaAnterior ? 'Sin cierre anterior' : 'Inicial manual');
+        estadoEl.className = 'badge-estado-surtidor pendiente';
+      }
     }
+    // Aviso si el día anterior se quedó sin cerrar (sus lecturas finales no existen).
+    mostrarAvisoDiaAnteriorAbierto(estado.anteriorAbierta);
+    // Se completa la recuperación: unir lo que quedó pendiente en este equipo y activar el autoguardado.
+    if (window.JornadaBorrador) window.JornadaBorrador.alRestaurar(jornada);
     calcularGalones();
   } catch (error) {
     console.error('No se pudo cargar el estado de M1/M2.', error);
@@ -137,7 +144,46 @@ async function cargarLecturasInicialesDesdeUltimoCierre() {
     m1Inicial.classList.add('inicial-manual');
     m2Inicial.classList.add('inicial-manual');
     calcularGalones();
+    // Sin conexión: lo que escriba se guarda en este equipo y se sube al volver la señal.
+    if (window.JornadaBorrador) window.JornadaBorrador.alFallarLaCarga();
   }
+}
+
+// Escribe en el formulario lo que la jornada tiene guardado (inicial, final y checklist).
+function restaurarJornadaEnFormulario(jornada) {
+  const poner = (input, valor) => {
+    if (valor !== null && valor !== undefined && String(valor) !== '') input.value = Number(valor).toFixed(2);
+  };
+  poner(m1Inicial, jornada.m1Inicial);
+  poner(m2Inicial, jornada.m2Inicial);
+  poner(m1Final, jornada.m1Final);
+  poner(m2Final, jornada.m2Final);
+  // Checklist: se marca la opción guardada.
+  [['fuga-biodiesel', jornada.fugaBiodiesel], ['sistema-electrico', jornada.sistemaElectrico], ['parada-emergencia', jornada.paradaEmergencia]].forEach(([nombre, valor]) => {
+    if (!valor) return;
+    const opcion = [...document.querySelectorAll(`input[name="${nombre}"]`)].find((r) => r.value === valor);
+    if (opcion) opcion.checked = true;
+  });
+}
+
+// Si ayer quedó abierto, se avisa arriba del formulario con un enlace para cerrarlo.
+function mostrarAvisoDiaAnteriorAbierto(anteriorAbierta) {
+  let aviso = document.getElementById('aviso-dia-anterior');
+  if (!anteriorAbierta) { if (aviso) aviso.remove(); return; }
+  if (!aviso) {
+    aviso = document.createElement('div');
+    aviso.id = 'aviso-dia-anterior';
+    aviso.className = 'aviso-jornada-pendiente';
+    const destino = document.querySelector('.control-surtidor');
+    destino?.parentNode.insertBefore(aviso, destino);
+  }
+  aviso.innerHTML = '';
+  const texto = document.createElement('span');
+  texto.textContent = `⚠ La jornada del ${anteriorAbierta.fecha} quedó sin cerrar, por eso las lecturas iniciales de hoy son manuales. `;
+  const enlace = document.createElement('a');
+  enlace.href = `/index?fecha=${encodeURIComponent(anteriorAbierta.fecha)}`;
+  enlace.textContent = 'Ir a cerrarla';
+  aviso.append(texto, enlace);
 }
 
 // Si cambian las lecturas finales, se debe volver a guardar el cierre del dia.
@@ -145,31 +191,31 @@ function marcarCierrePendiente() {
   cierreDiaGuardado = false;
 }
 
-// Bloquea el cierre de sesion si el operario inicio lecturas y no ha cerrado M1/M2 final.
-// auth.js llama a esta función (si existe) antes de cerrar sesión.
+// Al cerrar sesión (auth.js llama a esta función si existe) ya NO se bloquea al
+// operario: lo que escribió se guarda en el servidor y podrá continuar al volver.
+// Solo se le recuerda que el día sigue abierto y que debe cerrarlo.
 window.validarAntesDeCerrarSesion = async function validarAntesDeCerrarSesion() {
+  if (window.JornadaBorrador) await window.JornadaBorrador.guardarYa(); // Sube lo pendiente
   const hayLecturasIniciales = m1Inicial.value !== '' || m2Inicial.value !== '';
+  if (!hayLecturasIniciales || cierreDiaGuardado) return true; // Nada pendiente
 
-  // Caso 1: empezó el día pero no ingresó ninguna lectura final.
-  if (hayLecturasIniciales && !lecturasFinalesCompletas()) {
-    await mostrarAlertaError('Falta cierre del día','Para cerrar sesión debes ingresar al menos una lectura final de M1 o M2 y guardar el cierre.');
-    return false;
-  }
-
-  // Caso 2: escribió las lecturas finales pero no pulsó "Guardar dato final".
-  if (hayLecturasIniciales && lecturasFinalesCompletas() && !cierreDiaGuardado) {
-    await mostrarAlertaError(
-      'Dato final sin guardar',
-      'Debes presionar Guardar dato final antes de cerrar sesion.'
-    );
-    return false;
-  }
-
-  return true; // Vía libre para cerrar sesión
+  const pendienteSinSubir = window.JornadaBorrador?.hayCambiosSinSubir();
+  const confirmado = await confirmarAccion(
+    'La jornada sigue abierta',
+    pendienteSinSubir
+      ? 'Tus lecturas se guardaron solo en este equipo (sin conexión). Se subirán al volver a entrar con internet. Recuerda cerrar el día.'
+      : 'Tus lecturas quedaron guardadas. Podrás continuar cuando vuelvas a entrar, pero recuerda cerrar el día con las lecturas finales.',
+    'Salir de todos modos'
+  );
+  return Boolean(confirmado);
 };
 
 // Coloca automaticamente la fecha del dia actual.
-fecha.valueAsDate = new Date();
+// (Se usa la fecha LOCAL del equipo: valueAsDate daría la fecha UTC, que después
+// de las 7 p. m. en Colombia ya es "mañana".) Un enlace con ?fecha=AAAA-MM-DD abre
+// esa jornada (para cerrar una que quedó pendiente).
+const fechaSolicitada = new URLSearchParams(location.search).get('fecha');
+fecha.value = /^\d{4}-\d{2}-\d{2}$/.test(fechaSolicitada || '') ? fechaSolicitada : fechaLocalISO();
 if (fechaEncabezado) {
   fechaEncabezado.textContent = new Date().toLocaleString('es-CO', {
   day: '2-digit',
@@ -808,14 +854,26 @@ function limpiarFirma() {
 
 // Lee la copia local de registros del navegador.
 function obtenerRegistrosGuardados() {
-  return JSON.parse(localStorage.getItem(nombreAlmacenamiento)) || [];
+  try {
+    return JSON.parse(localStorage.getItem(nombreAlmacenamiento)) || [];
+  } catch (error) {
+    return []; // Dato dañado o almacenamiento bloqueado
+  }
 }
 
 // Guarda una copia local si se abre el HTML sin usar Node.
 function guardarRegistroLocal(registro) {
-  const registros = obtenerRegistrosGuardados();
-  registros.push(registro);
-  localStorage.setItem(nombreAlmacenamiento, JSON.stringify(registros));
+  // La copia es solo un respaldo: nunca debe impedir ni "romper" un guardado que
+  // ya se hizo en el servidor. Sin la firma (pesada) y con tope de 50 registros
+  // para no llenar el almacenamiento del navegador.
+  try {
+    const { firma, ...sinFirma } = registro;
+    const registros = obtenerRegistrosGuardados();
+    registros.push(sinFirma);
+    localStorage.setItem(nombreAlmacenamiento, JSON.stringify(registros.slice(-50)));
+  } catch (error) {
+    console.warn('No se pudo guardar la copia local del registro.', error);
+  }
 }
 
 // Envia el registro al servidor Node para guardarlo en data/registros.json.

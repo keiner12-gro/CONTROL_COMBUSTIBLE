@@ -56,7 +56,9 @@ const parametrosReporte = new URLSearchParams(window.location.search);
 const esReporteGeneral = parametrosReporte.get('tipo') === 'general'; // Modo anual
 const anioReporte = Number(parametrosReporte.get('anio'));
 const mesReporte = Number(parametrosReporte.get('mes'));
-let registrosMensuales = []; // Registros descargados del periodo
+let registrosMensuales = []; // Suministros a máquinas descargados del periodo
+let jornadasMensuales = []; // Jornadas (lecturas M1/M2 + checklist) del periodo: fuente independiente
+let conciliacionActual = null; // Totales del surtidor vs. suministrado, calculados por el servidor
 // Referencias a las gráficas de Chart.js (hay que destruirlas antes de redibujar).
 let graficaConsumoFecha = null;
 let graficaM1M2 = null;
@@ -74,9 +76,10 @@ const ETIQUETAS_TIPO_ALERTA = {
   sobrecapacidad: { label: 'Sobre capacidad', icon: '🔴' },
   promedio: { label: 'Consumo fuera del promedio', icon: '🟠' },
   horometro_irregular: { label: 'Horómetro irregular', icon: '🟡' },
-  inspeccion_pendiente: { label: 'Inspección pendiente', icon: '🟣' }
+  inspeccion_pendiente: { label: 'Inspección pendiente', icon: '🟣' },
+  cierre_pendiente: { label: 'Cierre pendiente', icon: '⏰' }
 };
-const ORDEN_TIPOS_ALERTA_REPORTE = ['sobrecapacidad', 'promedio', 'horometro_irregular', 'inspeccion_pendiente'];
+const ORDEN_TIPOS_ALERTA_REPORTE = ['sobrecapacidad', 'promedio', 'horometro_irregular', 'inspeccion_pendiente', 'cierre_pendiente'];
 
 let alertasDelReporte = []; // Alertas del periodo (ya filtradas)
 let registrosFiltradosActuales = []; // Lo que se está viendo ahora
@@ -379,7 +382,7 @@ function actualizarGraficas(registros) {
   const maquinaSeleccionada = busqueda || 'GENERAL';
   const totalConsumo = lista.reduce((total, registro) => total + obtenerConsumoRegistro(registro), 0);
   const consumoFechas = agruparConsumoPorFecha(lista);
-  const consumoMangueras = calcularConsumoM1M2(lista);
+  const consumoMangueras = calcularConsumoM1M2(jornadasMensuales); // M1/M2 salen de las jornadas, no de los suministros
   const consumoMaquinas = agruparConsumoPorMaquina(lista);
 
   renderizarTendencia(consumoFechas);
@@ -540,10 +543,9 @@ async function cargarReporteGeneral() {
   });
 
   const respuesta = await fetch(`/api/reportes-general/registros?${parametros.toString()}`);
-  const registros = await respuesta.json();
+  aplicarRespuestaReporte(await respuesta.json());
   // El filtro por texto se aplica en el navegador, no en el servidor.
-  registrosMensuales = filtrarRegistrosPorBusqueda(registros, buscarMaquinaReporte.value);
-  pintarVistaReporte(registrosMensuales);
+  pintarVistaReporte(filtrarRegistrosPorBusqueda(registrosMensuales, buscarMaquinaReporte.value));
   await cargarAlertasReporte();
 }
 
@@ -608,8 +610,7 @@ async function cargarDetalleMensual() {
   tituloReporteMensual.textContent = `${nombresMesesDetalle[mesReporte - 1]} ${anioReporte}`;
 
   const respuesta = await fetch(`/api/reportes/${anioReporte}/${mesReporte}/registros`);
-  const registros = await respuesta.json();
-  registrosMensuales = registros;
+  aplicarRespuestaReporte(await respuesta.json());
 
   pintarVistaReporte(registrosMensuales);
   await cargarAlertasReporte();
@@ -689,20 +690,43 @@ function esCierreDia(registro) {
   return tieneLecturas && sinSuministro;
 }
 
-// Pinta las tres secciones usando exactamente los registros recibidos desde MySQL.
-// Los cierres no se eliminan: solo se separan visualmente de los suministros.
+// Guarda lo que devolvió el servidor: las dos fuentes viajan por separado.
+//   suministros -> lo entregado a cada máquina (tabla registros)
+//   jornadas    -> lo que salió del surtidor por día, M1 + M2 (tabla jornadas)
+function aplicarRespuestaReporte(datos) {
+  registrosMensuales = Array.isArray(datos?.suministros) ? datos.suministros : [];
+  jornadasMensuales = Array.isArray(datos?.jornadas) ? datos.jornadas : [];
+  conciliacionActual = datos?.conciliacion || null;
+}
+
+// Pinta las secciones del reporte. Los suministros pueden llegar filtrados por la
+// búsqueda; las jornadas (medidores del surtidor) y el checklist son del periodo
+// completo y no dependen de ese filtro.
 function pintarVistaReporte(registros) {
-  const lista = Array.isArray(registros) ? registros : [];
-  const cierres = lista.filter(esCierreDia); // Van a la tabla de mangueras
-  const suministros = lista.filter((registro) => !esCierreDia(registro)); // Van a la tabla de registros
+  const suministros = Array.isArray(registros) ? registros : [];
 
-  pintarChequeoReporte(lista);
-  pintarRegistroDiarioMangueras(cierres);
+  pintarChequeoReporte(jornadasMensuales); // El checklist es de la jornada
+  pintarRegistroDiarioMangueras(jornadasMensuales);
+  pintarConciliacion();
   pintarRegistrosDelMes(suministros);
-  actualizarGraficas(lista);
+  actualizarGraficas(suministros);
 
-  registrosFiltradosActuales = lista;
+  registrosFiltradosActuales = suministros;
   actualizarPanelesDerivados();
+}
+
+// Conciliación: lo que salió del surtidor frente a lo entregado a las máquinas.
+// Una diferencia grande puede indicar combustible sin asignar (o registros faltantes).
+function pintarConciliacion() {
+  const el = document.getElementById('conciliacion-reporte');
+  if (!el) return;
+  if (!conciliacionActual) {
+    el.textContent = '';
+    return;
+  }
+  const { totalSurtidor, totalSuministrado, diferencia } = conciliacionActual;
+  el.textContent = `Surtidor (M1+M2): ${Number(totalSurtidor).toFixed(2)} gal · Entregado a máquinas: ${Number(totalSuministrado).toFixed(2)} gal · Diferencia: ${Number(diferencia).toFixed(2)} gal`;
+  el.className = `conciliacion-reporte ${Math.abs(Number(diferencia)) > 0.005 ? 'con-diferencia' : 'sin-diferencia'}`;
 }
 
 // Pinta los datos del checklist guardado desde el formulario principal.
@@ -762,7 +786,8 @@ function pintarRegistroDiarioMangueras(registros) {
       mostrarNumero(registro.m2Inicial),
       mostrarNumero(registro.m2Final),
       mostrarNumero(registro.galonesM2),
-      mostrarNumero(registro.totalGalones)
+      mostrarNumero(registro.totalGalones),
+      registro.estado === 'cerrada' ? 'Cerrada' : 'Abierta (sin cerrar)'
     ];
 
     datos.forEach((dato) => {
@@ -830,8 +855,7 @@ setInterval(async () => {
       await cargarReporteGeneral();
     } else if (anioReporte && mesReporte) {
       const respuesta = await fetch(`/api/reportes/${anioReporte}/${mesReporte}/registros`);
-      const registros = await respuesta.json();
-      registrosMensuales = registros;
+      aplicarRespuestaReporte(await respuesta.json());
       // Se conserva el filtro de búsqueda que el usuario tuviera activo.
       pintarVistaReporte(filtrarRegistrosPorBusqueda(registrosMensuales, buscarMaquinaReporte.value));
     }

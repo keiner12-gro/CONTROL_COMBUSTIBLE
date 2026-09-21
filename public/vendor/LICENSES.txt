@@ -1,0 +1,8 @@
+Librerías de terceros incluidas en esta carpeta (copiadas tal cual desde npm para
+que la app funcione sin internet y sin depender de un CDN):
+
+- sweetalert2 v11.26.25  — licencia MIT — https://sweetalert2.github.io
+- chart.js v4.4.4        — licencia MIT — https://www.chartjs.org
+
+Para actualizarlas: descargar la versión nueva desde npm (npm pack <paquete>@<versión>)
+y reemplazar el archivo correspondiente; subir el número de versión del caché en public/sw.js.

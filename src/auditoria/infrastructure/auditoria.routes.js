@@ -12,7 +12,7 @@
 // ============================================================================
 
 const express = require('express');
-const { registrarAuditoria } = require('../../shared/infrastructure/audit');
+const { zona } = require('../../shared/application/fechas'); // Los filtros por día usan la hora local
 
 // La columna "detalle" es JSON. Según el driver puede llegar como texto o como
 // objeto ya interpretado; esta función normaliza ambos casos y nunca falla.
@@ -56,13 +56,14 @@ function buildFiltros(req) {
   const parametros = [];
 
   if (fechaDesde) {
-    condiciones.push('DATE(a.creado_en) >= ?');
-    parametros.push(normalizarFecha(fechaDesde));
+    // El día se cuenta en la zona horaria de la operación, no en UTC.
+    condiciones.push('(a.creado_en AT TIME ZONE ?)::date >= ?::date');
+    parametros.push(zona(), normalizarFecha(fechaDesde));
   }
 
   if (fechaHasta) {
-    condiciones.push('DATE(a.creado_en) <= ?');
-    parametros.push(normalizarFecha(fechaHasta));
+    condiciones.push('(a.creado_en AT TIME ZONE ?)::date <= ?::date');
+    parametros.push(zona(), normalizarFecha(fechaHasta));
   }
 
   if (usuario) {
@@ -86,7 +87,7 @@ function buildFiltros(req) {
     // Búsqueda libre: revisa usuario, acción, módulo, el JSON del detalle y el id.
     const texto = `%${String(q).trim().toLowerCase()}%`;
     condiciones.push(
-      '(LOWER(a.usuario) LIKE ? OR LOWER(a.accion) LIKE ? OR LOWER(a.modulo) LIKE ? OR LOWER(CAST(a.detalle AS CHAR)) LIKE ? OR LOWER(CAST(a.registro_id AS CHAR)) LIKE ?)'
+      '(LOWER(a.usuario) LIKE ? OR LOWER(a.accion) LIKE ? OR LOWER(a.modulo) LIKE ? OR LOWER(a.detalle::text) LIKE ? OR LOWER(a.registro_id::text) LIKE ?)'
     );
     parametros.push(texto, texto, texto, texto, texto); // Un parámetro por cada "?"
   }

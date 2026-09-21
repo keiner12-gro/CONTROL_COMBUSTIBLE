@@ -881,3 +881,34 @@ body.con-shell { padding: 0; }
   .formulario-usuario.busqueda-auditoria { grid-template-columns: 1fr; }
 }
 @media (max-width: 420px) { .formulario-usuario.filtros-auditoria { grid-template-columns: 1fr; } }
+
+/* --- Jornada: indicador de borrador y avisos de cierre pendiente ------------ */
+.estado-borrador { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 700; color: #5a6b62; }
+.estado-borrador.correcto { color: #1f7a45; }
+.estado-borrador.aviso { color: #a35d00; }
+.estado-borrador.error { color: #b3261e; }
+.aviso-jornada-pendiente { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #fff4e5; border: 1px solid #f0b35a; color: #6b3d00; font-size: 14px; font-weight: 600; }
+.aviso-jornada-pendiente a { color: #8a3b00; text-decoration: underline; margin-left: 4px; }
+
+/* Barra fija de avisos de la app (jornada sin cerrar, activar notificaciones, instalar). */
+.barra-avisos { display: flex; flex-direction: column; gap: 1px; margin-bottom: 10px; border-radius: 12px; overflow: hidden; }
+.barra-avisos:empty { display: none; }
+.barra-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; font-size: 14px; font-weight: 600; }
+.barra-aviso.alerta { background: #b3261e; color: #fff; }
+.barra-aviso.info { background: #1f4d36; color: #fff; }
+.barra-aviso span { flex: 1 1 260px; }
+.barra-aviso a, .barra-aviso button { border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: 13px; cursor: pointer; background: #fff; color: #1f2a24; text-decoration: none; }
+.barra-aviso button.secundario { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,.55); }
+
+/* Reporte: conciliación entre el surtidor (M1+M2) y lo entregado a las máquinas */
+.conciliacion-reporte { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 700; background: #eef6f0; color: #1f4d36; }
+.conciliacion-reporte.con-diferencia { background: #fff4e5; color: #7a4400; border: 1px solid #f0b35a; }
+.conciliacion-reporte:empty { display: none; }
+
+/* Alerta "cierre pendiente" (jornada abierta) */
+.filtro-chip[data-tipo="cierre_pendiente"] { border-left-color:var(--cc-rojo) }
+.filtro-chip.activo[data-tipo="cierre_pendiente"] { background:#b3261e }
+.badge-tipo-alerta.tipo-cierre_pendiente { background:var(--cc-rojo-suave);color:#9d3027 }
+.alerta-card.tipo-cierre_pendiente { border-top-color:var(--cc-rojo) }
+.alerta-reciente-item.tipo-cierre_pendiente i { background:#e0655c }
+

@@ -1,51 +1,75 @@
-# Control de Combustible 2.0
+# Control de Combustible 3.0
 
-Sistema de control diario de combustible con Node.js, Express y MySQL/MariaDB.
+Sistema de control diario de combustible: registro de suministros a cada máquina, lecturas de los medidores del
+surtidor (M1/M2), cierre de jornada, alertas, reportes y auditoría. **Node.js + Express + PostgreSQL (Supabase)**,
+instalable como app en celular y tablet (**PWA**, con notificaciones push).
 
-## Cambios principales
+## Qué hace
 
-- Sesiones reales mediante cookie HttpOnly y tokens de sesión almacenados como hash.
-- Contraseñas migradas automáticamente desde texto plano a hash scrypt al iniciar sesión/preparar la base.
-- APIs protegidas por autenticación y permisos.
-- El backend ya no confía en `x-rol` ni `x-usuario`.
-- Auditoría de accesos y operaciones críticas.
-- Cierre M1/M2 independiente: si existe cierre del día anterior, el inicial se carga automáticamente y queda bloqueado; si no existe cierre del día anterior, el inicial queda editable manualmente.
-- Validación en backend para impedir alterar un inicial automático.
-- Vista de registros convertida de tabla ancha a tarjetas editables, más cómoda en móvil.
-- Identidad visual verde + naranja, sin imágenes de fondo nuevas.
-- Indicador visual de capacidad del tanque y sobrecapacidad.
-- Alertas por sobrecapacidad y por consumo superior al promedio histórico.
-- Parámetros de alerta de promedio configurables en `.env`.
-- Separación del contenido público en `public/`; `src`, `data`, `.env` y `database.sql` no se sirven como archivos estáticos.
+| Módulo | Descripción |
+|---|---|
+| **Registro** | Suministro a una máquina (operario, horómetro, cantidad, SAI, firma dibujada). |
+| **Jornada** | Una por día: lecturas M1/M2 iniciales/finales + checklist. Se **autoguarda**; un solo cierre por día. |
+| **Alertas** | Sobrecapacidad, consumo sobre el promedio, horómetro irregular, inspección pendiente y **cierre pendiente**. |
+| **Reportes** | Se calculan al momento con dos fuentes **independientes**: medidores del surtidor (jornadas) y suministros a máquinas, más la **conciliación** entre ambos. |
+| **Auditoría** | Bitácora de solo lectura, **inmutable** incluso a nivel de base de datos. |
+| **Usuarios y permisos** | Roles (super administrador, administrador, supervisor, operario) y permisos por pantalla. |
+| **Avisos** | Notificaciones push y barra en la app cuando una jornada queda sin cerrar. |
 
-## Instalación
+## Estructura
 
-1. Copia `.env.example` como `.env` y completa las credenciales de MySQL/MariaDB.
-2. Ejecuta `npm install`.
-3. Asegúrate de que MySQL/MariaDB esté iniciado.
-4. Ejecuta `npm start`.
-5. Abre `http://localhost:3000`.
+```
+server.js                 Punto de entrada (Express, seguridad, montaje de módulos)
+src/<módulo>/             domain (contratos) · application (reglas) · infrastructure (SQL y rutas HTTP)
+  jornadas/  records/  reports/  alerts/  auditoria/  users/  tractors/  operators/  push/  tareas/
+src/shared/               db.js · storage.js · security.js · fechas.js · retroactivo.js · audit.js
+supabase/schema.sql       ESQUEMA COMPLETO de la base de datos (12 tablas)
+public/                   Frontend (html, css, js), manifest.webmanifest, sw.js, íconos y librerías (vendor/)
+scripts/                  db-migrar · db-sembrar · migrar-datos · generar-vapid · dev-local
+test/                     Pruebas automáticas (33)
+docs/                     GUIA-SUPABASE.md · GUIA-APP-MOVIL.md
+```
 
-La aplicación crea/migra las tablas necesarias al iniciar (solo cuando cambia `VERSION_ESQUEMA` en `src/shared/infrastructure/schema.js`; si agregas tablas o columnas, sube ese valor). Si ya existen usuarios con contraseñas antiguas en texto plano, el esquema las convierte a hash scrypt.
+## Puesta en marcha rápida
 
-## Despliegue en Vercel
+```bash
+npm install
+npm run dev:local        # prueba SIN Supabase (Postgres embebido). Usuarios: admin / supervisor / operario, clave demo1234
+npm test                 # pruebas automáticas
+```
 
-- Variables de entorno obligatorias en Vercel: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (y `DB_PORT` si no es 4000). Vercel define `NODE_ENV=production` por sí mismo.
-- El disco de Vercel es de solo lectura: los soportes de alertas se guardan en la base (`soportes_combustible`) mediante `src/shared/infrastructure/storage.js`. Máximo 3 MB por archivo (Vercel limita el cuerpo a 4,5 MB). Para migrar a Cloudflare R2 solo hay que reemplazar `guardar()` y `leer()` en ese archivo.
-- El límite de intentos de login se guarda en la tabla `intentos_login_combustible` (funciona entre instancias serverless).
-- La carpeta `uploads/` y los archivos `data/usuarios.json` y `data/registros.json` ya no se versionan (están en `.gitignore`).
+Para producción (Supabase + Vercel) sigue **`docs/GUIA-SUPABASE.md`** (montaje, variables de entorno, migración de
+datos y traspaso a otra cuenta). Para instalar la app, activar avisos o generar el APK: **`docs/GUIA-APP-MOVIL.md`**.
+
+Comandos:
+
+| Comando | Para qué |
+|---|---|
+| `npm start` | Levanta el servidor con la base de `DATABASE_URL`. |
+| `npm run db:migrar` | Crea/actualiza las tablas (idempotente). |
+| `npm run db:sembrar` | Maquinaria inicial y primer administrador. |
+| `npm run migrar-datos` | Pasa los datos de la base antigua (MySQL/TiDB) a Supabase (`-- --simular` para probar). |
+| `npm run generar-vapid` | Claves gratuitas para las notificaciones push. |
+| `npm run dev:local` | App completa en local con Postgres embebido. |
+
+## Configuración
+
+Toda la configuración va en variables de entorno (ver `.env.example`). Las principales: `DATABASE_URL`,
+`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CRON_SECRET`, `VAPID_*`, `ZONA_HORARIA` (America/Bogota),
+`HORA_LIMITE_CIERRE` (18:00).
+
+## Reglas de negocio importantes
+
+* **Fechas**: todo usa la zona horaria de la operación (`ZONA_HORARIA`), no UTC.
+* **Jornada**: una fila por día (`fecha` única). El primer suministro o el primer guardado la crea; el cierre la
+  completa. Los galones los calcula el servidor. La lectura inicial del día es la final del cierre del día anterior.
+* **Fechas pasadas**: el operario solo puede registrar hoy (sí puede completar una jornada que quedó abierta);
+  supervisor hasta `DIAS_ATRAS_PERMITIDOS` días, administrador hasta `DIAS_ATRAS_ADMIN`; el super administrador sin límite.
+* **Anulación**: registros, máquinas y operarios no se borran: se anulan con motivo.
+* **Archivos adjuntos**: máx. 3 MB (PDF, PNG, JPG o WEBP); se guardan en Supabase Storage y se valida su contenido real.
 
 ## Seguridad
 
-No compartas el archivo `.env`. El ZIP de entrega no incluye credenciales ni `node_modules`.
-
-## M1/M2
-
-Para una fecha seleccionada, el sistema consulta exclusivamente el día calendario anterior. Si existe un cierre de ese día, M1 y M2 toman respectivamente sus lecturas finales. Si no existe cierre del día anterior, cada inicial puede introducirse manualmente. Si solo existe cierre para una manguera, esa manguera queda automática y la otra puede permanecer manual.
-
-## Promedio de consumo
-
-Por defecto se necesitan 5 registros históricos de la máquina y el nuevo suministro debe superar en 25% el promedio para generar una alerta. Se puede cambiar con:
-
-- `MIN_MUESTRAS_PROMEDIO`
-- `FACTOR_ALERTA_PROMEDIO`
+Contraseñas con scrypt, sesiones con cookie HttpOnly (el token se guarda hasheado), bloqueo de intentos de login en
+base de datos, cabeceras CSP/HSTS, consultas parametrizadas, RLS activado en todas las tablas, auditoría inmutable y
+librerías propias en `public/vendor` (sin CDN). No compartas el archivo `.env`.

@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "Control de Combustible — Guaicaramo",
+  "short_name": "Combustible",
+  "description": "Registro diario de combustible, cierre de jornada, alertas y reportes.",
+  "lang": "es",
+  "start_url": "/menu",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f3",
+  "theme_color": "#1f4d36",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Registrar combustible", "short_name": "Registro", "url": "/index", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Alertas", "short_name": "Alertas", "url": "/alertas", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

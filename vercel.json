@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["public/**", "data/maquinaria.json", "supabase/schema.sql"]
+      }
     }
   ],
   "routes": [
@@ -11,5 +14,9 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
+  ],
+  "crons": [
+    { "path": "/api/tareas/recordatorio-cierre?momento=manana", "schedule": "0 12 * * *" },
+    { "path": "/api/tareas/recordatorio-cierre?momento=tarde", "schedule": "0 23 * * *" }
   ]
 }

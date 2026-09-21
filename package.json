@@ -1,17 +1,26 @@
 {
   "name": "control-combustible",
   "version": "2.0.0",
-  "description": "Control empresarial de combustible con Node, MySQL, sesiones seguras, permisos y analítica",
+  "description": "Control empresarial de combustible: Node, PostgreSQL (Supabase), sesiones seguras, permisos, analítica y app instalable (PWA)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "db:migrar": "node scripts/db-migrar.js",
+    "db:sembrar": "node scripts/db-sembrar.js",
+    "generar-vapid": "node scripts/generar-vapid.js",
+    "migrar-datos": "node scripts/migrar-datos.js",
+    "test": "node --test test/",
+    "dev:local": "node scripts/dev-local.js"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mysql2": "^3.23.2"
+    "pg": "^8.23.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "mysql2": "^3.24.4",
     "prettier": "^3.9.6"
   }
 }

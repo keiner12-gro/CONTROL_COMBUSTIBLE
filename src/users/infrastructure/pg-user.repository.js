@@ -1,7 +1,7 @@
 // ============================================================================
-// mysql-user.repository.js (INFRAESTRUCTURA) — SQL DE USUARIOS
+// pg-user.repository.js (INFRAESTRUCTURA) — SQL DE USUARIOS
 // ----------------------------------------------------------------------------
-// Implementación real del contrato UserRepository contra MySQL. Todas las
+// Implementación real del contrato UserRepository contra PostgreSQL (Supabase). Todas las
 // consultas SQL relacionadas con usuarios y permisos están aquí.
 // Nota: todas las consultas usan parámetros "?" (nunca concatenación de texto),
 // lo que evita inyección SQL.
@@ -15,10 +15,10 @@ const {
   esHashSeguro // Detecta contraseñas antiguas sin cifrar
 } = require('../../shared/infrastructure/security');
 
-class MySQLUserRepository extends UserRepository {
+class PgUserRepository extends UserRepository {
   constructor(db) {
     super();
-    this.db = db; // Pool de conexiones creado en server.js
+    this.db = db; // Base de datos creada en server.js (ver db.js)
   }
 
   // Quita espacios sobrantes del nombre de usuario.
@@ -106,12 +106,12 @@ class MySQLUserRepository extends UserRepository {
       });
     const hash = hashPassword(contrasena);
     // Si se crea con la clave temporal 123456, se obliga a cambiarla al entrar.
-    const debeCambiar = contrasena === '123456' ? 1 : 0;
-    const [resultado] = await this.db.query(
-      'INSERT INTO usuarios_combustible(usuario,contrasena,rol,debe_cambiar_contrasena) VALUES(?,?,?,?)',
+    const debeCambiar = contrasena === '123456'; // Clave temporal: obliga a cambiarla
+    const [filas] = await this.db.query(
+      'INSERT INTO usuarios_combustible(usuario,contrasena,rol,debe_cambiar_contrasena) VALUES(?,?,?,?) RETURNING id',
       [usuario, hash, datos.rol, debeCambiar]
     );
-    return resultado.insertId; // Id generado, necesario para guardar los permisos
+    return filas[0].id; // Id generado, necesario para guardar los permisos
   }
 
   // Edición: si viene contraseña se actualiza también; si no, solo el rol.
@@ -123,7 +123,7 @@ class MySQLUserRepository extends UserRepository {
           status: 400
         });
       const hash = hashPassword(contrasena);
-      const debeCambiar = contrasena === '123456' ? 1 : 0; // Reset de clave temporal
+      const debeCambiar = contrasena === '123456'; // Reset de clave temporal
       await this.db.query(
         'UPDATE usuarios_combustible SET contrasena=?,rol=?,debe_cambiar_contrasena=? WHERE id=?',
         [hash, datos.rol, debeCambiar, id]
@@ -167,7 +167,7 @@ class MySQLUserRepository extends UserRepository {
     const hash = hashPassword(nuevaContrasena);
     // Al cambiarla se apaga la bandera de "debe cambiar contraseña".
     await this.db.query(
-      'UPDATE usuarios_combustible SET contrasena=?,debe_cambiar_contrasena=0 WHERE id=?',
+      'UPDATE usuarios_combustible SET contrasena=?,debe_cambiar_contrasena=FALSE WHERE id=?',
       [hash, id]
     );
     return true;
@@ -190,4 +190,4 @@ class MySQLUserRepository extends UserRepository {
   }
 }
 
-module.exports = { MySQLUserRepository };
+module.exports = { PgUserRepository };

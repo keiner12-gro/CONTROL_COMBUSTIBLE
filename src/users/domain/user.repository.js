@@ -2,9 +2,9 @@
 // user.repository.js (DOMINIO) — CONTRATO DEL REPOSITORIO DE USUARIOS
 // ----------------------------------------------------------------------------
 // Clase abstracta: define QUÉ operaciones debe ofrecer cualquier repositorio de
-// usuarios, sin decir CÓMO. La implementación real contra MySQL está en
-// infrastructure/mysql-user.repository.js.
-// Sirve para que el servicio dependa de este contrato y no de MySQL: si algún
+// usuarios, sin decir CÓMO. La implementación real contra PostgreSQL (Supabase) está en
+// infrastructure/pg-user.repository.js.
+// Sirve para que el servicio dependa de este contrato y no de la base de datos: si algún
 // día se cambia de motor de base de datos, solo se crea otra implementación.
 // Cada método lanza error si no fue sobrescrito por la clase hija.
 // ============================================================================

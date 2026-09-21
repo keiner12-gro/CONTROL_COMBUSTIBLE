@@ -40,7 +40,7 @@ function limitarIntentosLogin(db) {
   return async (req, res, next) => {
     try {
       const [filas] = await db.query(
-        'SELECT intentos, TIMESTAMPDIFF(SECOND, primer_intento, NOW()) AS segundos FROM intentos_login_combustible WHERE clave=?',
+        'SELECT intentos, EXTRACT(EPOCH FROM (NOW() - primer_intento))::float8 AS segundos FROM intentos_login_combustible WHERE clave=?',
         [claveIntentoLogin(req)]
       );
       const registro = filas[0];
@@ -68,9 +68,9 @@ async function registrarIntentoLoginFallido(db, req) {
   try {
     await db.query(
       `INSERT INTO intentos_login_combustible(clave,intentos,primer_intento) VALUES(?,1,NOW())
-       ON DUPLICATE KEY UPDATE
-         intentos = IF(TIMESTAMPDIFF(SECOND, primer_intento, NOW()) >= ?, 1, intentos + 1),
-         primer_intento = IF(TIMESTAMPDIFF(SECOND, primer_intento, NOW()) >= ?, NOW(), primer_intento)`,
+       ON CONFLICT (clave) DO UPDATE SET
+         intentos = CASE WHEN EXTRACT(EPOCH FROM (NOW() - intentos_login_combustible.primer_intento)) >= ? THEN 1 ELSE intentos_login_combustible.intentos + 1 END,
+         primer_intento = CASE WHEN EXTRACT(EPOCH FROM (NOW() - intentos_login_combustible.primer_intento)) >= ? THEN NOW() ELSE intentos_login_combustible.primer_intento END`,
       [claveIntentoLogin(req), LOGIN_VENTANA_MS / 1000, LOGIN_VENTANA_MS / 1000]
     );
   } catch (error) {
@@ -199,13 +199,18 @@ async function autenticarSolicitud(db, req, res, next) {
     const token = leerCookie(req, COOKIE_NAME);
     if (!token) return res.status(401).json({ mensaje: 'Sesión no válida o expirada.' });
 
-    // Busca la sesión vigente y trae de una vez los datos del usuario dueño.
+    // UNA sola consulta trae la sesión vigente, el usuario dueño y sus permisos
+    // (cada consulta a Supabase cuesta latencia, y esto corre en TODA petición).
     const [rows] = await db.query(
       `
-      SELECT s.usuario_id, u.usuario, u.rol, u.debe_cambiar_contrasena
+      SELECT s.usuario_id, u.usuario, u.rol, u.debe_cambiar_contrasena,
+             (s.ultimo_uso IS NULL OR s.ultimo_uso < NOW() - INTERVAL '1 minute') AS marcar_uso,
+             COALESCE(ARRAY_AGG(p.vista) FILTER (WHERE p.vista IS NOT NULL), '{}') AS permisos
       FROM sesiones_combustible s
       INNER JOIN usuarios_combustible u ON u.id=s.usuario_id
+      LEFT JOIN permisos_usuarios_combustible p ON p.usuario_id=u.id
       WHERE s.token_hash=? AND s.expira_en > NOW()
+      GROUP BY s.id, u.id
       LIMIT 1
     `,
       [hashToken(token)]
@@ -213,15 +218,10 @@ async function autenticarSolicitud(db, req, res, next) {
 
     if (!rows.length) return res.status(401).json({ mensaje: 'Sesión no válida o expirada.' });
 
-    const usuario = rows[0];
-    // Carga las vistas a las que el usuario tiene acceso.
-    const [permisos] = await db.query(
-      'SELECT vista FROM permisos_usuarios_combustible WHERE usuario_id=?',
-      [usuario.usuario_id]
-    );
+    const { marcar_uso: marcarUso, ...usuario } = rows[0];
     usuario.id = usuario.usuario_id;
     // El super administrador no necesita permisos explícitos: puede todo.
-    usuario.permisos = usuario.rol === 'super_administrador' ? [] : permisos.map((p) => p.vista);
+    if (usuario.rol === 'super_administrador') usuario.permisos = [];
     delete usuario.usuario_id;
 
     // Si el usuario tiene contraseña temporal, solo puede usar las rutas de
@@ -236,10 +236,12 @@ async function autenticarSolicitud(db, req, res, next) {
       });
     }
 
-    // Marca de actividad de la sesión (útil para auditoría).
-    await db.query('UPDATE sesiones_combustible SET ultimo_uso=NOW() WHERE token_hash=?', [
-      hashToken(token)
-    ]);
+    // Marca de actividad de la sesión (útil para auditoría). Se escribe como
+    // mucho una vez por minuto para no sumar una escritura a cada petición.
+    if (marcarUso)
+      await db.query('UPDATE sesiones_combustible SET ultimo_uso=NOW() WHERE token_hash=?', [
+        hashToken(token)
+      ]);
     req.user = usuario; // A partir de aquí, cualquier ruta puede leer req.user
     next();
   } catch (e) {

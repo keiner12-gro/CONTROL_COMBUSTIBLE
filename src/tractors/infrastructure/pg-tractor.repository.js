@@ -1,5 +1,5 @@
 // ============================================================================
-// mysql-tractor.repository.js (INFRAESTRUCTURA) — SQL DE MAQUINARIA
+// pg-tractor.repository.js (INFRAESTRUCTURA) — SQL DE MAQUINARIA
 // ----------------------------------------------------------------------------
 // Consultas a la tabla "tractores". Detalle importante: los textos se guardan
 // SIEMPRE EN MAYÚSCULAS para que las búsquedas y comparaciones con los
@@ -8,7 +8,7 @@
 
 const { TractorRepository } = require('../domain/tractor.repository');
 
-class MySQLTractorRepository extends TractorRepository {
+class PgTractorRepository extends TractorRepository {
   constructor(db) {
     super();
     this.db = db;
@@ -57,12 +57,12 @@ class MySQLTractorRepository extends TractorRepository {
       .trim()
       .toUpperCase();
     const capacidad_galones = Number(datos.capacidad_galones || 0); // Base para las alertas
-    const [resultado] = await this.db.query(
-      'INSERT INTO tractores(item,maquina,descripcion,centro_costo,capacidad_galones) VALUES(?,?,?,?,?)',
+    const [filasNuevas] = await this.db.query(
+      'INSERT INTO tractores(item,maquina,descripcion,centro_costo,capacidad_galones) VALUES(?,?,?,?,?) RETURNING id',
       [item, maquina, descripcion, centro_costo, capacidad_galones]
     );
     // Se devuelve el objeto completo para que la pantalla lo pinte sin recargar.
-    return { id: resultado.insertId, item, maquina, descripcion, centro_costo, capacidad_galones };
+    return { id: filasNuevas[0].id, item, maquina, descripcion, centro_costo, capacidad_galones };
   }
 
   // Edición: misma normalización que en create. El "item" no se modifica.
@@ -77,11 +77,11 @@ class MySQLTractorRepository extends TractorRepository {
       .trim()
       .toUpperCase();
     const capacidad_galones = Number(datos.capacidad_galones || 0);
-    const [resultado] = await this.db.query(
+    const [, resultado] = await this.db.query(
       'UPDATE tractores SET maquina=?,descripcion=?,centro_costo=?,capacidad_galones=? WHERE id=?',
       [maquina, descripcion, centro_costo, capacidad_galones, id]
     );
-    if (!resultado.affectedRows) return null; // No existía ese id
+    if (!resultado.rowCount) return null; // No existía ese id
     // Se relee la fila para devolver el dato tal como quedó guardado.
     const [filas] = await this.db.query(
       'SELECT id,item,maquina,descripcion,centro_costo,capacidad_galones FROM tractores WHERE id=?',
@@ -93,13 +93,13 @@ class MySQLTractorRepository extends TractorRepository {
   // Anula en vez de borrar: los registros historicos ya guardaron el nombre
   // de la maquina y no deben quedar huerfanos.
   async remove(id, motivo, usuario) {
-    const [resultado] = await this.db.query(
+    const [, resultado] = await this.db.query(
       // La condición estado<>'ANULADO' evita pisar los datos de una anulación previa.
       "UPDATE tractores SET estado='ANULADO',motivo_anulacion=?,usuario_anulacion=?,fecha_anulacion=NOW() WHERE id=? AND estado<>'ANULADO'",
       [motivo || null, usuario || null, id]
     );
-    return resultado.affectedRows > 0; // true si realmente se anuló algo
+    return resultado.rowCount > 0; // true si realmente se anuló algo
   }
 }
 
-module.exports = { MySQLTractorRepository };
+module.exports = { PgTractorRepository };

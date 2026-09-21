@@ -45,7 +45,8 @@ const ICONOS_ALERTA = {
   sobrecapacidad: '🔴',
   promedio: '🟠',
   horometro_irregular: '🟡',
-  inspeccion_pendiente: '🟣'
+  inspeccion_pendiente: '🟣',
+  cierre_pendiente: '⏰'
 };
 
 // Texto corto que describe cada tipo de alerta.
@@ -57,6 +58,8 @@ function descripcionAlerta(tipo) {
       return 'Horómetro irregular';
     case 'inspeccion_pendiente':
       return 'Inspección pendiente';
+    case 'cierre_pendiente':
+      return 'Jornada sin cerrar';
     default:
       return 'Sobre capacidad detectada';
   }
@@ -116,7 +119,7 @@ async function cargarResumen() {
     const registros = await respuesta.json();
 
     // Registros de hoy, excluyendo los cierres de día (no son suministros).
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = fechaLocalISO();
     const delDia = registros.filter((r) => String(r.fecha || '').slice(0, 10) === hoy && !Number(r.cierreDia));
     const galonesHoy = delDia.reduce((total, r) => total + Number(r.cantidad || 0), 0);
 
@@ -140,7 +143,7 @@ function dibujarConsumoPorMaquina(registros) {
   const vacio = document.getElementById('ranking-consumo-vacio');
   if (!contenedor) return;
 
-  const mesActual = new Date().toISOString().slice(0, 7); // "2026-09"
+  const mesActual = fechaLocalISO().slice(0, 7); // "2026-09"
   const totalesPorMaquina = new Map(); // máquina -> galones acumulados
 
   // Se suman los galones del mes agrupando por nombre de máquina.
@@ -193,7 +196,7 @@ function dibujarConsumoSemana(registros) {
   for (let i = 6; i >= 0; i--) {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - i);
-    dias.push(fecha.toISOString().slice(0, 10));
+    dias.push(fechaLocalISO(fecha));
   }
 
   // Total de galones de cada uno de esos días.

@@ -26,19 +26,21 @@ const TIPOS_ALERTA={
   promedio:{label:'Consumo fuera del promedio',icon:'🟠'},
   horometro_irregular:{label:'Horómetro irregular',icon:'🟡'},
   inspeccion_pendiente:{label:'Inspección pendiente',icon:'🟣'},
+  cierre_pendiente:{label:'Cierre pendiente',icon:'⏰'},
   // La categoria "registro incompleto" ya no se genera; se conserva solo para
   // rotular correctamente alertas historicas que hayan quedado guardadas con este tipo.
   registro_incompleto:{label:'Registro incompleto (histórico)',icon:'⚪'}
 };
 // Orden en que aparecen los chips de filtro.
-const ORDEN_TIPOS=['sobrecapacidad','promedio','horometro_irregular','inspeccion_pendiente'];
+const ORDEN_TIPOS=['sobrecapacidad','promedio','horometro_irregular','inspeccion_pendiente','cierre_pendiente'];
 
 // Jerarquia visual de prioridad por tipo de alerta (no altera el estado real de la alerta).
 const PRIORIDAD_ALERTA={
   sobrecapacidad:{clase:'alta',label:'Prioridad alta'},
   promedio:{clase:'media-alta',label:'Prioridad media-alta'},
   horometro_irregular:{clase:'media',label:'Prioridad media'},
-  inspeccion_pendiente:{clase:'seguimiento',label:'Seguimiento'}
+  inspeccion_pendiente:{clase:'seguimiento',label:'Seguimiento'},
+  cierre_pendiente:{clase:'media-alta',label:'Requiere acción'}
 };
 
 // Estado de la pantalla: los datos descargados y los dos filtros activos.
@@ -99,7 +101,7 @@ function tarjetaAlerta(a){
   const fecha=a.fecha?String(a.fecha).slice(0,10).split('-').reverse().join('/'):'Sin fecha'; // A dd/mm/aaaa
   const cantidad=Number(a.cantidad||0), capacidad=Number(a.capacidad_galones||0), exceso=Number(a.exceso_galones||0);
   const porcentaje=capacidad?Math.min(100,Math.round(cantidad/capacidad*100)):0; // Tope 100% en la barra
-  const esInspeccion=tipo==='inspeccion_pendiente';
+  const esInspeccion=tipo==='inspeccion_pendiente'||tipo==='cierre_pendiente'; // Ninguna de las dos es de una máquina
   const estado=a.estado==='justificada'?'justificada':'pendiente';
   const esMaquina=!esInspeccion; // Las de inspección no corresponden a una máquina
 
@@ -119,6 +121,9 @@ function tarjetaAlerta(a){
     cuerpo=`<div class="detalle-alerta"><span>Horómetro actual</span><strong>${escapeHtml(a.detalle_alerta||'Sin valor numérico')}</strong></div>`
       +(anterior!=null?`<div class="detalle-alerta"><span>Horómetro anterior</span><strong>${anterior.toFixed(2)}</strong></div>`:'')
       +(hayDiferencia?`<div class="exceso-alerta"><span>Diferencia</span><strong>${(actualNumerico-anterior>=0?'+':'')}${(actualNumerico-anterior).toFixed(2)}</strong></div>`:'');
+  }else if(tipo==='cierre_pendiente'){
+    // La jornada quedó abierta: faltan las lecturas finales y el cierre.
+    cuerpo=`<div class="detalle-alerta"><span>Jornada sin cerrar</span><strong>Falta ingresar las lecturas finales de M1/M2 y guardar el cierre del día</strong></div>`;
   }else if(esInspeccion){
     // Checklist diario sin diligenciar.
     cuerpo=`<div class="detalle-alerta"><span>Estado del checklist</span><strong>Fuga de biodiésel, sistema eléctrico y parada de emergencia sin diligenciar</strong></div>`;

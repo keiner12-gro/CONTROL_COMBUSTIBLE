@@ -2,7 +2,7 @@
 // tractor.repository.js (DOMINIO) — CONTRATO DEL REPOSITORIO DE MAQUINARIA
 // ----------------------------------------------------------------------------
 // Define las operaciones que debe tener cualquier repositorio de tractores.
-// La versión real (SQL) está en infrastructure/mysql-tractor.repository.js.
+// La versión real (SQL) está en infrastructure/pg-tractor.repository.js.
 // ============================================================================
 
 class TractorRepository {

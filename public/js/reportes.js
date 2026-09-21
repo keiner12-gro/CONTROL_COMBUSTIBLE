@@ -100,7 +100,7 @@ async function cargarConsumoSemanaReportes() {
     for (let i = 6; i >= 0; i--) {
       const fecha = new Date();
       fecha.setDate(fecha.getDate() - i);
-      dias.push(fecha.toISOString().slice(0, 10));
+      dias.push(fechaLocalISO(fecha));
     }
 
     // Galones por día (sin contar los cierres de día).

@@ -1,54 +1,100 @@
 // ============================================================================
-// report.service.js (APLICACIÓN) — LÓGICA DE LOS REPORTES MENSUALES
+// report.service.js (APLICACIÓN) — REPORTES MENSUALES Y GENERALES
 // ----------------------------------------------------------------------------
-// Los reportes NO se crean a mano: se regeneran solos a partir de los
-// registros existentes cada vez que se consulta la lista o se cierra un día.
+// Ya NO existe una tabla de reportes: todo se calcula al momento a partir de
+// dos fuentes INDEPENDIENTES:
+//   * jornadas   -> lo que salió del surtidor por día (medidores M1 + M2)
+//   * registros  -> lo que se suministró a cada máquina
+// La CONCILIACIÓN es la diferencia entre ambos totales: combustible que salió
+// del surtidor y no quedó asignado a ninguna máquina (o al revés).
+// PARA CAMBIAR LA HORA EN QUE SE CONSIDERA CERRADO EL MES -> HORA_CIERRE_MES.
 // ============================================================================
 
+const { convertirRegistroParaFrontend } = require('../../records/domain/record.mapper');
+const { convertirJornadaParaFrontend } = require('../../jornadas/domain/jornada.mapper');
+const { hoyLocal, minutosLocales } = require('../../shared/application/fechas');
+
+const HORA_CIERRE_MES = 17; // El mes se considera cerrado a las 5:00 p. m. del último día
+const redondear = (n) => Math.round(Number(n || 0) * 100) / 100;
+const dos = (n) => String(n).padStart(2, '0');
+
+// Primer y último día de un mes: { inicio: '2026-09-01', fin: '2026-09-30' }.
+function rangoDelMes(anio, mes) {
+  const ultimoDia = new Date(Date.UTC(anio, mes, 0)).getUTCDate(); // Día 0 del mes siguiente
+  return { inicio: `${anio}-${dos(mes)}-01`, fin: `${anio}-${dos(mes)}-${dos(ultimoDia)}` };
+}
+
 class ReportService {
-  // Necesita dos repositorios: el de reportes (donde escribe) y el de
-  // registros (de donde saca los totales).
-  constructor(reportRepository, recordRepository) {
-    this.reports = reportRepository;
+  constructor(recordRepository, jornadaRepository) {
     this.records = recordRepository;
+    this.jornadas = jornadaRepository;
   }
 
-  // Recalcula todos los resúmenes mensuales.
-  async generate() {
-    // 1) Totales reales por año/mes sacados de los registros.
-    const resumenes = await this.records.summarizeByMonth();
-    for (const resumen of resumenes)
-      await this.reports.saveSummary(resumen.anio, resumen.mes, resumen);
-
-    const hoy = new Date();
-    const anioActual = hoy.getFullYear();
-    const mesActual = hoy.getMonth() + 1; // getMonth() devuelve 0-11, por eso el +1
-
-    // 2) Borra reportes de meses que ya no tienen ningún registro, salvo el mes
-    //    en curso (que debe verse aunque todavía esté vacío).
-    await this.reports.removeWithoutRecordsExceptCurrent(anioActual, mesActual);
-
-    // 3) Si el mes actual aún no tiene registros, se crea igual en ceros para
-    //    que aparezca en la pantalla de reportes.
-    if (
-      !resumenes.some(
-        (resumen) => Number(resumen.anio) === anioActual && Number(resumen.mes) === mesActual
-      )
-    )
-      await this.reports.saveSummary(anioActual, mesActual, { totalRegistros: 0, totalGalones: 0 });
-  }
-
-  // Listar siempre regenera primero: así los totales nunca quedan desfasados.
+  // Un resumen por mes con actividad (y siempre el mes en curso), del más reciente al más antiguo.
   async list() {
-    await this.generate();
-    return this.reports.list();
+    const suministros = await this.records.summarizeByMonth();
+    const surtidor = await this.jornadas.summarizeByMonth();
+
+    const meses = new Map(); // "2026-09" -> resumen
+    const nodo = (anio, mes) => {
+      const clave = `${anio}-${dos(mes)}`;
+      if (!meses.has(clave))
+        meses.set(clave, { anio, mes, totalRegistros: 0, totalSuministrado: 0, totalGalones: 0 });
+      return meses.get(clave);
+    };
+    for (const fila of suministros) {
+      const n = nodo(Number(fila.anio), Number(fila.mes));
+      n.totalRegistros = Number(fila.total_registros);
+      n.totalSuministrado = Number(fila.total_suministrado);
+    }
+    for (const fila of surtidor)
+      nodo(Number(fila.anio), Number(fila.mes)).totalGalones = Number(fila.total_surtidor);
+
+    const hoy = hoyLocal(); // El mes actual siempre aparece, aunque no tenga datos
+    nodo(Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7)));
+
+    return [...meses.values()]
+      .sort((a, b) => b.anio - a.anio || b.mes - a.mes)
+      .map((m) => {
+        const { inicio, fin } = rangoDelMes(m.anio, m.mes);
+        const cerrado = hoy > fin || (hoy === fin && minutosLocales() >= HORA_CIERRE_MES * 60);
+        return {
+          id: m.anio * 100 + m.mes,
+          anio: m.anio,
+          mes: m.mes,
+          fechaInicio: inicio,
+          fechaFin: fin,
+          fechaCierre: `${fin} ${dos(HORA_CIERRE_MES)}:00:00`,
+          estado: cerrado ? 'cerrado' : 'abierto',
+          totalRegistros: m.totalRegistros, // Cantidad de suministros
+          totalGalones: redondear(m.totalGalones), // Galones del surtidor (M1+M2)
+          totalSuministrado: redondear(m.totalSuministrado), // Galones entregados a máquinas
+          diferencia: redondear(m.totalGalones - m.totalSuministrado) // Conciliación
+        };
+      });
   }
 
-  // Registros crudos de un rango de fechas (los usa el detalle del reporte y
-  // la exportación a Excel/PDF).
-  listGeneral(inicio, fin, busqueda) {
-    return this.records.findByDateRange(inicio, fin, busqueda);
+  // Datos de un rango de fechas, con las dos fuentes por separado.
+  async detalle(inicio, fin, busqueda = '') {
+    const suministros = await this.records.findByDateRange(inicio, fin, busqueda);
+    const jornadas = await this.jornadas.listByDateRange(inicio, fin);
+    const totalSuministrado = suministros.reduce((t, r) => t + Number(r.cantidad || 0), 0);
+    const totalSurtidor = jornadas.reduce((t, j) => t + Number(j.total_galones || 0), 0);
+    return {
+      suministros: suministros.map(convertirRegistroParaFrontend),
+      jornadas: jornadas.map(convertirJornadaParaFrontend),
+      conciliacion: {
+        totalSurtidor: redondear(totalSurtidor),
+        totalSuministrado: redondear(totalSuministrado),
+        diferencia: redondear(totalSurtidor - totalSuministrado)
+      }
+    };
+  }
+
+  detalleMensual(anio, mes, busqueda = '') {
+    const { inicio, fin } = rangoDelMes(anio, mes);
+    return this.detalle(inicio, fin, busqueda);
   }
 }
 
-module.exports = { ReportService };
+module.exports = { ReportService, rangoDelMes };
