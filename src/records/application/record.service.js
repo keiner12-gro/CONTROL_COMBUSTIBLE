@@ -191,9 +191,13 @@ class RecordService {
   }
 
   // Registro crudo por id (sin traducir), para validaciones y auditoría.
+  // El id es un número en Postgres y un texto "recXXXXXXXXXXXXXX" en Airtable:
+  // si no tiene ninguna de las dos formas, no puede existir y se corta aquí
+  // (si no, Postgres respondería con un error de tipo de dato en vez de "no existe").
   async findById(id) {
-    if (!Number.isInteger(Number(id))) return null;
-    return this.repository.findById(id);
+    const texto = String(id ?? '').trim();
+    if (!/^\d+$/.test(texto) && !/^rec[A-Za-z0-9]{10,}$/.test(texto)) return null;
+    return this.repository.findById(texto);
   }
 
   // Edición: prohibida sobre registros anulados.

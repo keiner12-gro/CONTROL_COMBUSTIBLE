@@ -1,7 +1,7 @@
 {
   "name": "control-combustible",
   "version": "2.0.0",
-  "description": "Control empresarial de combustible: Node, PostgreSQL (Supabase), sesiones seguras, permisos, analítica y app instalable (PWA)",
+  "description": "Control empresarial de combustible: Node, base de datos en Postgres/Supabase o Airtable (a elegir), sesiones seguras, permisos, analítica y app instalable (PWA)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,7 +11,9 @@
     "migrar-datos": "node scripts/migrar-datos.js",
     "test": "node --test test/",
     "dev:local": "node scripts/dev-local.js",
-    "importar-operarios": "node scripts/importar-operarios.js"
+    "importar-operarios": "node scripts/importar-operarios.js",
+    "airtable:migrar": "node scripts/airtable-migrar.js",
+    "airtable:sembrar": "node scripts/airtable-sembrar.js"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

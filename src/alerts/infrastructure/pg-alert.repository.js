@@ -10,35 +10,9 @@
 // ============================================================================
 
 const { AlertRepository } = require('../domain/alert.repository');
-
-// Título corto de cada tipo de alerta (encabezado de la notificación).
-const TITULOS_ALERTA = {
-  sobrecapacidad: 'Alerta de sobrecapacidad',
-  promedio: 'Alerta de consumo superior al promedio',
-  horometro_irregular: 'Alerta de horómetro irregular',
-  inspeccion_pendiente: 'Alerta de inspección pendiente',
-  cierre_pendiente: 'Alerta de cierre pendiente'
-};
-
-// Redacta el mensaje explicativo según el tipo de alerta.
-function construirMensaje(alerta) {
-  switch (alerta.tipoAlerta) {
-    case 'promedio':
-      // Cuánto cargó vs. su promedio histórico y el porcentaje de exceso.
-      return `La máquina ${alerta.maquina} registró ${Number(alerta.cantidad).toFixed(2)} galones, un ${Number(alerta.porcentajeSobrePromedio).toFixed(1)}% por encima de su promedio histórico de ${Number(alerta.promedioGalones).toFixed(2)} galones.`;
-    case 'horometro_irregular':
-      // Muestra lo que se escribió y el último horómetro válido conocido.
-      return `La máquina ${alerta.maquina} registró una lectura de horómetro irregular: "${alerta.detalle || 'sin valor numérico'}"${alerta.valorReferencia ? `. El último horómetro válido registrado fue ${Number(alerta.valorReferencia).toFixed(2)}.` : '.'}`;
-    case 'inspeccion_pendiente':
-      // El día se cerró sin llenar el checklist de seguridad.
-      return `El cierre del día ${alerta.fecha} se guardó sin diligenciar el checklist de inspección diaria (fuga de biodiésel, sistema eléctrico y parada de emergencia).`;
-    case 'cierre_pendiente':
-      return `La jornada del ${alerta.fecha} sigue abierta: falta ingresar las lecturas finales de M1/M2 y guardar el cierre del día.`;
-    default:
-      // Caso por defecto: sobrecapacidad del tanque.
-      return `La máquina ${alerta.maquina} registró ${Number(alerta.cantidad).toFixed(2)} galones y supera su capacidad de ${Number(alerta.capacidadGalones).toFixed(2)} galones.`;
-  }
-}
+// Títulos y mensajes de las notificaciones: compartidos con la versión de Airtable
+// (src/alerts/infrastructure/airtable-alert.repository.js) para que digan lo mismo.
+const { TITULOS_ALERTA, construirMensaje } = require('../domain/alert.mensajes');
 
 class PgAlertRepository extends AlertRepository {
   constructor(db) {

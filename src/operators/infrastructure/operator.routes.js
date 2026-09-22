@@ -10,7 +10,7 @@ const express = require('express');
 const { requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
-function crearRutasOperarios(service, db) {
+function crearRutasOperarios(service, auditRepository) {
   const router = express.Router();
 
   // --- GET /api/operarios --------------------------------------------------
@@ -31,7 +31,7 @@ function crearRutasOperarios(service, db) {
   router.post('/operarios', requirePermission('operarios'), async (req, res, next) => {
     try {
       const creado = await service.create(req.body);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -51,7 +51,7 @@ function crearRutasOperarios(service, db) {
     try {
       const motivo = String(req.body?.motivo || '').trim();
       const anulado = await service.remove(req.params.id, motivo, req.user.usuario);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,

@@ -2,10 +2,13 @@
 // security.js — SEGURIDAD: CONTRASEÑAS, SESIONES Y PERMISOS
 // ----------------------------------------------------------------------------
 // Todo lo relacionado con "quién eres" y "qué puedes hacer" vive aquí:
-//  1. Freno de fuerza bruta en el login (contador en la base de datos).
+//  1. Freno de fuerza bruta en el login (contador guardado por authRepository).
 //  2. Cifrado y verificación de contraseñas (scrypt).
 //  3. Creación/destrucción de sesiones con cookie HttpOnly.
 //  4. Middlewares de permisos usados por los routers (requirePermission...).
+// "authRepository" es quien de verdad guarda sesiones e intentos de login (ver
+// src/shared/domain/auth.repository.js): Postgres o Airtable, según
+// DB_PROVIDER. Este archivo NO sabe ni le importa cuál de los dos es.
 // Para cambiar cuánto dura una sesión -> SESSION_HOURS.
 // Para cambiar cuántos intentos de login se permiten -> LOGIN_MAX_INTENTOS.
 // ============================================================================
@@ -17,8 +20,8 @@ const SESSION_HOURS = 8; // Duración de la sesión en horas (jornada laboral)
 
 // Protección contra fuerza bruta en /api/login: bloquea por IP+usuario tras
 // varios intentos fallidos dentro de una ventana de tiempo. El contador vive en
-// la tabla intentos_login_combustible (y no en memoria) porque en Vercel cada
-// petición puede caer en una instancia distinta que no comparte memoria.
+// la base de datos (y no en memoria) porque en Vercel cada petición puede caer
+// en una instancia distinta que no comparte memoria.
 const LOGIN_MAX_INTENTOS = 8; // Intentos fallidos permitidos antes de bloquear
 const LOGIN_VENTANA_MS = 15 * 60 * 1000; // Ventana de 15 minutos para contar esos intentos
 
@@ -36,14 +39,10 @@ function claveIntentoLogin(req) {
 
 // Middleware que se pone ANTES del login: corta la petición si ya se superó el límite.
 // Si la base falla no se bloquea a nadie (el login mismo fallaría igual).
-function limitarIntentosLogin(db) {
+function limitarIntentosLogin(authRepository) {
   return async (req, res, next) => {
     try {
-      const [filas] = await db.query(
-        'SELECT intentos, EXTRACT(EPOCH FROM (NOW() - primer_intento))::float8 AS segundos FROM intentos_login_combustible WHERE clave=?',
-        [claveIntentoLogin(req)]
-      );
-      const registro = filas[0];
+      const registro = await authRepository.obtenerIntento(claveIntentoLogin(req));
       // Bloquea solo si los intentos están dentro de la ventana y superan el máximo.
       if (
         registro &&
@@ -64,24 +63,18 @@ function limitarIntentosLogin(db) {
 }
 
 // Suma un intento fallido. Si la ventana ya venció, reinicia el contador.
-async function registrarIntentoLoginFallido(db, req) {
+async function registrarIntentoLoginFallido(authRepository, req) {
   try {
-    await db.query(
-      `INSERT INTO intentos_login_combustible(clave,intentos,primer_intento) VALUES(?,1,NOW())
-       ON CONFLICT (clave) DO UPDATE SET
-         intentos = CASE WHEN EXTRACT(EPOCH FROM (NOW() - intentos_login_combustible.primer_intento)) >= ? THEN 1 ELSE intentos_login_combustible.intentos + 1 END,
-         primer_intento = CASE WHEN EXTRACT(EPOCH FROM (NOW() - intentos_login_combustible.primer_intento)) >= ? THEN NOW() ELSE intentos_login_combustible.primer_intento END`,
-      [claveIntentoLogin(req), LOGIN_VENTANA_MS / 1000, LOGIN_VENTANA_MS / 1000]
-    );
+    await authRepository.registrarIntentoFallido(claveIntentoLogin(req), LOGIN_VENTANA_MS / 1000);
   } catch (error) {
     console.error('No se pudo registrar el intento de login:', error.message);
   }
 }
 
 // Borra el contador cuando el usuario acierta la contraseña.
-async function limpiarIntentosLogin(db, req) {
+async function limpiarIntentosLogin(authRepository, req) {
   try {
-    await db.query('DELETE FROM intentos_login_combustible WHERE clave=?', [claveIntentoLogin(req)]);
+    await authRepository.limpiarIntento(claveIntentoLogin(req));
   } catch (error) {
     console.error('No se pudo limpiar el contador de login:', error.message);
   }
@@ -163,66 +156,43 @@ function leerCookie(req, nombre) {
   return '';
 }
 
-// Inicia sesión: genera token, lo guarda hasheado en la tabla de sesiones y
-// lo devuelve al navegador en la cookie.
-async function crearSesion(db, usuarioId, req, res) {
+// Inicia sesión: genera token, lo guarda hasheado y lo devuelve al navegador
+// en la cookie.
+async function crearSesion(authRepository, usuarioId, req, res) {
   const token = crearTokenSesion();
-  const hash = hashToken(token);
-  const expira = fechaExpiracion();
-  await db.query('DELETE FROM sesiones_combustible WHERE expira_en < NOW()'); // Limpieza de sesiones vencidas
-  await db.query(
-    'INSERT INTO sesiones_combustible(token_hash,usuario_id,expira_en,ip,agente) VALUES(?,?,?,?,?)',
-    [
-      hash,
-      usuarioId,
-      expira,
-      String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').slice(0, 100), // IP (para trazabilidad)
-      String(req.headers['user-agent'] || '').slice(0, 255) // Navegador/dispositivo usado
-    ]
-  );
+  await authRepository.crearSesion({
+    tokenHash: hashToken(token),
+    usuarioId,
+    expiraEn: fechaExpiracion(),
+    ip: String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').slice(0, 100), // IP (para trazabilidad)
+    agente: String(req.headers['user-agent'] || '').slice(0, 255) // Navegador/dispositivo usado
+  });
   res.setHeader('Set-Cookie', cookieSesion(token, req));
   return token;
 }
 
-// Cierra sesión: borra la fila de la tabla y vacía la cookie en el navegador.
-async function destruirSesion(db, req, res) {
+// Cierra sesión: borra la fila guardada y vacía la cookie en el navegador.
+async function destruirSesion(authRepository, req, res) {
   const token = leerCookie(req, COOKIE_NAME);
-  if (token)
-    await db.query('DELETE FROM sesiones_combustible WHERE token_hash=?', [hashToken(token)]);
+  if (token) await authRepository.eliminarSesionPorToken(hashToken(token));
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
 // Middleware que protege todas las rutas /api (excepto el login).
 // Si la sesión es válida deja en req.user los datos del usuario y sus permisos.
-async function autenticarSolicitud(db, req, res, next) {
+async function autenticarSolicitud(authRepository, req, res, next) {
   try {
     const token = leerCookie(req, COOKIE_NAME);
     if (!token) return res.status(401).json({ mensaje: 'Sesión no válida o expirada.' });
 
-    // UNA sola consulta trae la sesión vigente, el usuario dueño y sus permisos
-    // (cada consulta a Supabase cuesta latencia, y esto corre en TODA petición).
-    const [rows] = await db.query(
-      `
-      SELECT s.usuario_id, u.usuario, u.rol, u.debe_cambiar_contrasena,
-             (s.ultimo_uso IS NULL OR s.ultimo_uso < NOW() - INTERVAL '1 minute') AS marcar_uso,
-             COALESCE(ARRAY_AGG(p.vista) FILTER (WHERE p.vista IS NOT NULL), '{}') AS permisos
-      FROM sesiones_combustible s
-      INNER JOIN usuarios_combustible u ON u.id=s.usuario_id
-      LEFT JOIN permisos_usuarios_combustible p ON p.usuario_id=u.id
-      WHERE s.token_hash=? AND s.expira_en > NOW()
-      GROUP BY s.id, u.id
-      LIMIT 1
-    `,
-      [hashToken(token)]
-    );
+    // Trae la sesión vigente, el usuario dueño y sus permisos de una vez.
+    const sesion = await authRepository.buscarSesionConPermisos(hashToken(token));
+    if (!sesion) return res.status(401).json({ mensaje: 'Sesión no válida o expirada.' });
 
-    if (!rows.length) return res.status(401).json({ mensaje: 'Sesión no válida o expirada.' });
-
-    const { marcar_uso: marcarUso, ...usuario } = rows[0];
-    usuario.id = usuario.usuario_id;
+    const { marcarUso, usuarioId, ...usuario } = sesion;
+    usuario.id = usuarioId;
     // El super administrador no necesita permisos explícitos: puede todo.
     if (usuario.rol === 'super_administrador') usuario.permisos = [];
-    delete usuario.usuario_id;
 
     // Si el usuario tiene contraseña temporal, solo puede usar las rutas de
     // cambio de contraseña, consultar su sesión o cerrar sesión.
@@ -238,10 +208,7 @@ async function autenticarSolicitud(db, req, res, next) {
 
     // Marca de actividad de la sesión (útil para auditoría). Se escribe como
     // mucho una vez por minuto para no sumar una escritura a cada petición.
-    if (marcarUso)
-      await db.query('UPDATE sesiones_combustible SET ultimo_uso=NOW() WHERE token_hash=?', [
-        hashToken(token)
-      ]);
+    if (marcarUso) await authRepository.marcarUltimoUso(hashToken(token));
     req.user = usuario; // A partir de aquí, cualquier ruta puede leer req.user
     next();
   } catch (e) {

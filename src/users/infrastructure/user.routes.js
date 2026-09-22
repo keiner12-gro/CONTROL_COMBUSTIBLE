@@ -7,6 +7,8 @@
 //   GET  /sesion              -> datos del usuario conectado
 //   POST /cambiar-contrasena  -> cambio de contraseña propio
 //   GET/POST/PUT/DELETE /usuarios -> administración de cuentas
+// "authRepository" guarda sesiones/login y "auditRepository" guarda la
+// bitácora (Postgres o Airtable, según DB_PROVIDER); ver server.js.
 // ============================================================================
 
 const express = require('express');
@@ -21,26 +23,26 @@ const {
 } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
-function crearRutasUsuarios(service, db) {
+function crearRutasUsuarios(service, { authRepository, auditRepository }) {
   const router = express.Router(); // Router aislado que se monta en server.js
 
   // --- POST /api/login: única ruta pública de la API -----------------------
-  router.post('/login', limitarIntentosLogin(db), async (req, res, next) => {
+  router.post('/login', limitarIntentosLogin(authRepository), async (req, res, next) => {
     try {
       const resultadoLogin = await service.login(req.body.usuario, req.body.contrasena);
       if (!resultadoLogin) {
-        await registrarIntentoLoginFallido(db, req); // Suma un intento al contador anti fuerza bruta
+        await registrarIntentoLoginFallido(authRepository, req); // Suma un intento al contador anti fuerza bruta
         // Mensaje genérico a propósito: no revela si falló el usuario o la clave.
         return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
       }
-      await limpiarIntentosLogin(db, req); // Login correcto: se reinicia el contador
+      await limpiarIntentosLogin(authRepository, req); // Login correcto: se reinicia el contador
       // Permisos del usuario (con respaldo por si el repositorio no los trajo).
       const permisos =
         (await service.repository?.getPermissions?.(resultadoLogin.id, resultadoLogin.rol)) ||
         resultadoLogin.permisos ||
         [];
-      await crearSesion(db, resultadoLogin.id, req, res); // Envía la cookie cc_session
-      await registrarAuditoria(db, {
+      await crearSesion(authRepository, resultadoLogin.id, req, res); // Envía la cookie cc_session
+      await registrarAuditoria(auditRepository, {
         usuarioId: resultadoLogin.id,
         usuario: resultadoLogin.usuario,
         rol: resultadoLogin.rol,
@@ -57,9 +59,9 @@ function crearRutasUsuarios(service, db) {
   // --- POST /api/logout: cierra la sesión y limpia la cookie ---------------
   router.post('/logout', async (req, res, next) => {
     try {
-      await destruirSesion(db, req, res);
+      await destruirSesion(authRepository, req, res);
       if (req.user)
-        await registrarAuditoria(db, {
+        await registrarAuditoria(auditRepository, {
           usuarioId: req.user.id,
           usuario: req.user.usuario,
           rol: req.user.rol,
@@ -86,7 +88,7 @@ function crearRutasUsuarios(service, db) {
         req.body.contrasenaActual,
         req.body.nuevaContrasena
       );
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -128,7 +130,7 @@ function crearRutasUsuarios(service, db) {
           .status(403)
           .json({ mensaje: 'Solo el super administrador puede crear otro super administrador.' });
       const id = await service.create(req.body);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -160,7 +162,7 @@ function crearRutasUsuarios(service, db) {
             .json({ mensaje: 'No tienes permiso para modificar un super administrador.' });
       }
       await service.update(req.params.id, req.body);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -193,7 +195,7 @@ function crearRutasUsuarios(service, db) {
             .json({ mensaje: 'No tienes permiso para eliminar un super administrador.' });
       }
       await service.remove(req.params.id);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,

@@ -14,7 +14,7 @@ const express = require('express');
 const { requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
-function crearRutasAlertas(service, db, storage) {
+function crearRutasAlertas(service, auditRepository, storage) {
   const router = express.Router();
 
   // --- GET /api/alertas: listado completo ---------------------------------
@@ -101,7 +101,7 @@ function crearRutasAlertas(service, db, storage) {
         rol: req.user.rol,
         usuario: req.user.usuario
       });
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,

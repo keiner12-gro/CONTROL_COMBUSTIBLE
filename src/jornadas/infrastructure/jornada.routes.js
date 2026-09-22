@@ -14,7 +14,7 @@ const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 const { motivoDeRechazoPorFecha } = require('../../shared/application/retroactivo');
 const { convertirJornadaParaFrontend } = require('../domain/jornada.mapper');
 
-function crearRutasJornadas(service, db) {
+function crearRutasJornadas(service, auditRepository) {
   const router = express.Router();
 
   // ¿Puede este usuario tocar la jornada de esa fecha? (regla de fechas pasadas;
@@ -59,7 +59,7 @@ function crearRutasJornadas(service, db) {
       const rechazo = await rechazoPorFecha(req, fecha);
       if (rechazo) return res.status(403).json({ mensaje: rechazo });
       const cierre = await service.cerrar(req.body, req.user.usuario, req.user.rol);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,

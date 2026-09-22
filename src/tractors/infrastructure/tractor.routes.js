@@ -11,7 +11,7 @@ const express = require('express');
 const { requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 
-function crearRutasTractores(service, db) {
+function crearRutasTractores(service, auditRepository) {
   const router = express.Router();
 
   // --- GET /api/tractores --------------------------------------------------
@@ -33,7 +33,7 @@ function crearRutasTractores(service, db) {
   router.post('/tractores', requirePermission('tractores'), async (req, res, next) => {
     try {
       const creado = await service.create(req.body);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -54,7 +54,7 @@ function crearRutasTractores(service, db) {
       const antes = await service.findById(req.params.id); // Foto previa para la auditoría
       const tractor = await service.update(req.params.id, req.body);
       if (!tractor) return res.status(404).json({ mensaje: 'Máquina no encontrada.' });
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -80,7 +80,7 @@ function crearRutasTractores(service, db) {
     try {
       const motivo = String(req.body?.motivo || '').trim(); // El service exige que no esté vacío
       const anulado = await service.remove(req.params.id, motivo, req.user.usuario);
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,

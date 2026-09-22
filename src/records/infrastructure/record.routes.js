@@ -15,7 +15,7 @@ const { registrarAuditoria } = require('../../shared/infrastructure/audit');
 const { hoyLocal } = require('../../shared/application/fechas');
 const { motivoDeRechazoPorFecha } = require('../../shared/application/retroactivo');
 
-function crearRutasRegistros(service, db) {
+function crearRutasRegistros(service, auditRepository) {
   const router = express.Router();
 
   // --- GET /api/analitica/maquinas ----------------------------------------
@@ -66,7 +66,7 @@ function crearRutasRegistros(service, db) {
         });
 
       const creado = await service.create(req.body, req.user.usuario); // Aquí se validan datos y se generan alertas
-      await registrarAuditoria(db, {
+      await registrarAuditoria(auditRepository, {
         usuarioId: req.user.id,
         usuario: req.user.usuario,
         rol: req.user.rol,
@@ -96,7 +96,7 @@ function crearRutasRegistros(service, db) {
         const antes = await service.findById(req.params.id); // Valor previo para auditar
         if (!(await service.update(req.params.id, req.body)))
           return res.status(400).json({ mensaje: 'No hay campos validos para actualizar.' });
-        await registrarAuditoria(db, {
+        await registrarAuditoria(auditRepository, {
           usuarioId: req.user.id,
           usuario: req.user.usuario,
           rol: req.user.rol,
@@ -120,7 +120,7 @@ function crearRutasRegistros(service, db) {
       try {
         const motivo = String(req.body?.motivo || '').trim();
         const anulado = await service.remove(req.params.id, motivo, req.user.usuario);
-        await registrarAuditoria(db, {
+        await registrarAuditoria(auditRepository, {
           usuarioId: req.user.id,
           usuario: req.user.usuario,
           rol: req.user.rol,

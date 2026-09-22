@@ -3,44 +3,46 @@
 // ----------------------------------------------------------------------------
 // Aquí se arma el servidor Express: middlewares de seguridad, archivos
 // estáticos, las URLs de las páginas HTML y el montaje de todas las rutas /api.
-// Si quieres AGREGAR UNA PÁGINA nueva -> arreglo "paginas" (línea ~110).
+// Si quieres AGREGAR UNA PÁGINA nueva -> arreglo "paginas" (línea ~140).
 // Si quieres AGREGAR UN MÓDULO nuevo de API -> crea su carpeta en src/ y
 // registra su router en el bloque app.use('/api', ...) de más abajo.
-// La base de datos es PostgreSQL (Supabase): ver src/shared/infrastructure/db.js
-// y supabase/schema.sql. Las tablas se crean con:  npm run db:migrar
+//
+// BASE DE DATOS: la variable DB_PROVIDER decide cuál se usa. NO hay que tocar
+// código para cambiarla, solo variables de entorno:
+//   DB_PROVIDER=postgres (por defecto) -> PostgreSQL/Supabase (supabase/schema.sql,
+//                                          se crea con: npm run db:migrar)
+//   DB_PROVIDER=airtable               -> Airtable (airtable/schema.js,
+//                                          se crea con: npm run airtable:migrar)
+// Guías: docs/GUIA-SUPABASE.md y docs/GUIA-AIRTABLE.md.
 // ============================================================================
 
 const path = require('path'); // Utilidades para armar rutas de archivos del sistema
 const express = require('express'); // Framework web que maneja rutas y peticiones HTTP
 require('dotenv').config(); // Carga las variables del archivo .env en process.env
 
+const PROVIDER = process.env.DB_PROVIDER === 'airtable' ? 'airtable' : 'postgres';
+
 // --- Infraestructura compartida (base de datos, archivos, seguridad) ---
-const { crearBaseDeDatos } = require('./src/shared/infrastructure/db'); // PostgreSQL / Supabase
-const { crearAlmacenamiento } = require('./src/shared/infrastructure/storage'); // Supabase Storage
+const { crearAlmacenamiento } = require('./src/shared/infrastructure/storage');
 const { autenticarSolicitud } = require('./src/shared/infrastructure/security'); // Valida la cookie de sesión
 
 // --- Módulo USUARIOS: repositorio (SQL) + servicio (reglas) + rutas (HTTP) ---
-const { PgUserRepository } = require('./src/users/infrastructure/pg-user.repository');
 const { UserService } = require('./src/users/application/user.service');
 const { crearRutasUsuarios } = require('./src/users/infrastructure/user.routes');
 
 // --- Módulo TRACTORES (maquinaria) ---
-const { PgTractorRepository } = require('./src/tractors/infrastructure/pg-tractor.repository');
 const { TractorService } = require('./src/tractors/application/tractor.service');
 const { crearRutasTractores } = require('./src/tractors/infrastructure/tractor.routes');
 
 // --- Módulo OPERARIOS ---
-const { PgOperatorRepository } = require('./src/operators/infrastructure/pg-operator.repository');
 const { OperatorService } = require('./src/operators/application/operator.service');
 const { crearRutasOperarios } = require('./src/operators/infrastructure/operator.routes');
 
 // --- Módulo JORNADAS (lecturas M1/M2 del día, checklist y cierre) ---
-const { PgJornadaRepository } = require('./src/jornadas/infrastructure/pg-jornada.repository');
 const { JornadaService } = require('./src/jornadas/application/jornada.service');
 const { crearRutasJornadas } = require('./src/jornadas/infrastructure/jornada.routes');
 
 // --- Módulo REGISTROS (suministros de combustible a cada máquina) ---
-const { PgRecordRepository } = require('./src/records/infrastructure/pg-record.repository');
 const { RecordService } = require('./src/records/application/record.service');
 const { crearRutasRegistros } = require('./src/records/infrastructure/record.routes');
 
@@ -49,7 +51,6 @@ const { ReportService } = require('./src/reports/application/report.service');
 const { crearRutasReportes } = require('./src/reports/infrastructure/report.routes');
 
 // --- Módulo ALERTAS (sobrecapacidad, promedio, horómetro, inspección, cierre) ---
-const { PgAlertRepository } = require('./src/alerts/infrastructure/pg-alert.repository');
 const { AlertService } = require('./src/alerts/application/alert.service');
 const { crearRutasAlertas } = require('./src/alerts/infrastructure/alert.routes');
 
@@ -64,8 +65,90 @@ const { crearRutasTareas } = require('./src/tareas/tareas.routes');
 const app = express(); // Instancia principal de Express
 const port = process.env.PUERTO || process.env.PORT || 3000; // Puerto local (3000 si no se define)
 const root = path.join(__dirname, 'public'); // Carpeta con todo el frontend (html, css, js)
-const db = crearBaseDeDatos(); // Conexión reutilizada por todos los módulos
-app.locals.db = db; // Expuesta para scripts y pruebas
+
+// --- Cableado según el proveedor de datos (ver PROVIDER arriba) ------------
+// Construye TODOS los repositorios de un lado o del otro. El resto de la app
+// (servicios, rutas, frontend) es exactamente el mismo código en ambos casos:
+// solo cambia con qué implementan sus consultas.
+let db = null; // Solo existe con DB_PROVIDER=postgres
+let authRepository, auditRepository, pushRepository;
+let userRepository,
+  tractorRepository,
+  operatorRepository,
+  jornadaRepository,
+  recordRepository,
+  alertRepository;
+let almacenamientoExtra = {}; // Datos extra que necesita storage.js (el cliente de Airtable, si aplica)
+
+if (PROVIDER === 'airtable') {
+  const { crearClienteAirtable } = require('./src/shared/infrastructure/airtable-client');
+  const cliente = crearClienteAirtable({
+    apiKey: process.env.AIRTABLE_API_KEY,
+    baseId: process.env.AIRTABLE_BASE_ID
+  });
+  almacenamientoExtra.airtableClient = cliente;
+
+  authRepository =
+    new (require('./src/shared/infrastructure/airtable-auth.repository').AirtableAuthRepository)(
+      cliente
+    );
+  auditRepository =
+    new (require('./src/shared/infrastructure/airtable-audit.repository').AirtableAuditRepository)(
+      cliente
+    );
+  pushRepository =
+    new (require('./src/push/infrastructure/airtable-push.repository').AirtablePushRepository)(
+      cliente
+    );
+  userRepository =
+    new (require('./src/users/infrastructure/airtable-user.repository').AirtableUserRepository)(
+      cliente
+    );
+  tractorRepository =
+    new (require('./src/tractors/infrastructure/airtable-tractor.repository').AirtableTractorRepository)(
+      cliente
+    );
+  operatorRepository =
+    new (require('./src/operators/infrastructure/airtable-operator.repository').AirtableOperatorRepository)(
+      cliente
+    );
+  jornadaRepository =
+    new (require('./src/jornadas/infrastructure/airtable-jornada.repository').AirtableJornadaRepository)(
+      cliente
+    );
+  recordRepository =
+    new (require('./src/records/infrastructure/airtable-record.repository').AirtableRecordRepository)(
+      cliente
+    );
+  alertRepository =
+    new (require('./src/alerts/infrastructure/airtable-alert.repository').AirtableAlertRepository)(
+      cliente
+    );
+} else {
+  const { crearBaseDeDatos } = require('./src/shared/infrastructure/db'); // PostgreSQL / Supabase
+  db = crearBaseDeDatos();
+  authRepository = new (require('./src/shared/infrastructure/pg-auth.repository').PgAuthRepository)(
+    db
+  );
+  auditRepository =
+    new (require('./src/shared/infrastructure/pg-audit.repository').PgAuditRepository)(db);
+  pushRepository = new (require('./src/push/infrastructure/pg-push.repository').PgPushRepository)(
+    db
+  );
+  userRepository = new (require('./src/users/infrastructure/pg-user.repository').PgUserRepository)(
+    db
+  );
+  tractorRepository =
+    new (require('./src/tractors/infrastructure/pg-tractor.repository').PgTractorRepository)(db);
+  operatorRepository =
+    new (require('./src/operators/infrastructure/pg-operator.repository').PgOperatorRepository)(db);
+  jornadaRepository =
+    new (require('./src/jornadas/infrastructure/pg-jornada.repository').PgJornadaRepository)(db);
+  recordRepository =
+    new (require('./src/records/infrastructure/pg-record.repository').PgRecordRepository)(db);
+  alertRepository =
+    new (require('./src/alerts/infrastructure/pg-alert.repository').PgAlertRepository)(db);
+}
 
 app.disable('x-powered-by'); // Oculta la cabecera que delata que el servidor es Express
 app.set('trust proxy', 1); // Confía en el proxy de Vercel para leer la IP real y si es HTTPS
@@ -165,17 +248,14 @@ paginas.forEach((pagina) => {
 // --- Cableado de dependencias (inyección manual) -----------------------------
 // Patrón por capas: Repositorio (habla con la base) -> Servicio (reglas de
 // negocio) -> Rutas (HTTP). Aquí se conectan las tres capas de cada módulo.
-const storage = crearAlmacenamiento(); // Supabase Storage (en local, carpeta uploads/)
-const pushService = new PushService(db); // Notificaciones push (sin claves VAPID = apagado)
+const storage = crearAlmacenamiento(almacenamientoExtra); // Supabase Storage / Airtable / uploads (local)
+const pushService = new PushService(pushRepository); // Notificaciones push (sin claves VAPID = apagado)
 app.locals.pushService = pushService; // Expuesto para las pruebas
-const userService = new UserService(new PgUserRepository(db));
-const tractorRepository = new PgTractorRepository(db);
+const userService = new UserService(userRepository);
 const tractorService = new TractorService(tractorRepository);
-const operatorService = new OperatorService(new PgOperatorRepository(db));
-const alertService = new AlertService(new PgAlertRepository(db), storage, pushService);
-const jornadaRepository = new PgJornadaRepository(db);
+const operatorService = new OperatorService(operatorRepository);
+const alertService = new AlertService(alertRepository, storage, pushService);
 const jornadaService = new JornadaService(jornadaRepository, alertService, pushService);
-const recordRepository = new PgRecordRepository(db);
 // RecordService necesita tractores (capacidad), alertas (para generarlas) y la jornada del día.
 const recordService = new RecordService(
   recordRepository,
@@ -192,18 +272,18 @@ app.use('/api', crearRutasTareas(jornadaService));
 // Login es la única API pública. Todas las demás APIs pasan por sesión HttpOnly.
 app.use('/api', (req, res, next) => {
   if (req.path === '/login' && req.method === 'POST') return next();
-  return autenticarSolicitud(db, req, res, next); // Verifica cookie y carga req.user
+  return autenticarSolicitud(authRepository, req, res, next); // Verifica cookie y carga req.user
 });
 
 // --- Montaje de los routers de cada módulo bajo el prefijo /api -------------
-app.use('/api', crearRutasUsuarios(userService, db)); // /api/usuarios, /api/login, /api/sesion...
-app.use('/api', crearRutasTractores(tractorService, db)); // /api/tractores
-app.use('/api', crearRutasOperarios(operatorService, db)); // /api/operarios
-app.use('/api', crearRutasJornadas(jornadaService, db)); // /api/cierre-dia, /api/jornadas
+app.use('/api', crearRutasUsuarios(userService, { authRepository, auditRepository })); // /api/usuarios, /api/login, /api/sesion...
+app.use('/api', crearRutasTractores(tractorService, auditRepository)); // /api/tractores
+app.use('/api', crearRutasOperarios(operatorService, auditRepository)); // /api/operarios
+app.use('/api', crearRutasJornadas(jornadaService, auditRepository)); // /api/cierre-dia, /api/jornadas
 app.use('/api', crearRutasReportes(reportService)); // /api/reportes
-app.use('/api', crearRutasRegistros(recordService, db)); // /api/registros
-app.use('/api', crearRutasAlertas(alertService, db, storage)); // /api/alertas y notificaciones
-app.use('/api', crearRutasAuditoria(db)); // /api/auditoria
+app.use('/api', crearRutasRegistros(recordService, auditRepository)); // /api/registros
+app.use('/api', crearRutasAlertas(alertService, auditRepository, storage)); // /api/alertas y notificaciones
+app.use('/api', crearRutasAuditoria(auditRepository)); // /api/auditoria
 app.use('/api', crearRutasPush(pushService)); // /api/push/...
 
 // Manejador global de errores: cualquier excepción no controlada termina aquí.
@@ -222,17 +302,26 @@ app.use((err, req, res, next) => {
     .json({ mensaje: err.status ? err.message : 'Error interno del servidor.' });
 });
 
+// Expuesto para scripts y pruebas. Con Postgres es el objeto db.js; con
+// Airtable, el cliente de la API (ver src/shared/infrastructure/airtable-client.js).
+app.locals.db = db;
+app.locals.provider = PROVIDER;
+if (PROVIDER === 'airtable') app.locals.airtableClient = almacenamientoExtra.airtableClient;
+
 // En local (node server.js) se levanta un servidor escuchando el puerto. En
 // producción (Vercel) y al importarlo desde scripts/pruebas no se llama a
 // listen: la app se exporta y quien la use la invoca.
 if (require.main === module && process.env.NODE_ENV !== 'production') {
   // Aviso temprano si la base todavía no tiene las tablas (primer arranque).
-  db.query('SELECT 1 FROM jornadas_combustible LIMIT 1').catch((error) =>
-    console.error(
-      `⚠ La base de datos no responde o no tiene las tablas (${error.message}). Ejecuta: npm run db:migrar`
-    )
+  if (PROVIDER === 'postgres')
+    db.query('SELECT 1 FROM jornadas_combustible LIMIT 1').catch((error) =>
+      console.error(
+        `⚠ La base de datos no responde o no tiene las tablas (${error.message}). Ejecuta: npm run db:migrar`
+      )
+    );
+  app.listen(port, () =>
+    console.log(`Servidor Express iniciado en http://localhost:${port} (DB_PROVIDER=${PROVIDER})`)
   );
-  app.listen(port, () => console.log(`Servidor Express iniciado en http://localhost:${port}`));
 }
 
 module.exports = app; // Export requerido por Vercel (ver vercel.json)

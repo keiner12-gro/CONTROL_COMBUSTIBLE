@@ -1,32 +1,22 @@
 // ============================================================================
 // audit.js — BITÁCORA DE AUDITORÍA
 // ----------------------------------------------------------------------------
-// Función única que guarda una línea en la tabla auditoria_combustible cada vez
-// que alguien crea, edita, anula o consulta algo importante. Los routers la
-// llaman después de completar la operación.
+// Función única que guarda una línea en la bitácora cada vez que alguien crea,
+// edita, anula o consulta algo importante. Los routers la llaman después de
+// completar la operación. "auditRepository" es quien de verdad la guarda
+// (Postgres o Airtable, según DB_PROVIDER); ver src/shared/domain/audit.repository.js.
 // La vista que muestra estos datos es /auditoria (auditoria.routes.js).
 // ============================================================================
 
 async function registrarAuditoria(
-  db,
+  auditRepository,
   // usuarioId/usuario/rol: quién lo hizo (salen de req.user).
   // accion: CREAR, EDITAR, ANULAR, LOGIN... | modulo: registros, tractores...
   // registroId: id del elemento afectado | detalle: objeto libre con el contexto.
-  { usuarioId, usuario, rol, accion, modulo, registroId = null, detalle = null }
+  datos
 ) {
   try {
-    await db.query(
-      'INSERT INTO auditoria_combustible(usuario_id,usuario,rol,accion,modulo,registro_id,detalle) VALUES(?,?,?,?,?,?,?)',
-      [
-        usuarioId || null,
-        usuario || null,
-        rol || null,
-        accion,
-        modulo,
-        registroId || null,
-        detalle ? JSON.stringify(detalle) : null // La columna "detalle" es de tipo JSON
-      ]
-    );
+    await auditRepository.registrar(datos);
   } catch (error) {
     // La auditoría nunca debe tumbar la operación principal: si falla, solo se
     // advierte en los logs y la petición del usuario continúa con éxito.
