@@ -15,9 +15,7 @@
 //      y se instancia dos veces al final de este archivo.
 //   3. Firma del operario: el lienzo (canvas) es UNO SOLO y lo comparten los
 //      dos puestos (se abre para el que lo pidió); ver "instanciaFirmaActiva".
-//   4. Comandos de voz: cada puesto tiene su propio micrófono y reconoce por
-//      separado, para no mezclar lo dictado en un puesto con el otro.
-//   5. Envío del registro al servidor y validaciones previas.
+//   4. Envío del registro al servidor y validaciones previas.
 // PARA AGREGAR UN TERCER PUESTO: duplica un bloque <section class="flujo-
 // registro" id="flujo-registro-N"> en index.html con sufijo -N, y agrega
 // `crearPuestoRegistro('N', 'Puesto N');` junto a las otras dos llamadas.
@@ -342,132 +340,6 @@ function normalizarBusquedaMaquina(valor){
 }
 
 // ===========================================================================
-// BLOQUE DE COMANDOS DE VOZ — funciones PURAS (sin tocar el DOM), compartidas
-// por los dos puestos. Cada puesto las usa con su propio texto dictado y
-// decide, con sus propios catálogos en memoria, a qué campo escribir.
-// ===========================================================================
-
-// Normaliza texto para comparar lo que entiende la voz con los nombres reales de la base de datos.
-// Quita acentos, pasa a minúsculas y deja solo letras/números separados por espacios.
-function normalizarTextoVoz(texto) {
-  return String(texto || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // Elimina los acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-// Traduce el deletreo hablado de los códigos de máquina: quien dicta dice
-// "eme a cero cinco" y aquí se convierte en "ma05".
-function normalizarCodigoMaquina(texto) {
-  return normalizarTextoVoz(texto)
-    .replace(/\beme\s+a\b/g, 'ma')
-    .replace(/\bdoble u\b/g, 'w')
-    .replace(/\belle\s+zeta\s+te\b/g, 'lzt')
-    .replace(/\bjota\s+u\s+zeta\b/g, 'juz')
-    .replace(/\belle\s+elle\s+pe\b/g, 'llp')
-    .replace(/\bbe\s+doble u\b/g, 'bw')
-    .replace(/\s+/g, '')
-    .trim();
-}
-
-// Busca en un catálogo el elemento que mejor coincide con lo dictado:
-// primero una coincidencia exacta y, si no la hay, la coincidencia parcial
-// más larga (la más específica).
-function buscarCoincidenciaExacta(texto, lista, campo) {
-  const normalizado = campo === 'maquina' ? normalizarCodigoMaquina(texto) : normalizarTextoVoz(texto);
-  if (!normalizado) return null;
-
-  const normalizarItem = (item) => campo === 'maquina'
-    ? normalizarCodigoMaquina(item[campo])
-    : normalizarTextoVoz(item[campo]);
-
-  const exacta = lista.find((item) => normalizarItem(item) === normalizado);
-  if (exacta) return exacta;
-
-  return lista
-    .filter((item) => {
-      const nombre = normalizarItem(item);
-      return nombre && (normalizado.includes(nombre) || nombre.includes(normalizado));
-    })
-    .sort((a, b) => normalizarItem(b).length - normalizarItem(a).length)[0] || null;
-}
-
-// Quita la palabra de comando del inicio de la frase ("máquina MA-05" -> "MA-05").
-function extraerDespuesDeComando(texto, comandos) {
-  const normalizado = normalizarTextoVoz(texto);
-  for (const comando of comandos) {
-    const comandoNormalizado = normalizarTextoVoz(comando);
-    const patron = new RegExp(`^${comandoNormalizado.replace(/ /g, '\\s+')}\\s*`, 'i');
-    if (patron.test(normalizado)) {
-      return normalizado.replace(patron, '').trim();
-    }
-  }
-  return normalizado;
-}
-
-// Convierte números dictados en palabras a dígitos: "cincuenta" -> "50",
-// "mil doscientos" -> "1200". Si ya vino como número, solo cambia la coma por punto.
-function convertirNumeroVoz(texto) {
-  const limpio = normalizarTextoVoz(texto);
-  if (!limpio) return '';
-
-  // Primero conserva números que el reconocimiento ya entregó como dígitos.
-  if (/^\d+(?:[.,]\d+)?$/.test(limpio)) return limpio.replace(',', '.');
-
-  // Diccionario de números en palabras.
-  const unidades = {
-    cero: 0, uno: 1, una: 1, un: 1, dos: 2, tres: 3, cuatro: 4,
-    cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
-    once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
-    dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
-    veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50,
-    sesenta: 60, setenta: 70, ochenta: 80, noventa: 90,
-    cien: 100, ciento: 100, doscientos: 200, trescientos: 300,
-    cuatrocientos: 400, quinientos: 500, seiscientos: 600,
-    setecientos: 700, ochocientos: 800, novecientos: 900,
-    mil: 1000
-  };
-
-  // Si alguna palabra no está en el diccionario, no es un número dictado.
-  const palabras = limpio.replace(/-/g, ' ').split(/\s+/).filter(Boolean);
-  if (!palabras.length || palabras.some(p => !Object.prototype.hasOwnProperty.call(unidades, p) && p !== 'y')) return '';
-
-  // Suma acumulando: "mil" multiplica el grupo acumulado hasta ese momento.
-  let total = 0;
-  let grupo = 0;
-  for (const palabra of palabras) {
-    if (palabra === 'y') continue; // "cuarenta y cinco"
-    const valor = unidades[palabra];
-    if (valor === 1000) {
-      grupo = grupo || 1; // "mil" solo = 1000
-      total += grupo * 1000;
-      grupo = 0;
-    } else {
-      grupo += valor;
-    }
-  }
-  total += grupo;
-  return String(total);
-}
-
-// Versión más estricta que extraerDespuesDeComando: exige que después del
-// comando venga algo y devuelve cadena vacía si solo se dijo el comando.
-function extraerValorDespuesDeComando(frase, comandos) {
-  const textoOriginal = String(frase || '').trim();
-  const normalizado = normalizarTextoVoz(textoOriginal);
-  for (const comando of comandos) {
-    const comandoNormalizado = normalizarTextoVoz(comando);
-    if (normalizado === comandoNormalizado) return '';
-    const patron = new RegExp(`^${comandoNormalizado.replace(/ /g, '\\s+')}\\s+(.+)$`, 'i');
-    const encontrado = normalizado.match(patron);
-    if (encontrado) return encontrado[1].trim();
-  }
-  return '';
-}
-
-// ===========================================================================
 // BLOQUE DE LA FIRMA (canvas único, compartido por los dos puestos)
 // La firma se dibuja con el dedo o el mouse y se guarda como imagen PNG en
 // base64 dentro del campo oculto del puesto que abrió el lienzo
@@ -687,8 +559,6 @@ function crearPuestoRegistro(sufijo, etiqueta) {
   const observaciones = el('observaciones');
   const firmaOperario = el('firma-operario');
   const botonAbrirFirma = el('boton-abrir-firma');
-  const botonVoz = el('boton-voz');
-  const estadoVoz = el('estado-voz');
   const contenedorMaquinas = el('selector-maquinas-cards');
   const contenedorOperarios = el('selector-operarios-cards');
   const buscadorMaquina = el('maquina-busqueda');
@@ -699,8 +569,6 @@ function crearPuestoRegistro(sufijo, etiqueta) {
   const miniOperario = el('mini-operario');
   const indicadorCapacidad = el('indicador-capacidad');
   const confirmacionRegistro = el('confirmacion-registro');
-
-  let reconocimientoVoz = null; // Reconocimiento de voz de ESTE puesto
 
   const api = { firmaOperario, botonAbrirFirma, renderizarMaquinas, renderizarOperarios, contenedorMaquinas };
 
@@ -841,208 +709,6 @@ function crearPuestoRegistro(sufijo, etiqueta) {
     return true;
   }
 
-  // --- Comandos de voz de ESTE puesto (usa las funciones puras de arriba) ---
-  function seleccionarMaquinaPorVoz(frase) {
-    const candidato = extraerValorDespuesDeComando(frase, ['maquina', 'máquina', 'tractor']);
-    const tractor = buscarCoincidenciaExacta(candidato || frase, tractoresDisponibles, 'maquina');
-    if (!tractor) {
-      estadoVoz.textContent = `No encontré una máquina registrada que coincida con: ${frase}`;
-      return false;
-    }
-    // Escribe exactamente el nombre registrado en la base de datos.
-    maquina.value = tractor.maquina;
-    mostrarDatosTractorSeleccionado();
-    estadoVoz.textContent = `Máquina: ${tractor.maquina}`;
-    return true;
-  }
-
-  function seleccionarOperarioPorVoz(frase) {
-    const candidato = extraerValorDespuesDeComando(frase, ['operario', 'operaria', 'nombre del operario', 'nombre']);
-    const operario = buscarCoincidenciaExacta(candidato || frase, operariosDisponibles, 'nombre');
-    if (!operario) return false;
-    // Siempre escribe los datos canónicos que vienen de la base de datos.
-    nombreOperario.value = operario.nombre;
-    cedulaOperario.value = operario.cedula;
-    estadoVoz.textContent = `Operario: ${operario.nombre} | Cédula: ${operario.cedula}`;
-    return true;
-  }
-
-  // Interpreta la frase dictada y decide a qué campo corresponde.
-  // Se evalúa en orden: máquina, operario, horómetro, cantidad, cédula, SAI y
-  // observaciones. El primero que encaje gana y la función termina.
-  function ejecutarComandoVoz(frase) {
-    const texto = String(frase || '').trim();
-    const normalizado = normalizarTextoVoz(texto);
-    if (!normalizado) return;
-
-    // MÁQUINA / TRACTOR
-    if (normalizado.startsWith('maquina ') || normalizado.startsWith('tractor ') ||
-        tractoresDisponibles.some(t => normalizado.includes(normalizarTextoVoz(t.maquina)))) {
-      if (seleccionarMaquinaPorVoz(texto)) return;
-    }
-
-    // OPERARIO: "operario Juan Pérez" o simplemente "Juan Pérez".
-    if (normalizado.startsWith('operario ') || normalizado.startsWith('operaria ') ||
-        normalizado.startsWith('nombre del operario ')) {
-      if (seleccionarOperarioPorVoz(texto)) return;
-    }
-    if (seleccionarOperarioPorVoz(texto)) return; // Intento sin comando explícito
-
-    // HORÓMETRO: número o estado como "dañado", "no marca", etc.
-    const horometroValor = extraerValorDespuesDeComando(texto, ['horometro', 'horómetro']);
-    if (horometroValor) {
-      // Estos textos no numéricos harán que el servidor cree una alerta de
-      // "horómetro irregular" al guardar (ver record.service.js).
-      const estadosHorometro = {
-        'horometro danado': 'Horometro dañado',
-        'danado': 'Horometro dañado',
-        'danada': 'Horometro dañado',
-        'no marca': 'No marca',
-        'en revision': 'En revision',
-        'problema con la maquina': 'Problema con la maquina'
-      };
-      const estado = estadosHorometro[horometroValor];
-      const numero = convertirNumeroVoz(horometroValor);
-      if (estado) {
-        horometro.value = estado;
-        estadoVoz.textContent = `Horómetro: ${estado}`;
-        return;
-      }
-      if (numero) {
-        horometro.value = numero;
-        estadoVoz.textContent = `Horómetro: ${horometro.value}`;
-        return;
-      }
-    }
-
-    // También acepta "dañado" / "no marca" como comando de horómetro.
-    const estadoSolo = {
-      'danado': 'Horometro dañado',
-      'no marca': 'No marca',
-      'en revision': 'En revision',
-      'problema con la maquina': 'Problema con la maquina'
-    }[normalizado];
-    if (estadoSolo) {
-      horometro.value = estadoSolo;
-      estadoVoz.textContent = `Horómetro: ${estadoSolo}`;
-      return;
-    }
-
-    // CANTIDAD: "cantidad 50", "50 galones" o "cantidad cincuenta".
-    let cantidadTexto = extraerValorDespuesDeComando(texto, ['cantidad', 'galones', 'galon']);
-    if (!cantidadTexto) {
-      const cantidadConUnidad = normalizado.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:galones|galon)$/);
-      if (cantidadConUnidad) cantidadTexto = cantidadConUnidad[1];
-    }
-    if (cantidadTexto) {
-      cantidadTexto = cantidadTexto.replace(/\s*(?:galones|galon)\s*$/i, '').trim(); // Quita la unidad
-      const valorCantidad = convertirNumeroVoz(cantidadTexto);
-      if (valorCantidad) {
-        cantidad.value = valorCantidad;
-        estadoVoz.textContent = `Cantidad: ${cantidad.value} galones`;
-        return;
-      }
-    }
-
-    // CÉDULA: normalmente se obtiene automáticamente al decir el nombre del operario,
-    // pero también permite indicar una cédula directamente.
-    const cedulaTexto = extraerValorDespuesDeComando(texto, ['cedula', 'cédula']);
-    if (cedulaTexto) {
-      const numeroCedula = convertirNumeroVoz(cedulaTexto.replace(/\s+/g, '')) || cedulaTexto.replace(/\D/g, '');
-      if (numeroCedula) {
-        cedulaOperario.value = numeroCedula;
-        estadoVoz.textContent = `Cédula: ${cedulaOperario.value}`;
-        return;
-      }
-    }
-
-    // No. SAI.
-    const saiMatch = normalizado.match(/(?:sai|numero sai|numero de sai)\s+(.+)/);
-    if (saiMatch) {
-      numeroSai.value = saiMatch[1].trim();
-      estadoVoz.textContent = `No. SAI: ${numeroSai.value}`;
-      return;
-    }
-
-    // Observaciones: conserva la frase original para no perder acentos ni formato.
-    const observacionMatch = texto.match(/^(?:observacion|observaciones)\s+(.+)$/i);
-    if (observacionMatch) {
-      observaciones.value = observacionMatch[1].trim();
-      estadoVoz.textContent = 'Observación registrada.';
-      return;
-    }
-
-    // Ningún comando encajó: se le recuerda al usuario qué puede decir.
-    estadoVoz.textContent = `No entendí el comando: ${texto}. Usa: máquina, operario, horómetro, cantidad, cédula, SAI u observación.`;
-  }
-
-  // Configura el reconocimiento de voz del navegador y el botón del micrófono de ESTE puesto.
-  function configurarComandoVoz() {
-    // Compatibilidad: Chrome lo expone con el prefijo webkit.
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      botonVoz.disabled = true;
-      estadoVoz.textContent = 'El reconocimiento de voz no está disponible en este navegador.';
-      return;
-    }
-
-    reconocimientoVoz = new SpeechRecognition();
-    reconocimientoVoz.lang = 'es-CO'; // Español de Colombia
-    reconocimientoVoz.continuous = false; // Escucha una frase y se detiene
-    reconocimientoVoz.interimResults = false; // Solo el resultado final
-    reconocimientoVoz.maxAlternatives = 5; // Varias interpretaciones posibles
-
-    // Mientras escucha: el botón cambia de aspecto y se muestra la ayuda.
-    reconocimientoVoz.onstart = () => {
-      botonVoz.classList.add('escuchando');
-      botonVoz.textContent = '🛑 Escuchando...';
-      estadoVoz.textContent = 'Di: máquina, operario, horómetro, cantidad, cédula, SAI u observación.';
-    };
-
-    // Al obtener resultado: se prueban las alternativas hasta que una funcione.
-    reconocimientoVoz.onresult = (evento) => {
-      const resultados = Array.from(evento.results[0] || []);
-      const frases = resultados.map(r => r.transcript).filter(Boolean);
-      for (const frase of frases) {
-        ejecutarComandoVoz(frase);
-        // Con las máquinas se corta en la primera alternativa procesada para no
-        // sobrescribir la selección con una interpretación peor.
-        if (normalizarTextoVoz(frase).includes('maquina') || normalizarTextoVoz(frase).includes('tractor')) {
-          break;
-        }
-      }
-    };
-
-    // Errores frecuentes traducidos a mensajes entendibles.
-    reconocimientoVoz.onerror = (evento) => {
-      const mensajes = {
-        'not-allowed': 'Permiso de micrófono denegado.',
-        'no-speech': 'No se detectó voz. Intenta nuevamente.',
-        'network': 'El reconocimiento de voz necesita conexión a internet en este navegador.'
-      };
-      estadoVoz.textContent = mensajes[evento.error] || `Error de voz: ${evento.error}`;
-    };
-
-    // Al terminar: el botón vuelve a su estado normal.
-    reconocimientoVoz.onend = () => {
-      botonVoz.classList.remove('escuchando');
-      botonVoz.textContent = '🎙️ Voz';
-    };
-
-    // El botón alterna entre iniciar y detener la escucha.
-    botonVoz.addEventListener('click', () => {
-      if (botonVoz.classList.contains('escuchando')) {
-        reconocimientoVoz.stop();
-        return;
-      }
-      try {
-        reconocimientoVoz.start();
-      } catch (error) {
-        // Evita el error si el navegador todavía está cerrando una sesión anterior.
-      }
-    });
-  }
-
   // --- Eventos de este puesto ---
   maquina.addEventListener('change', mostrarDatosTractorSeleccionado);
   maquina.addEventListener('input', mostrarDatosTractorSeleccionado);
@@ -1087,8 +753,6 @@ function crearPuestoRegistro(sufijo, etiqueta) {
     if (validarPaso(n)) irAPaso(Number(b.dataset.next));
   }));
   contenedorInstancia.querySelectorAll('.boton-anterior').forEach(b => b.addEventListener('click', () => irAPaso(Number(b.dataset.prev))));
-
-  configurarComandoVoz();
 
   // --- ENVÍO DEL FORMULARIO: guardar el suministro de este puesto ------------
   formulario.addEventListener('submit', async (evento) => {

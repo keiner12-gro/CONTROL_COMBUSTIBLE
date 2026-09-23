@@ -68,12 +68,8 @@
         <section class="paso-formulario activo" data-paso="1">
           <div class="panel paso-cabecera"><span class="numero-paso">01</span><div><span class="eyebrow-dashboard">PRIMER PASO</span><h2>Selecciona la máquina</h2><p>Busca por código o descripción.</p></div></div>
           <fieldset class="panel seleccion-card">
-            <!-- Buscador y botón del micrófono (comandos de voz) -->
-            <div class="campo-voz-maquina">
-              <div class="busqueda-icono"><span>🔎</span><input id="maquina-busqueda-1" type="search" placeholder="Buscar máquina..." autocomplete="off"></div>
-            </div>
-            <!-- aria-live="polite": los lectores de pantalla anuncian lo que se entendió por voz -->
-            <small id="estado-voz-1" class="estado-voz" aria-live="polite"></small>
+            <!-- Buscador de máquinas -->
+            <div class="busqueda-icono"><span>🔎</span><input id="maquina-busqueda-1" type="search" placeholder="Buscar máquina..." autocomplete="off"></div>
             <!-- Aquí app.js pinta una tarjeta por cada máquina disponible -->
             <div id="selector-maquinas-cards-1" class="selector-cards"></div>
             <!-- Campos ocultos: guardan lo seleccionado para enviarlo al servidor -->
@@ -143,10 +139,7 @@
         <section class="paso-formulario activo" data-paso="1">
           <div class="panel paso-cabecera"><span class="numero-paso">01</span><div><span class="eyebrow-dashboard">PRIMER PASO</span><h2>Selecciona la máquina</h2><p>Busca por código o descripción.</p></div></div>
           <fieldset class="panel seleccion-card">
-            <div class="campo-voz-maquina">
-              <div class="busqueda-icono"><span>🔎</span><input id="maquina-busqueda-2" type="search" placeholder="Buscar máquina..." autocomplete="off"></div>
-            </div>
-            <small id="estado-voz-2" class="estado-voz" aria-live="polite"></small>
+            <div class="busqueda-icono"><span>🔎</span><input id="maquina-busqueda-2" type="search" placeholder="Buscar máquina..." autocomplete="off"></div>
             <div id="selector-maquinas-cards-2" class="selector-cards"></div>
             <input type="hidden" id="maquina-2" name="maquina-2" required>
             <input type="text" id="tractor-descripcion-2" name="tractor-descripcion-2" class="campo-oculto-ui" readonly>

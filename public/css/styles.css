@@ -194,7 +194,6 @@ tbody tr:hover { background: #edf5ef; }
 /* --- 5. PANEL DE ALERTAS: tarjetas, insignias y filtros por tipo --- */
 .notificacion-item p { margin:8px 0 12px }
 .notificacion-item button { padding:8px 12px }
-.campo-voz-maquina input { width: 100%; box-sizing: border-box; }
 /* Barra superior con logo, titulo, lugar y fecha */
 .encabezado { display: grid; grid-template-columns: minmax(190px, 240px) 1fr minmax(280px, auto); gap: 20px; align-items: center; margin-bottom: 16px; padding: 18px 22px; background: rgba(255,255,255,0.88); border: 1px solid #dfe7df; border-radius: 18px; box-shadow: var(--shadow); position: sticky; top: 12px; z-index: 20; backdrop-filter: blur(12px); }
 /* Tarjeta reutilizable */
@@ -385,8 +384,6 @@ input[type="radio"] { accent-color: var(--brand); }
 .suministro { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 15px; align-items: end; margin-top: 14px; }
 .suministro > div { min-width: 0; }
 .suministro legend { grid-column: 1 / -1; margin-bottom: 2px; }
-.boton-voz:hover { background: #f2e7c2; color: #7f6121; box-shadow: none; }
-.estado-voz { display: block; min-height: 16px; margin-top: 4px; color: var(--muted); font-size: 11px; }
 .campo-ancho { grid-column: span 3; }
 .suministro > button[type="submit"] { align-self: end; min-height: 44px; }
 /* Tabla: más aire y lectura horizontal clara en teléfono. */
@@ -491,7 +488,6 @@ tbody tr:hover td { background: #edf5ef; }
   .suministro { grid-template-columns: 1fr 1fr; gap: 12px; }
   .campo-ancho { grid-column: 1 / -1; }
   .suministro > button[type="submit"] { grid-column: 1 / -1; width: 100%; }
-  .campo-voz-maquina { grid-template-columns: 78px minmax(0,1fr); }
   .botones-menu { grid-template-columns: 1fr !important; }
   .boton-vista { min-height: 132px; }
   .titulo-tabla input { width: 100%; }
@@ -683,10 +679,8 @@ tbody tr:hover td { background: #edf5ef; }
 .paso-cabecera p { margin:0;color:var(--muted);font-size:11px }
 .numero-paso { width:40px;height:40px;border-radius:12px;background:#f9ece6;color:#d96a3d;display:grid;place-items:center;font-size:13px;font-weight:900 }
 .seleccion-card { padding:15px }
-.campo-voz-maquina { display: flex; flex-direction: column; gap: 9px; grid-template-columns: auto minmax(0,1fr); align-items: center; }
 .busqueda-icono { flex:1;display:flex;align-items:center;gap:8px;background:#f7faf7;border:1px solid var(--line);border-radius:13px;padding:0 12px }
 .busqueda-icono input { border:0!important;background:transparent!important;box-shadow:none!important;min-height:48px }
-.boton-voz { width: 100%; min-height: 48px; font-size: 18px; white-space: nowrap; min-width: 72px; padding: 0 14px !important; background: var(--accent-soft); color: #d96a3d; border: 1px solid #dfe7df; box-shadow: none; border-radius: 13px !important; }
 .selector-cards { display:grid;gap:9px;margin-top:12px;max-height:390px;overflow:auto }
 .selector-card { width:100%;display:flex;align-items:center;text-align:left;gap:11px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;color:var(--ink) }
 .selector-card:hover,.selector-card.seleccionada { border-color:#d96a3d;background:#f9ece6 }
@@ -785,8 +779,6 @@ tbody tr:hover td { background: #edf5ef; }
   .nav-movil-inferior small { font-size:8px;font-weight:800 }
   .nav-movil-inferior .activo,.nav-movil-inferior a:hover { color:#d96a3d }
   .selector-cards { max-height:330px }
-  .campo-voz-maquina { align-items:stretch }
-  .boton-voz { padding:0 9px!important;font-size:10px }
   .registros table { min-width:780px }
   .registros { overflow: hidden; overflow-x: auto; }
 }
