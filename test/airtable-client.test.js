@@ -133,3 +133,56 @@ test('subirAdjunto guarda el archivo y queda accesible en el campo', async () =>
   assert.equal(actualizada.archivo.length, 1);
   assert.equal(actualizada.archivo[0].filename, 'x.pdf');
 });
+
+// Bases armadas a mano en Airtable: las relaciones (usuario_id...) pueden ser
+// "Link to another record" y la tabla puede tener una columna "id" propia.
+async function definirTabla(servidor, name, fields) {
+  await servidor.fetch(`https://api.airtable.com/v0/meta/bases/${servidor.baseId}/tables`, {
+    method: 'POST',
+    body: JSON.stringify({ name, fields })
+  });
+}
+
+test('columnas de enlace: se leen como "rec..." y se guardan como ["rec..."]', async () => {
+  const servidor = crearAirtableFalso();
+  await definirTabla(servidor, 'permisos_usuarios_combustible', [
+    { name: 'usuario_id', type: 'multipleRecordLinks' },
+    { name: 'vista', type: 'singleLineText' }
+  ]);
+  const c = cliente(servidor);
+
+  const [creado] = await c.crear('permisos_usuarios_combustible', [
+    { usuario_id: 'recUsuario1', vista: 'registro' }
+  ]);
+  assert.deepEqual(servidor.leerTabla('permisos_usuarios_combustible')[0].usuario_id, [
+    'recUsuario1'
+  ]);
+  assert.equal(creado.usuario_id, 'recUsuario1');
+  assert.equal((await c.listar('permisos_usuarios_combustible'))[0].usuario_id, 'recUsuario1');
+  assert.equal((await c.obtener('permisos_usuarios_combustible', creado.id)).usuario_id, 'recUsuario1');
+
+  await c.actualizar('permisos_usuarios_combustible', [{ id: creado.id, campos: { usuario_id: null } }]);
+  assert.deepEqual(servidor.leerTabla('permisos_usuarios_combustible')[0].usuario_id, []);
+});
+
+test('columnas de texto no se tocan (base creada con airtable:migrar)', async () => {
+  const servidor = crearAirtableFalso();
+  await definirTabla(servidor, 'permisos_usuarios_combustible', [
+    { name: 'usuario_id', type: 'singleLineText' },
+    { name: 'vista', type: 'singleLineText' }
+  ]);
+  const c = cliente(servidor);
+
+  await c.crear('permisos_usuarios_combustible', [{ usuario_id: 'recUsuario1', vista: 'registro' }]);
+  assert.equal(servidor.leerTabla('permisos_usuarios_combustible')[0].usuario_id, 'recUsuario1');
+});
+
+test('una columna "id" de la base no reemplaza el id de Airtable', async () => {
+  const servidor = crearAirtableFalso();
+  const [idReal] = servidor.sembrar('operarios', [{ id: 22, nombre: 'JUAN' }]);
+  const c = cliente(servidor);
+
+  const [fila] = await c.listar('operarios');
+  assert.equal(fila.id, idReal);
+  assert.equal((await c.obtener('operarios', idReal)).nombre, 'JUAN');
+});

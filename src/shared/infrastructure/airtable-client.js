@@ -19,8 +19,16 @@
 //     antes de relanzar el error. No es 100% atómico (alguien podría alcanzar a
 //     leer un dato a medio camino), pero cubre el caso real de esta app: un
 //     solo operario registrando de a una carga a la vez.
+//   * Columnas de relación como "Link to another record": la app trabaja con
+//     el id como texto ("rec..."), pero Airtable entrega/pide los enlaces como
+//     lista (["rec..."]). Al primer uso se consulta el esquema de la base y se
+//     traduce solo en ambos sentidos. Si la columna es texto, no se toca.
+//   * El id de la fila es SIEMPRE el de Airtable ("rec..."), aunque la tabla
+//     tenga además una columna llamada "id" (p. ej. los números de Supabase).
 // PARA CAMBIAR EL LÍMITE DE VELOCIDAD -> ESPERA_MIN_MS.
 // ============================================================================
+
+const { TABLAS } = require('../../../airtable/schema');
 
 const ESPERA_MIN_MS = 230; // ~4.3 peticiones/segundo: un margen prudente bajo el límite de 5/s de Airtable
 const TAMANO_LOTE = 10; // Máximo de registros por petición que acepta la API de Airtable
@@ -80,10 +88,38 @@ function crearClienteAirtable({ apiKey, baseId, fetchImpl = globalThis.fetch } =
 
   const rutaTabla = (tabla) => `${baseId}/${encodeURIComponent(tabla)}`;
 
+  // Columnas de la app (airtable/schema.js) que en la base son "Link to another
+  // record": { tabla: Set(columnas) }. Se consulta una sola vez; si falla (token
+  // sin schema.bases:read, red...) se asume que no hay enlaces y se reintenta
+  // en la próxima petición.
+  let enlacesPendientes = null;
+  function enlacesDe(tabla) {
+    if (!enlacesPendientes)
+      enlacesPendientes = peticion('GET', `meta/bases/${baseId}/tables`)
+        .then(({ tables = [] }) => {
+          const mapa = {};
+          for (const t of tables) {
+            const deLaApp = new Set((TABLAS[t.name] || []).map((c) => c.name));
+            mapa[t.name] = new Set(
+              t.fields
+                .filter((f) => f.type === 'multipleRecordLinks' && deLaApp.has(f.name))
+                .map((f) => f.name)
+            );
+          }
+          return mapa;
+        })
+        .catch(() => {
+          enlacesPendientes = null;
+          return {};
+        });
+    return enlacesPendientes.then((mapa) => mapa[tabla] || new Set());
+  }
+
   return {
     // --- Lectura -------------------------------------------------------------
     // Trae TODAS las filas que cumplen la fórmula, recorriendo las páginas solo.
     async listar(tabla, { formula, orden, maxFilas } = {}) {
+      const enlaces = await enlacesDe(tabla);
       const registros = [];
       let offset;
       do {
@@ -97,7 +133,7 @@ function crearClienteAirtable({ apiKey, baseId, fetchImpl = globalThis.fetch } =
           });
         if (offset) parametros.set('offset', offset);
         const pagina = await peticion('GET', `${rutaTabla(tabla)}?${parametros}`);
-        registros.push(...pagina.records.map(aFila));
+        registros.push(...pagina.records.map((r) => aFila(r, enlaces)));
         offset = pagina.offset;
         if (maxFilas && registros.length >= maxFilas) return registros.slice(0, maxFilas);
       } while (offset);
@@ -107,7 +143,8 @@ function crearClienteAirtable({ apiKey, baseId, fetchImpl = globalThis.fetch } =
     async obtener(tabla, id) {
       if (!id) return null;
       try {
-        return aFila(await peticion('GET', `${rutaTabla(tabla)}/${id}`));
+        const enlaces = await enlacesDe(tabla);
+        return aFila(await peticion('GET', `${rutaTabla(tabla)}/${id}`), enlaces);
       } catch (error) {
         if (error.status === 404 || error.status === 400) return null; // Id inexistente o mal formado
         throw error;
@@ -116,26 +153,28 @@ function crearClienteAirtable({ apiKey, baseId, fetchImpl = globalThis.fetch } =
 
     // --- Escritura (en lotes de 10 automáticamente) --------------------------
     async crear(tabla, filas) {
+      const enlaces = await enlacesDe(tabla);
       const creadas = [];
       for (const lote of partir(filas, TAMANO_LOTE)) {
         const resultado = await peticion('POST', rutaTabla(tabla), {
           typecast: true, // Admite texto para campos numéricos/fecha sin que la app tenga que formatear
-          records: lote.map((campos) => ({ fields: limpiar(campos) }))
+          records: lote.map((campos) => ({ fields: limpiar(campos, enlaces) }))
         });
-        creadas.push(...resultado.records.map(aFila));
+        creadas.push(...resultado.records.map((r) => aFila(r, enlaces)));
       }
       return creadas;
     },
 
     async actualizar(tabla, cambios) {
       // cambios: [{ id, campos }]
+      const enlaces = await enlacesDe(tabla);
       const actualizadas = [];
       for (const lote of partir(cambios, TAMANO_LOTE)) {
         const resultado = await peticion('PATCH', rutaTabla(tabla), {
           typecast: true,
-          records: lote.map(({ id, campos }) => ({ id, fields: limpiar(campos) }))
+          records: lote.map(({ id, campos }) => ({ id, fields: limpiar(campos, enlaces) }))
         });
-        actualizadas.push(...resultado.records.map(aFila));
+        actualizadas.push(...resultado.records.map((r) => aFila(r, enlaces)));
       }
       return actualizadas;
     },
@@ -208,9 +247,14 @@ function crearClienteAirtable({ apiKey, baseId, fetchImpl = globalThis.fetch } =
 
 // Airtable devuelve { id, createdTime, fields:{...} }; la app trabaja con un
 // objeto plano { id, ...columnas } (igual que las filas que devuelve Postgres).
-function aFila(registro) {
+// El id va al final para que una columna "id" de la base no lo reemplace, y
+// cada enlace ["rec..."] se entrega como "rec..." (igual que si fuera texto).
+function aFila(registro, enlaces = new Set()) {
   if (!registro) return null;
-  return { id: registro.id, ...registro.fields };
+  const fila = { ...registro.fields, id: registro.id };
+  for (const campo of enlaces)
+    if (Array.isArray(fila[campo])) fila[campo] = fila[campo][0] ?? null;
+  return fila;
 }
 
 function sinId({ id, ...resto }) {
@@ -218,11 +262,15 @@ function sinId({ id, ...resto }) {
 }
 
 // Airtable rechaza "undefined"; un campo que no se quiere tocar simplemente no
-// se envía. null SÍ se envía (borra el valor de ese campo).
-function limpiar(campos) {
+// se envía. null SÍ se envía (borra el valor de ese campo). En una columna de
+// enlace, "rec..." se envía como ["rec..."] y null/"" como [] (sin enlace).
+function limpiar(campos, enlaces = new Set()) {
   const salida = {};
-  for (const [clave, valor] of Object.entries(campos))
-    if (valor !== undefined) salida[clave] = valor;
+  for (const [clave, valor] of Object.entries(campos)) {
+    if (valor === undefined) continue;
+    if (enlaces.has(clave) && !Array.isArray(valor)) salida[clave] = valor ? [String(valor)] : [];
+    else salida[clave] = valor;
+  }
   return salida;
 }
 
