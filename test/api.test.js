@@ -5,6 +5,10 @@
 // los flujos completos por HTTP. No necesitan internet ni cuenta de Supabase.
 // ============================================================================
 
+// Se fuerza DB_PROVIDER=postgres (aunque el .env local tenga DB_PROVIDER=airtable
+// para trabajar con la cuenta real) porque esta prueba es específicamente del
+// camino Postgres/PGlite. La contraparte para Airtable es airtable-app.test.js.
+process.env.DB_PROVIDER = 'postgres';
 process.env.DB_DRIVER = 'pglite';
 process.env.NODE_ENV = 'test';
 process.env.CRON_SECRET = 'secreto-de-pruebas-1234567890';

@@ -13,7 +13,8 @@
     "dev:local": "node scripts/dev-local.js",
     "importar-operarios": "node scripts/importar-operarios.js",
     "airtable:migrar": "node scripts/airtable-migrar.js",
-    "airtable:sembrar": "node scripts/airtable-sembrar.js"
+    "airtable:sembrar": "node scripts/airtable-sembrar.js",
+    "airtable:copiar-supabase": "node scripts/airtable-copiar-supabase.js"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

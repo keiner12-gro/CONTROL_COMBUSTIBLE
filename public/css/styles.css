@@ -665,6 +665,10 @@ tbody tr:hover td { background: #edf5ef; }
 .consejo-dashboard>span { font-size:22px }
 .consejo-dashboard p { margin:3px 0 0;font-size:11px;color:var(--muted) }
 /* --- 9. ASISTENTE DE REGISTRO POR PASOS (index.html) --- */
+/* Hay DOS asistentes iguales en la pantalla (uno por manguera/tractor), cada
+   uno con su propio <form>; esta etiqueta es lo único que los distingue. */
+.titulo-puesto-registro { margin:22px 0 10px;padding-top:14px;border-top:1px dashed var(--line) }
+.flujo-registro:first-of-type .titulo-puesto-registro { margin-top:0;padding-top:0;border-top:none }
 .flujo-registro { margin-top:12px }
 .pasos-registro { display:flex;align-items:center;justify-content:center;gap:0;margin:0 auto 16px;max-width:680px }
 .paso-registro { position:relative;display:flex;align-items:center;gap:7px;color:#5a6f62;font-size:10px;font-weight:800;padding:0 18px }

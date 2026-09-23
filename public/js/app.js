@@ -5,17 +5,29 @@
 // Se encarga de:
 //   1. Lecturas de los medidores M1/M2 (apertura automática desde el cierre
 //      del día anterior, cálculo de galones y guardado del cierre diario).
-//   2. Selección de máquina y operario mediante buscadores con tarjetas.
-//   3. Asistente por pasos (máquina -> operario -> suministro -> confirmar).
-//   4. Firma del operario dibujada en un lienzo (canvas).
-//   5. Comandos de voz para llenar el formulario sin usar las manos.
-//   6. Envío del registro al servidor y validaciones previas.
+//      Esto es ÚNICO por día: solo hay un juego de estos campos en la página.
+//   2. DOS asistentes de registro idénticos e independientes ("Puesto 1" y
+//      "Puesto 2", sufijos -1/-2 en el HTML): una sola persona puede dejar
+//      el Puesto 1 a medio llenar (p. ej. mientras esa manguera sigue
+//      despachando) y atender el Puesto 2 sin perder lo que llevaba en el
+//      primero. Cada uno guarda su propio registro por separado; el de abajo
+//      no espera al de arriba. Toda esa lógica vive en crearPuestoRegistro()
+//      y se instancia dos veces al final de este archivo.
+//   3. Firma del operario: el lienzo (canvas) es UNO SOLO y lo comparten los
+//      dos puestos (se abre para el que lo pidió); ver "instanciaFirmaActiva".
+//   4. Comandos de voz: cada puesto tiene su propio micrófono y reconoce por
+//      separado, para no mezclar lo dictado en un puesto con el otro.
+//   5. Envío del registro al servidor y validaciones previas.
+// PARA AGREGAR UN TERCER PUESTO: duplica un bloque <section class="flujo-
+// registro" id="flujo-registro-N"> en index.html con sufijo -N, y agrega
+// `crearPuestoRegistro('N', 'Puesto N');` junto a las otras dos llamadas.
 // ============================================================================
 
-// --- Referencias a los elementos del formulario -----------------------------
-const formulario = document.getElementById('formulario-control');
+// --- Referencias a los elementos COMPARTIDOS (uno solo en toda la página) ---
 const fecha = document.getElementById('fecha');
-// Medidores: cada manguera (M1 y M2) tiene lectura inicial y final.
+// Medidores: cada manguera del SURTIDOR (M1 y M2) tiene lectura inicial y final.
+// (Esto es el control diario del tanque, no tiene relación con los "puestos"
+// de registro de suministro descritos arriba.)
 const m1Inicial = document.getElementById('m1-inicial');
 const m1Final = document.getElementById('m1-final');
 const m2Inicial = document.getElementById('m2-inicial');
@@ -23,43 +35,30 @@ const m2Final = document.getElementById('m2-final');
 const galonesM1 = document.getElementById('galones-m1'); // Resultado calculado M1
 const galonesM2 = document.getElementById('galones-m2'); // Resultado calculado M2
 const totalGalones = document.getElementById('galones-total'); // Suma de ambos
-// Datos del suministro.
-const nombreOperario = document.getElementById('nombre-operario');
-const cedulaOperario = document.getElementById('cedula-operario');
-const maquina = document.getElementById('maquina');
-const tractorDescripcion = document.getElementById('tractor-descripcion'); // Se llena solo
-const tractorCentroCosto = document.getElementById('tractor-centro-costo'); // Se llena solo
-const horometro = document.getElementById('horometro');
-const cantidad = document.getElementById('cantidad');
-const numeroSai = document.getElementById('no-sai');
-const observaciones = document.getElementById('observaciones');
-// Firma: campo oculto con la imagen y los controles de la ventana de firma.
-const firmaOperario = document.getElementById('firma-operario');
-const botonAbrirFirma = document.getElementById('boton-abrir-firma');
+const botonGuardarCierreDia = document.getElementById('boton-guardar-cierre-dia');
+// Firma: lienzo único compartido por los dos puestos (ver instanciaFirmaActiva).
 const fondoFirma = document.getElementById('fondo-firma');
 const lienzoFirma = document.getElementById('lienzo-firma');
 const botonLimpiarFirma = document.getElementById('boton-limpiar-firma');
 const botonCerrarFirma = document.getElementById('boton-cerrar-firma');
 const botonGuardarFirma = document.getElementById('boton-guardar-firma');
-const botonGuardarCierreDia = document.getElementById('boton-guardar-cierre-dia');
-// Comandos de voz.
-const botonVoz = document.getElementById('boton-voz');
-const estadoVoz = document.getElementById('estado-voz'); // Mensaje de lo que entendió
-let reconocimientoVoz = null;
-// Tabla de lo registrado durante esta sesión (no es el historial completo).
+// Tabla de lo registrado durante esta sesión (no es el historial completo):
+// la comparten los dos puestos, cada uno agrega sus propias filas.
 const tablaRegistros = document.getElementById('tabla-registros');
 const resumenTotalPantalla = document.getElementById('resumen-total');
 const fechaEncabezado = document.getElementById('fecha-encabezado') || document.querySelector('[data-fecha-encabezado]');
 
-// --- Variables de estado ----------------------------------------------------
-let totalSuministrado = 0; // Acumulado de galones registrados en esta sesión
+// --- Variables de estado compartido ------------------------------------------
+let totalSuministrado = 0; // Acumulado de galones registrados en esta sesión (los dos puestos suman aquí)
 let estaFirmando = false; // ¿El dedo/mouse está presionado sobre el lienzo?
-let firmaDibujada = false; // ¿Hay algún trazo dibujado?
+let firmaDibujada = false; // ¿Hay algún trazo dibujado en el lienzo compartido?
 let cierreDiaGuardado = false; // ¿El cierre del día ya se envió al servidor?
+let instanciaFirmaActiva = null; // Qué puesto abrió el lienzo de firma por última vez
 const dibujoFirma = lienzoFirma.getContext('2d'); // Pincel del canvas
 const nombreAlmacenamiento = 'registrosCombustible'; // Clave de la copia local
-let tractoresDisponibles = []; // Catálogo de máquinas descargado
-let operariosDisponibles = []; // Catálogo de operarios descargado
+let tractoresDisponibles = []; // Catálogo de máquinas descargado (compartido por los dos puestos)
+let operariosDisponibles = []; // Catálogo de operarios descargado (compartido por los dos puestos)
+const instanciasRegistro = []; // Los puestos creados por crearPuestoRegistro(), para refrescarlos juntos
 
 // Apaga el historial/autocompletado del navegador para que solo salgan las opciones del datalist.
 function desactivarAutocompletadoNavegador() {
@@ -258,7 +257,15 @@ function calcularGalones() {
   actualizarEstadoMangueras(); // Refresca los mensajes de validación
 }
 
-// Carga los operarios desde MySQL y llena la lista desplegable de operario.
+// Mensaje de validación bajo cada manguera: sin movimiento / pendiente /
+// error (final menor que inicial) / lectura válida.
+function actualizarEstadoMangueras(){
+  [{i:m1Inicial,f:m1Final,g:galonesM1,e:document.getElementById('validacion-m1')},{i:m2Inicial,f:m2Final,g:galonesM2,e:document.getElementById('validacion-m2')}].forEach(x=>{if(!x.e)return;if(!x.i.value&&!x.f.value){x.e.textContent='Sin movimiento registrado.';x.e.className='validacion-manguera neutra';return;}if(!x.f.value){x.e.textContent='Pendiente: ingresa la lectura final.';x.e.className='validacion-manguera pendiente';return;}if(Number(x.f.value)<Number(x.i.value)){x.e.textContent='⚠️ La lectura final no puede ser menor que la inicial.';x.e.className='validacion-manguera error';return;}x.e.textContent=Number(x.g.value||0)===0?'Sin movimiento.':'✓ Lectura válida.';x.e.className='validacion-manguera correcta';});
+}
+
+// --- Catálogos (compartidos por los dos puestos) -----------------------------
+
+// Carga los operarios desde el servidor y refresca la lista en los dos puestos.
 async function cargarOperariosEnFormulario() {
   operariosDisponibles = [];
 
@@ -277,15 +284,14 @@ async function cargarOperariosEnFormulario() {
     operariosDisponibles = Array.isArray(datos) ? datos : [];
 
     if (!operariosDisponibles.length) console.warn('No hay operarios disponibles.');
-    renderizarOperarios(operariosDisponibles);
+    instanciasRegistro.forEach((instancia) => instancia.renderizarOperarios(operariosDisponibles));
   } catch (error) {
     console.error('No se pudieron cargar los operarios desde MySQL.', error);
     operariosDisponibles = [];
   }
 }
 
-// Carga los tractores desde MySQL y llena el mismo tipo de lista nativa
-// (input + datalist) que utiliza el campo Horometro.
+// Carga los tractores desde el servidor y refresca el selector en los dos puestos.
 async function cargarTractoresEnFormulario() {
   tractoresDisponibles = [];
 
@@ -302,90 +308,19 @@ async function cargarTractoresEnFormulario() {
     const datos = await respuesta.json();
     tractoresDisponibles = Array.isArray(datos) ? datos : [];
 
-    renderizarMaquinas(tractoresDisponibles);
+    instanciasRegistro.forEach((instancia) => instancia.renderizarMaquinas(tractoresDisponibles));
   } catch (error) {
     console.error('No se pudieron cargar las máquinas desde MySQL.', error);
     tractoresDisponibles = [];
-    const contenedor = document.getElementById('selector-maquinas-cards');
-    if (contenedor) contenedor.innerHTML = '<div class="estado-vacio-selector">No se pudieron cargar las máquinas. Verifica que el servidor esté conectado a MySQL.</div>';
-  }
-}
-
-// Dibuja las tarjetas del selector de máquinas, filtradas por el buscador.
-// La normalización (NFD + quitar acentos + minúsculas) permite encontrar
-// "MÁQUINA" escribiendo "maquina".
-function renderizarMaquinas(lista, filtro = '') {
-  const contenedor = document.getElementById('selector-maquinas-cards'); if (!contenedor) return;
-  const q=String(filtro||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); contenedor.innerHTML='';
-  // Se busca en código, descripción y centro de costo a la vez.
-  const visibles=lista.filter(t=>`${t.maquina||''} ${t.descripcion||''} ${t.centro_costo||''}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q));
-  if(!visibles.length){contenedor.innerHTML='<div class="estado-vacio-selector">No se encontraron máquinas.</div>';return;}
-  // Cada tarjeta muestra código, descripción y capacidad del tanque; al pulsarla
-  // se fija la máquina y se vuelve a dibujar la lista para marcar la elegida.
-  visibles.forEach(t=>{const b=document.createElement('button');b.type='button';b.className=`selector-card ${normalizarBusquedaMaquina(maquina.value)===normalizarBusquedaMaquina(t.maquina)?'seleccionada':''}`;b.innerHTML=`<span class="selector-card-icon">🚜</span><span><strong>${escapeHtml(t.maquina)}</strong><small>${escapeHtml(t.descripcion||'Sin descripción')}</small><em>Tanque: ${Number(t.capacidad_galones||t.capacidad||0).toFixed(2)} gal</em></span><b>→</b>`;b.onclick=()=>{maquina.value=t.maquina;mostrarDatosTractorSeleccionado();renderizarMaquinas(tractoresDisponibles,document.getElementById('maquina-busqueda')?.value);};contenedor.appendChild(b);});
-}
-
-// Mismo mecanismo para el selector de operarios (busca por nombre o cédula).
-// Al elegir uno se llena también automáticamente la cédula.
-function renderizarOperarios(lista, filtro = '') {
-  const contenedor=document.getElementById('selector-operarios-cards'); if(!contenedor)return; const q=String(filtro||'').toLowerCase().trim(); contenedor.innerHTML='';
-  const visibles=lista.filter(o=>`${o.nombre||''} ${o.cedula||''}`.toLowerCase().includes(q)); if(!visibles.length){contenedor.innerHTML='<div class="estado-vacio-selector">No se encontraron operarios.</div>';return;}
-  visibles.forEach(o=>{const b=document.createElement('button');b.type='button';b.className=`selector-card ${nombreOperario.value===o.nombre?'seleccionada':''}`;b.innerHTML=`<span class="selector-card-icon">👤</span><span><strong>${escapeHtml(o.nombre)}</strong><small>Operario</small><em>Cédula: ${escapeHtml(o.cedula||'—')}</em></span><b>→</b>`;b.onclick=()=>{nombreOperario.value=o.nombre;cedulaOperario.value=o.cedula||'';mostrarDatosOperarioSeleccionado();renderizarOperarios(operariosDisponibles,document.getElementById('operario-busqueda')?.value);};contenedor.appendChild(b);});
-}
-
-// Mensaje de validación bajo cada manguera: sin movimiento / pendiente /
-// error (final menor que inicial) / lectura válida.
-function actualizarEstadoMangueras(){
-  [{i:m1Inicial,f:m1Final,g:galonesM1,e:document.getElementById('validacion-m1')},{i:m2Inicial,f:m2Final,g:galonesM2,e:document.getElementById('validacion-m2')}].forEach(x=>{if(!x.e)return;if(!x.i.value&&!x.f.value){x.e.textContent='Sin movimiento registrado.';x.e.className='validacion-manguera neutra';return;}if(!x.f.value){x.e.textContent='Pendiente: ingresa la lectura final.';x.e.className='validacion-manguera pendiente';return;}if(Number(x.f.value)<Number(x.i.value)){x.e.textContent='⚠️ La lectura final no puede ser menor que la inicial.';x.e.className='validacion-manguera error';return;}x.e.textContent=Number(x.g.value||0)===0?'Sin movimiento.':'✓ Lectura válida.';x.e.className='validacion-manguera correcta';});
-}
-
-// Resumen del paso 4: máquina, operario, cantidad y soporte antes de guardar.
-function actualizarConfirmacion(){const el=document.getElementById('confirmacion-registro');if(!el)return;const t=tractoresDisponibles.find(x=>normalizarBusquedaMaquina(x.maquina)===normalizarBusquedaMaquina(maquina.value));el.innerHTML=`<div class="confirmacion-linea"><span>🚜</span><div><small>Máquina</small><strong>${escapeHtml(maquina.value||'—')}</strong><em>${escapeHtml(t?.descripcion||tractorDescripcion.value||'')}</em></div></div><div class="confirmacion-linea"><span>👤</span><div><small>Operario</small><strong>${escapeHtml(nombreOperario.value||'—')}</strong><em>Cédula: ${escapeHtml(cedulaOperario.value||'—')}</em></div></div><div class="confirmacion-linea"><span>⛽</span><div><small>Cantidad</small><strong>${Number(cantidad.value||0).toFixed(2)} GAL</strong><em>Horómetro: ${escapeHtml(horometro.value||'—')}</em></div></div><div class="confirmacion-linea"><span>📄</span><div><small>Soporte</small><strong>${escapeHtml(numeroSai.value||'Sin SAI')}</strong><em>${firmaOperario.value?'✓ Firma guardada':'⚠ Falta firma'}</em></div></div>`;}
-
-// Aviso en vivo mientras se escribe la cantidad: verde (normal), naranja
-// (>=85% del tanque) o rojo (excede la capacidad). El exceso NO impide guardar:
-// se permite y el servidor genera la alerta de sobrecapacidad.
-function actualizarIndicadorCapacidad(){const el=document.getElementById('indicador-capacidad');if(!el)return;const t=tractoresDisponibles.find(x=>normalizarBusquedaMaquina(x.maquina)===normalizarBusquedaMaquina(maquina.value)),cap=Number(t?.capacidad_galones||t?.capacidad||0),v=Number(cantidad.value||0);if(!cap){el.hidden=true;return;}const pct=v/cap*100;el.hidden=false;el.className=`indicador-capacidad ${v>cap?'exceso':pct>=85?'advertencia':'normal'}`;el.innerHTML=v>cap?`⚠️ <strong>Sobrecapacidad</strong> · Tanque ${cap.toFixed(2)} gal · Suministro ${v.toFixed(2)} gal · Exceso ${(v-cap).toFixed(2)} gal. Se permitirá guardar y se generará una alerta.`:`<strong>${Math.min(pct,100).toFixed(1)}%</strong> de la capacidad · Tanque ${cap.toFixed(2)} gal`;}
-
-// Navega entre los pasos del asistente: muestra el paso pedido, actualiza los
-// indicadores de progreso y prepara el contenido de los pasos 3 y 4.
-function irAPaso(numero){document.querySelectorAll('.paso-formulario').forEach(p=>p.classList.toggle('activo',Number(p.dataset.paso)===numero));document.querySelectorAll('[data-paso-indicador]').forEach(i=>{const n=Number(i.dataset.pasoIndicador);i.classList.toggle('activo',n===numero);i.classList.toggle('completado',n<numero);});if(numero===3){document.getElementById('mini-maquina').textContent=`🚜 ${maquina.value||'Máquina'}`;document.getElementById('mini-operario').textContent=`👤 ${nombreOperario.value||'Operario'}`;actualizarIndicadorCapacidad();}if(numero===4)actualizarConfirmacion();window.scrollTo({top:0,behavior:'smooth'});}
-
-// Requisitos para poder avanzar: paso 1 máquina, paso 2 operario con cédula,
-// paso 3 cantidad mayor que cero y firma guardada.
-function validarPaso(numero){if(numero===1&&!maquina.value){mostrarAlertaError('Selecciona una máquina','Elige una máquina para continuar.');return false;}if(numero===2&&(!nombreOperario.value||!cedulaOperario.value)){mostrarAlertaError('Selecciona un operario','Elige quién realiza el suministro.');return false;}if(numero===3){if(!cantidad.value||Number(cantidad.value)<=0){mostrarAlertaError('Cantidad requerida','Ingresa la cantidad de galones suministrados.');return false;}if(!firmaOperario.value){mostrarAlertaError('Firma requerida','Debes guardar la firma antes de confirmar.');return false;}}return true;}
-
-// Muestra los datos del tractor seleccionado sin modificar registros historicos.
-function mostrarDatosTractorSeleccionado() {
-  const tractorSeleccionado = tractoresDisponibles.find((tractor) => {
-    return tractor.maquina === maquina.value;
-  });
-
-  // Descripción y centro de costo se llenan solos: son informativos.
-  tractorDescripcion.value = tractorSeleccionado ? tractorSeleccionado.descripcion : '';
-  tractorCentroCosto.value = tractorSeleccionado ? tractorSeleccionado.centro_costo : '';
-  const resumen = document.getElementById('resumen-maquina-seleccionada');
-  if (resumen) {
-    resumen.hidden = !tractorSeleccionado;
-    if (tractorSeleccionado) resumen.innerHTML = `✓ <strong>${escapeHtml(tractorSeleccionado.maquina)}</strong> · ${escapeHtml(tractorSeleccionado.descripcion || 'Sin descripción')} · Tanque ${Number(tractorSeleccionado.capacidad_galones || tractorSeleccionado.capacidad || 0).toFixed(2)} gal`;
-  }
-  actualizarIndicadorCapacidad();
-
-  // El tanque movil no maneja horometro, por eso se llena automaticamente como N/A.
-  if (esTanqueMovil(tractorSeleccionado)) {
-    horometro.value = 'N/A';
-    return;
-  }
-
-  // Si se cambia del tanque móvil a otra máquina, se limpia el "N/A".
-  if (horometro.value === 'N/A') {
-    horometro.value = '';
+    instanciasRegistro.forEach((instancia) => {
+      instancia.contenedorMaquinas.innerHTML = '<div class="estado-vacio-selector">No se pudieron cargar las máquinas. Verifica que el servidor esté conectado a MySQL.</div>';
+    });
   }
 }
 
 // Identifica solo el Tanque Movil que esta creado en tractores con item 73 e id 198.
 // Se comprueba por id, por ítem y por nombre para que siga funcionando aunque
-// el registro cambie de identificador en la base de datos.
+// el registro cambie de identificador en la base de datos. (Pura: la usan los dos puestos.)
 function esTanqueMovil(tractor) {
   if (!tractor) {
     return false;
@@ -400,20 +335,16 @@ function esTanqueMovil(tractor) {
     || descripcion === 'tanque movil';
 }
 
-// Muestra la cedula del operario seleccionado sin modificar registros historicos.
-function mostrarDatosOperarioSeleccionado() {
-  const operarioSeleccionado = operariosDisponibles.find((operario) => {
-    return operario.nombre === nombreOperario.value;
-  });
-
-  cedulaOperario.value = operarioSeleccionado ? operarioSeleccionado.cedula : '';
+// Normaliza el texto del buscador de máquinas: sin acentos, sin signos y en
+// minúsculas, para que "MA-05", "ma 05" y "ma05" se consideren iguales. (Pura.)
+function normalizarBusquedaMaquina(valor){
+  return String(valor||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 }
 
 // ===========================================================================
-// BLOQUE DE COMANDOS DE VOZ
-// El operario puede llenar el formulario hablando ("máquina MA-05",
-// "cantidad cincuenta", "horómetro dañado"). Usa la API de reconocimiento de
-// voz del navegador (funciona en Chrome/Edge y requiere internet).
+// BLOQUE DE COMANDOS DE VOZ — funciones PURAS (sin tocar el DOM), compartidas
+// por los dos puestos. Cada puesto las usa con su propio texto dictado y
+// decide, con sus propios catálogos en memoria, a qué campo escribir.
 // ===========================================================================
 
 // Normaliza texto para comparar lo que entiende la voz con los nombres reales de la base de datos.
@@ -421,7 +352,7 @@ function mostrarDatosOperarioSeleccionado() {
 function normalizarTextoVoz(texto) {
   return String(texto || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Elimina los acentos
+    .replace(/[̀-ͯ]/g, '') // Elimina los acentos
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
@@ -474,37 +405,6 @@ function extraerDespuesDeComando(texto, comandos) {
     }
   }
   return normalizado;
-}
-
-// NOTA: esta versión de seleccionarMaquinaPorVoz queda REEMPLAZADA por otra
-// definición con el mismo nombre más abajo (la que usa
-// extraerValorDespuesDeComando). En JavaScript, la última definición gana.
-function seleccionarMaquinaPorVoz(frase) {
-  const candidato = extraerDespuesDeComando(frase, ['maquina', 'máquina', 'tractor']);
-  const tractor = buscarCoincidenciaExacta(candidato || frase, tractoresDisponibles, 'maquina');
-
-  if (!tractor) {
-    estadoVoz.textContent = `No encontré una máquina registrada que coincida con: ${frase}`;
-    return false;
-  }
-
-  // IMPORTANTE: se escribe el valor canónico de MySQL, no el texto aproximado que devolvió la voz.
-  maquina.value = tractor.maquina;
-  mostrarDatosTractorSeleccionado();
-  estadoVoz.textContent = `Máquina seleccionada: ${tractor.maquina}`;
-  return true;
-}
-
-// NOTA: igual que la anterior, esta versión también queda reemplazada más abajo.
-function seleccionarOperarioPorVoz(frase) {
-  const candidato = extraerDespuesDeComando(frase, ['operario', 'operaria']);
-  const operario = buscarCoincidenciaExacta(candidato || frase, operariosDisponibles, 'nombre');
-  if (!operario) return false;
-
-  nombreOperario.value = operario.nombre;
-  mostrarDatosOperarioSeleccionado();
-  estadoVoz.textContent = `Operario seleccionado: ${operario.nombre}`;
-  return true;
 }
 
 // Convierte números dictados en palabras a dígitos: "cincuenta" -> "50",
@@ -567,235 +467,11 @@ function extraerValorDespuesDeComando(frase, comandos) {
   return '';
 }
 
-// VERSIÓN ACTIVA: selecciona operario por voz y además llena la cédula.
-function seleccionarOperarioPorVoz(frase) {
-  const candidato = extraerValorDespuesDeComando(frase, ['operario', 'operaria', 'nombre del operario', 'nombre']);
-  const operario = buscarCoincidenciaExacta(candidato || frase, operariosDisponibles, 'nombre');
-  if (!operario) return false;
-
-  // Siempre escribe los datos canónicos que vienen de la base de datos.
-  nombreOperario.value = operario.nombre;
-  cedulaOperario.value = operario.cedula;
-  estadoVoz.textContent = `Operario: ${operario.nombre} | Cédula: ${operario.cedula}`;
-  return true;
-}
-
-// VERSIÓN ACTIVA: selecciona la máquina por voz.
-function seleccionarMaquinaPorVoz(frase) {
-  const candidato = extraerValorDespuesDeComando(frase, ['maquina', 'máquina', 'tractor']);
-  const tractor = buscarCoincidenciaExacta(candidato || frase, tractoresDisponibles, 'maquina');
-
-  if (!tractor) {
-    estadoVoz.textContent = `No encontré una máquina registrada que coincida con: ${frase}`;
-    return false;
-  }
-
-  // Escribe exactamente el nombre registrado en la base de datos.
-  maquina.value = tractor.maquina;
-  mostrarDatosTractorSeleccionado();
-  estadoVoz.textContent = `Máquina: ${tractor.maquina}`;
-  return true;
-}
-
-// Interpreta la frase dictada y decide a qué campo corresponde.
-// Se evalúa en orden: máquina, operario, horómetro, cantidad, cédula, SAI y
-// observaciones. El primero que encaje gana y la función termina.
-function ejecutarComandoVoz(frase) {
-  const texto = String(frase || '').trim();
-  const normalizado = normalizarTextoVoz(texto);
-  if (!normalizado) return;
-
-  // MÁQUINA / TRACTOR
-  // Entra si la frase empieza con el comando o si menciona una máquina conocida.
-  if (normalizado.startsWith('maquina ') || normalizado.startsWith('tractor ') ||
-      tractoresDisponibles.some(t => normalizado.includes(normalizarTextoVoz(t.maquina)))) {
-    if (seleccionarMaquinaPorVoz(texto)) return;
-  }
-
-  // OPERARIO: "operario Juan Pérez" o simplemente "Juan Pérez".
-  if (normalizado.startsWith('operario ') || normalizado.startsWith('operaria ') ||
-      normalizado.startsWith('nombre del operario ')) {
-    if (seleccionarOperarioPorVoz(texto)) return;
-  }
-  if (seleccionarOperarioPorVoz(texto)) return; // Intento sin comando explícito
-
-  // HORÓMETRO: número o estado como "dañado", "no marca", etc.
-  const horometroValor = extraerValorDespuesDeComando(texto, ['horometro', 'horómetro']);
-  if (horometroValor) {
-    // Estos textos no numéricos harán que el servidor cree una alerta de
-    // "horómetro irregular" al guardar (ver record.service.js).
-    const estadosHorometro = {
-      'horometro danado': 'Horometro dañado',
-      'danado': 'Horometro dañado',
-      'danada': 'Horometro dañado',
-      'no marca': 'No marca',
-      'en revision': 'En revision',
-      'problema con la maquina': 'Problema con la maquina'
-    };
-    const estado = estadosHorometro[horometroValor];
-    const numero = convertirNumeroVoz(horometroValor);
-    if (estado) {
-      horometro.value = estado;
-      estadoVoz.textContent = `Horómetro: ${estado}`;
-      return;
-    }
-    if (numero) {
-      horometro.value = numero;
-      estadoVoz.textContent = `Horómetro: ${horometro.value}`;
-      return;
-    }
-  }
-
-  // También acepta "dañado" / "no marca" como comando de horómetro.
-  const estadoSolo = {
-    'danado': 'Horometro dañado',
-    'no marca': 'No marca',
-    'en revision': 'En revision',
-    'problema con la maquina': 'Problema con la maquina'
-  }[normalizado];
-  if (estadoSolo) {
-    horometro.value = estadoSolo;
-    estadoVoz.textContent = `Horómetro: ${estadoSolo}`;
-    return;
-  }
-
-  // CANTIDAD: "cantidad 50", "50 galones" o "cantidad cincuenta".
-  let cantidadTexto = extraerValorDespuesDeComando(texto, ['cantidad', 'galones', 'galon']);
-  if (!cantidadTexto) {
-    const cantidadConUnidad = normalizado.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:galones|galon)$/);
-    if (cantidadConUnidad) cantidadTexto = cantidadConUnidad[1];
-  }
-  if (cantidadTexto) {
-    cantidadTexto = cantidadTexto.replace(/\s*(?:galones|galon)\s*$/i, '').trim(); // Quita la unidad
-    const valorCantidad = convertirNumeroVoz(cantidadTexto);
-    if (valorCantidad) {
-      cantidad.value = valorCantidad;
-      estadoVoz.textContent = `Cantidad: ${cantidad.value} galones`;
-      return;
-    }
-  }
-
-  // CÉDULA: normalmente se obtiene automáticamente al decir el nombre del operario,
-  // pero también permite indicar una cédula directamente.
-  const cedulaTexto = extraerValorDespuesDeComando(texto, ['cedula', 'cédula']);
-  if (cedulaTexto) {
-    const numeroCedula = convertirNumeroVoz(cedulaTexto.replace(/\s+/g, '')) || cedulaTexto.replace(/\D/g, '');
-    if (numeroCedula) {
-      cedulaOperario.value = numeroCedula;
-      estadoVoz.textContent = `Cédula: ${cedulaOperario.value}`;
-      return;
-    }
-  }
-
-  // No. SAI.
-  const saiMatch = normalizado.match(/(?:sai|numero sai|numero de sai)\s+(.+)/);
-  if (saiMatch) {
-    numeroSai.value = saiMatch[1].trim();
-    estadoVoz.textContent = `No. SAI: ${numeroSai.value}`;
-    return;
-  }
-
-  // Observaciones: conserva la frase original para no perder acentos ni formato.
-  const observacionMatch = texto.match(/^(?:observacion|observaciones)\s+(.+)$/i);
-  if (observacionMatch) {
-    observaciones.value = observacionMatch[1].trim();
-    estadoVoz.textContent = 'Observación registrada.';
-    return;
-  }
-
-  // Ningún comando encajó: se le recuerda al usuario qué puede decir.
-  estadoVoz.textContent = `No entendí el comando: ${texto}. Usa: máquina, operario, horómetro, cantidad, cédula, SAI u observación.`;
-}
-
-// Configura el reconocimiento de voz del navegador y el botón del micrófono.
-function configurarComandoVoz() {
-  // Compatibilidad: Chrome lo expone con el prefijo webkit.
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    botonVoz.disabled = true;
-    estadoVoz.textContent = 'El reconocimiento de voz no está disponible en este navegador.';
-    return;
-  }
-
-  reconocimientoVoz = new SpeechRecognition();
-  reconocimientoVoz.lang = 'es-CO'; // Español de Colombia
-  reconocimientoVoz.continuous = false; // Escucha una frase y se detiene
-  reconocimientoVoz.interimResults = false; // Solo el resultado final
-  reconocimientoVoz.maxAlternatives = 5; // Varias interpretaciones posibles
-
-  // Mientras escucha: el botón cambia de aspecto y se muestra la ayuda.
-  reconocimientoVoz.onstart = () => {
-    botonVoz.classList.add('escuchando');
-    botonVoz.textContent = '🛑 Escuchando...';
-    estadoVoz.textContent = 'Di: máquina, operario, horómetro, cantidad, cédula, SAI u observación.';
-  };
-
-  // Al obtener resultado: se prueban las alternativas hasta que una funcione.
-  reconocimientoVoz.onresult = (evento) => {
-    const resultados = Array.from(evento.results[0] || []);
-    const frases = resultados.map(r => r.transcript).filter(Boolean);
-    for (const frase of frases) {
-      ejecutarComandoVoz(frase);
-      // Con las máquinas se corta en la primera alternativa procesada para no
-      // sobrescribir la selección con una interpretación peor.
-      if (normalizarTextoVoz(frase).includes('maquina') || normalizarTextoVoz(frase).includes('tractor')) {
-        break;
-      }
-    }
-  };
-
-  // Errores frecuentes traducidos a mensajes entendibles.
-  reconocimientoVoz.onerror = (evento) => {
-    const mensajes = {
-      'not-allowed': 'Permiso de micrófono denegado.',
-      'no-speech': 'No se detectó voz. Intenta nuevamente.',
-      'network': 'El reconocimiento de voz necesita conexión a internet en este navegador.'
-    };
-    estadoVoz.textContent = mensajes[evento.error] || `Error de voz: ${evento.error}`;
-  };
-
-  // Al terminar: el botón vuelve a su estado normal.
-  reconocimientoVoz.onend = () => {
-    botonVoz.classList.remove('escuchando');
-    botonVoz.textContent = '🎙️ Voz';
-  };
-
-  // El botón alterna entre iniciar y detener la escucha.
-  botonVoz.addEventListener('click', () => {
-    if (botonVoz.classList.contains('escuchando')) {
-      reconocimientoVoz.stop();
-      return;
-    }
-    try {
-      reconocimientoVoz.start();
-    } catch (error) {
-      // Evita el error si el navegador todavía está cerrando una sesión anterior.
-    }
-  });
-}
-
-// --- Eventos de los medidores -----------------------------------------------
-// Cada cambio recalcula los galones y marca el cierre como pendiente de guardar.
-m1Inicial.addEventListener('input', calcularGalones);
-m1Inicial.addEventListener('input', marcarCierrePendiente);
-m1Final.addEventListener('input', calcularGalones);
-m1Final.addEventListener('input', marcarCierrePendiente);
-m2Inicial.addEventListener('input', calcularGalones);
-m2Inicial.addEventListener('input', marcarCierrePendiente);
-m2Final.addEventListener('input', calcularGalones);
-m2Final.addEventListener('input', marcarCierrePendiente);
-// Cambiar la fecha recarga el estado de los medidores de ese día.
-fecha.addEventListener('change', cargarLecturasInicialesDesdeUltimoCierre);
-// Al elegir máquina u operario se completan sus datos asociados.
-maquina.addEventListener('change', mostrarDatosTractorSeleccionado);
-maquina.addEventListener('input', mostrarDatosTractorSeleccionado);
-nombreOperario.addEventListener('change', mostrarDatosOperarioSeleccionado);
-nombreOperario.addEventListener('input', mostrarDatosOperarioSeleccionado);
-
 // ===========================================================================
-// BLOQUE DE LA FIRMA (canvas)
+// BLOQUE DE LA FIRMA (canvas único, compartido por los dos puestos)
 // La firma se dibuja con el dedo o el mouse y se guarda como imagen PNG en
-// base64 dentro de un campo oculto del formulario.
+// base64 dentro del campo oculto del puesto que abrió el lienzo
+// (instanciaFirmaActiva, fijada por cada puesto en su botón "Firmar").
 // ===========================================================================
 
 // Prepara el lienzo blanco donde el operario firma.
@@ -842,15 +518,19 @@ function terminarFirma() {
   estaFirmando = false;
 }
 
-// Borra el lienzo y descarta la firma guardada.
-function limpiarFirma() {
+// Borra el lienzo y descarta la firma guardada del puesto indicado (o del que
+// tenga abierto el lienzo, si no se indica ninguno).
+function limpiarFirma(instancia) {
   dibujoFirma.clearRect(0, 0, lienzoFirma.width, lienzoFirma.height);
-  firmaOperario.value = '';
   firmaDibujada = false;
-  botonAbrirFirma.textContent = 'Firma';
+  const objetivo = instancia || instanciaFirmaActiva;
+  if (objetivo) {
+    objetivo.firmaOperario.value = '';
+    objetivo.botonAbrirFirma.textContent = 'Firma';
+  }
 }
 
-// --- Guardado de registros --------------------------------------------------
+// --- Guardado de registros (compartido: lo usan los dos puestos) -----------
 
 // Lee la copia local de registros del navegador.
 function obtenerRegistrosGuardados() {
@@ -877,7 +557,7 @@ function guardarRegistroLocal(registro) {
 }
 
 // Envia el registro al servidor Node para guardarlo en data/registros.json.
-// (Hoy el destino real es la tabla registros_combustible de MySQL.)
+// (Hoy el destino real es la tabla registros_combustible de MySQL/Airtable.)
 async function guardarRegistroServidor(registro) {
   const respuesta = await fetch('/api/registros', {
     method: 'POST',
@@ -953,7 +633,7 @@ async function obtenerCapacidadMaquina(nombreMaquina) {
 
 // Valida los datos obligatorios antes de permitir guardar el suministro.
 // Son las mismas reglas que aplica el servidor; aquí se adelantan para dar
-// una respuesta inmediata al usuario.
+// una respuesta inmediata al usuario. La usan los dos puestos por igual.
 async function validarRegistroAntesDeGuardar(registro) {
   if (!registro.m1Inicial && !registro.m2Inicial) {
     await mostrarAlertaError('Faltan lecturas iniciales', 'Debes tener al menos una lectura inicial disponible para continuar.');
@@ -984,32 +664,579 @@ async function validarRegistroAntesDeGuardar(registro) {
   return true;
 }
 
+// ===========================================================================
+// UN PUESTO DE REGISTRO COMPLETO (máquina -> operario -> suministro -> confirmar)
+// Todo lo de aquí adentro es privado a CADA puesto: su propio estado, sus
+// propios elementos (buscados por id con el sufijo) y sus propios listeners.
+// Lo único que comparten los dos puestos son las variables/funciones de
+// arriba (catálogos, medidores M1/M2, lienzo de firma, tabla de hoy).
+// ===========================================================================
+function crearPuestoRegistro(sufijo, etiqueta) {
+  const el = (id) => document.getElementById(`${id}-${sufijo}`);
+
+  const contenedorInstancia = el('flujo-registro');
+  const formulario = el('formulario-control');
+  const nombreOperario = el('nombre-operario');
+  const cedulaOperario = el('cedula-operario');
+  const maquina = el('maquina');
+  const tractorDescripcion = el('tractor-descripcion');
+  const tractorCentroCosto = el('tractor-centro-costo');
+  const horometro = el('horometro');
+  const cantidad = el('cantidad');
+  const numeroSai = el('no-sai');
+  const observaciones = el('observaciones');
+  const firmaOperario = el('firma-operario');
+  const botonAbrirFirma = el('boton-abrir-firma');
+  const botonVoz = el('boton-voz');
+  const estadoVoz = el('estado-voz');
+  const contenedorMaquinas = el('selector-maquinas-cards');
+  const contenedorOperarios = el('selector-operarios-cards');
+  const buscadorMaquina = el('maquina-busqueda');
+  const buscadorOperario = el('operario-busqueda');
+  const resumenMaquinaSeleccionada = el('resumen-maquina-seleccionada');
+  const resumenOperarioSeleccionado = el('resumen-operario-seleccionado');
+  const miniMaquina = el('mini-maquina');
+  const miniOperario = el('mini-operario');
+  const indicadorCapacidad = el('indicador-capacidad');
+  const confirmacionRegistro = el('confirmacion-registro');
+
+  let reconocimientoVoz = null; // Reconocimiento de voz de ESTE puesto
+
+  const api = { firmaOperario, botonAbrirFirma, renderizarMaquinas, renderizarOperarios, contenedorMaquinas };
+
+  // Muestra los datos del tractor seleccionado sin modificar registros historicos.
+  function mostrarDatosTractorSeleccionado() {
+    const tractorSeleccionado = tractoresDisponibles.find((tractor) => tractor.maquina === maquina.value);
+
+    // Descripción y centro de costo se llenan solos: son informativos.
+    tractorDescripcion.value = tractorSeleccionado ? tractorSeleccionado.descripcion : '';
+    tractorCentroCosto.value = tractorSeleccionado ? tractorSeleccionado.centro_costo : '';
+    if (resumenMaquinaSeleccionada) {
+      resumenMaquinaSeleccionada.hidden = !tractorSeleccionado;
+      if (tractorSeleccionado) resumenMaquinaSeleccionada.innerHTML = `✓ <strong>${escapeHtml(tractorSeleccionado.maquina)}</strong> · ${escapeHtml(tractorSeleccionado.descripcion || 'Sin descripción')} · Tanque ${Number(tractorSeleccionado.capacidad_galones || tractorSeleccionado.capacidad || 0).toFixed(2)} gal`;
+    }
+    actualizarIndicadorCapacidad();
+
+    // El tanque movil no maneja horometro, por eso se llena automaticamente como N/A.
+    if (esTanqueMovil(tractorSeleccionado)) {
+      horometro.value = 'N/A';
+      return;
+    }
+
+    // Si se cambia del tanque móvil a otra máquina, se limpia el "N/A".
+    if (horometro.value === 'N/A') {
+      horometro.value = '';
+    }
+  }
+
+  // Muestra la cedula del operario seleccionado sin modificar registros historicos.
+  function mostrarDatosOperarioSeleccionado() {
+    const operarioSeleccionado = operariosDisponibles.find((operario) => operario.nombre === nombreOperario.value);
+    cedulaOperario.value = operarioSeleccionado ? operarioSeleccionado.cedula : '';
+  }
+
+  // Dibuja las tarjetas del selector de máquinas, filtradas por el buscador.
+  // La normalización (NFD + quitar acentos + minúsculas) permite encontrar
+  // "MÁQUINA" escribiendo "maquina".
+  function renderizarMaquinas(lista, filtro = '') {
+    if (!contenedorMaquinas) return;
+    const q = String(filtro || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    contenedorMaquinas.innerHTML = '';
+    // Se busca en código, descripción y centro de costo a la vez.
+    const visibles = lista.filter(t => `${t.maquina || ''} ${t.descripcion || ''} ${t.centro_costo || ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(q));
+    if (!visibles.length) { contenedorMaquinas.innerHTML = '<div class="estado-vacio-selector">No se encontraron máquinas.</div>'; return; }
+    // Cada tarjeta muestra código, descripción y capacidad del tanque; al pulsarla
+    // se fija la máquina y se vuelve a dibujar la lista para marcar la elegida.
+    visibles.forEach(t => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `selector-card ${normalizarBusquedaMaquina(maquina.value) === normalizarBusquedaMaquina(t.maquina) ? 'seleccionada' : ''}`;
+      b.innerHTML = `<span class="selector-card-icon">🚜</span><span><strong>${escapeHtml(t.maquina)}</strong><small>${escapeHtml(t.descripcion || 'Sin descripción')}</small><em>Tanque: ${Number(t.capacidad_galones || t.capacidad || 0).toFixed(2)} gal</em></span><b>→</b>`;
+      b.onclick = () => { maquina.value = t.maquina; mostrarDatosTractorSeleccionado(); renderizarMaquinas(tractoresDisponibles, buscadorMaquina?.value); };
+      contenedorMaquinas.appendChild(b);
+    });
+  }
+
+  // Mismo mecanismo para el selector de operarios (busca por nombre o cédula).
+  // Al elegir uno se llena también automáticamente la cédula.
+  function renderizarOperarios(lista, filtro = '') {
+    if (!contenedorOperarios) return;
+    const q = String(filtro || '').toLowerCase().trim();
+    contenedorOperarios.innerHTML = '';
+    const visibles = lista.filter(o => `${o.nombre || ''} ${o.cedula || ''}`.toLowerCase().includes(q));
+    if (!visibles.length) { contenedorOperarios.innerHTML = '<div class="estado-vacio-selector">No se encontraron operarios.</div>'; return; }
+    visibles.forEach(o => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `selector-card ${nombreOperario.value === o.nombre ? 'seleccionada' : ''}`;
+      b.innerHTML = `<span class="selector-card-icon">👤</span><span><strong>${escapeHtml(o.nombre)}</strong><small>Operario</small><em>Cédula: ${escapeHtml(o.cedula || '—')}</em></span><b>→</b>`;
+      b.onclick = () => { nombreOperario.value = o.nombre; cedulaOperario.value = o.cedula || ''; mostrarDatosOperarioSeleccionado(); renderizarOperarios(operariosDisponibles, buscadorOperario?.value); };
+      contenedorOperarios.appendChild(b);
+    });
+  }
+
+  // Resumen del paso 4: máquina, operario, cantidad y soporte antes de guardar.
+  function actualizarConfirmacion() {
+    if (!confirmacionRegistro) return;
+    const t = tractoresDisponibles.find(x => normalizarBusquedaMaquina(x.maquina) === normalizarBusquedaMaquina(maquina.value));
+    confirmacionRegistro.innerHTML = `<div class="confirmacion-linea"><span>🚜</span><div><small>Máquina</small><strong>${escapeHtml(maquina.value || '—')}</strong><em>${escapeHtml(t?.descripcion || tractorDescripcion.value || '')}</em></div></div><div class="confirmacion-linea"><span>👤</span><div><small>Operario</small><strong>${escapeHtml(nombreOperario.value || '—')}</strong><em>Cédula: ${escapeHtml(cedulaOperario.value || '—')}</em></div></div><div class="confirmacion-linea"><span>⛽</span><div><small>Cantidad</small><strong>${Number(cantidad.value || 0).toFixed(2)} GAL</strong><em>Horómetro: ${escapeHtml(horometro.value || '—')}</em></div></div><div class="confirmacion-linea"><span>📄</span><div><small>Soporte</small><strong>${escapeHtml(numeroSai.value || 'Sin SAI')}</strong><em>${firmaOperario.value ? '✓ Firma guardada' : '⚠ Falta firma'}</em></div></div>`;
+  }
+
+  // Aviso en vivo mientras se escribe la cantidad: verde (normal), naranja
+  // (>=85% del tanque) o rojo (excede la capacidad). El exceso NO impide guardar:
+  // se permite y el servidor genera la alerta de sobrecapacidad.
+  function actualizarIndicadorCapacidad() {
+    if (!indicadorCapacidad) return;
+    const t = tractoresDisponibles.find(x => normalizarBusquedaMaquina(x.maquina) === normalizarBusquedaMaquina(maquina.value));
+    const cap = Number(t?.capacidad_galones || t?.capacidad || 0);
+    const v = Number(cantidad.value || 0);
+    if (!cap) { indicadorCapacidad.hidden = true; return; }
+    const pct = v / cap * 100;
+    indicadorCapacidad.hidden = false;
+    indicadorCapacidad.className = `indicador-capacidad ${v > cap ? 'exceso' : pct >= 85 ? 'advertencia' : 'normal'}`;
+    indicadorCapacidad.innerHTML = v > cap ? `⚠️ <strong>Sobrecapacidad</strong> · Tanque ${cap.toFixed(2)} gal · Suministro ${v.toFixed(2)} gal · Exceso ${(v - cap).toFixed(2)} gal. Se permitirá guardar y se generará una alerta.` : `<strong>${Math.min(pct, 100).toFixed(1)}%</strong> de la capacidad · Tanque ${cap.toFixed(2)} gal`;
+  }
+
+  // Navega entre los pasos de ESTE asistente: muestra el paso pedido, actualiza
+  // los indicadores de progreso y prepara el contenido de los pasos 3 y 4.
+  function irAPaso(numero) {
+    contenedorInstancia.querySelectorAll('.paso-formulario').forEach(p => p.classList.toggle('activo', Number(p.dataset.paso) === numero));
+    contenedorInstancia.querySelectorAll('[data-paso-indicador]').forEach(i => {
+      const n = Number(i.dataset.pasoIndicador);
+      i.classList.toggle('activo', n === numero);
+      i.classList.toggle('completado', n < numero);
+    });
+    if (numero === 3) {
+      if (miniMaquina) miniMaquina.textContent = `🚜 ${maquina.value || 'Máquina'}`;
+      if (miniOperario) miniOperario.textContent = `👤 ${nombreOperario.value || 'Operario'}`;
+      actualizarIndicadorCapacidad();
+    }
+    if (numero === 4) actualizarConfirmacion();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Requisitos para poder avanzar: paso 1 máquina, paso 2 operario con cédula,
+  // paso 3 cantidad mayor que cero y firma guardada.
+  function validarPaso(numero) {
+    if (numero === 1 && !maquina.value) { mostrarAlertaError('Selecciona una máquina', 'Elige una máquina para continuar.'); return false; }
+    if (numero === 2 && (!nombreOperario.value || !cedulaOperario.value)) { mostrarAlertaError('Selecciona un operario', 'Elige quién realiza el suministro.'); return false; }
+    if (numero === 3) {
+      if (!cantidad.value || Number(cantidad.value) <= 0) { mostrarAlertaError('Cantidad requerida', 'Ingresa la cantidad de galones suministrados.'); return false; }
+      if (!firmaOperario.value) { mostrarAlertaError('Firma requerida', 'Debes guardar la firma antes de confirmar.'); return false; }
+    }
+    return true;
+  }
+
+  // Selecciona la máquina que coincida con lo escrito (primero exacta, luego parcial).
+  function seleccionarMaquinaDesdeBusqueda(valor) {
+    const q = normalizarBusquedaMaquina(valor);
+    if (!q) return false;
+    const tractor = tractoresDisponibles.find(t => normalizarBusquedaMaquina(t.maquina) === q)
+      || tractoresDisponibles.find(t => normalizarBusquedaMaquina(t.maquina).includes(q));
+    if (!tractor) return false;
+    maquina.value = tractor.maquina;
+    mostrarDatosTractorSeleccionado();
+    renderizarMaquinas(tractoresDisponibles, valor);
+    if (buscadorMaquina) buscadorMaquina.value = tractor.maquina; // Completa el texto con el código real
+    return true;
+  }
+
+  // --- Comandos de voz de ESTE puesto (usa las funciones puras de arriba) ---
+  function seleccionarMaquinaPorVoz(frase) {
+    const candidato = extraerValorDespuesDeComando(frase, ['maquina', 'máquina', 'tractor']);
+    const tractor = buscarCoincidenciaExacta(candidato || frase, tractoresDisponibles, 'maquina');
+    if (!tractor) {
+      estadoVoz.textContent = `No encontré una máquina registrada que coincida con: ${frase}`;
+      return false;
+    }
+    // Escribe exactamente el nombre registrado en la base de datos.
+    maquina.value = tractor.maquina;
+    mostrarDatosTractorSeleccionado();
+    estadoVoz.textContent = `Máquina: ${tractor.maquina}`;
+    return true;
+  }
+
+  function seleccionarOperarioPorVoz(frase) {
+    const candidato = extraerValorDespuesDeComando(frase, ['operario', 'operaria', 'nombre del operario', 'nombre']);
+    const operario = buscarCoincidenciaExacta(candidato || frase, operariosDisponibles, 'nombre');
+    if (!operario) return false;
+    // Siempre escribe los datos canónicos que vienen de la base de datos.
+    nombreOperario.value = operario.nombre;
+    cedulaOperario.value = operario.cedula;
+    estadoVoz.textContent = `Operario: ${operario.nombre} | Cédula: ${operario.cedula}`;
+    return true;
+  }
+
+  // Interpreta la frase dictada y decide a qué campo corresponde.
+  // Se evalúa en orden: máquina, operario, horómetro, cantidad, cédula, SAI y
+  // observaciones. El primero que encaje gana y la función termina.
+  function ejecutarComandoVoz(frase) {
+    const texto = String(frase || '').trim();
+    const normalizado = normalizarTextoVoz(texto);
+    if (!normalizado) return;
+
+    // MÁQUINA / TRACTOR
+    if (normalizado.startsWith('maquina ') || normalizado.startsWith('tractor ') ||
+        tractoresDisponibles.some(t => normalizado.includes(normalizarTextoVoz(t.maquina)))) {
+      if (seleccionarMaquinaPorVoz(texto)) return;
+    }
+
+    // OPERARIO: "operario Juan Pérez" o simplemente "Juan Pérez".
+    if (normalizado.startsWith('operario ') || normalizado.startsWith('operaria ') ||
+        normalizado.startsWith('nombre del operario ')) {
+      if (seleccionarOperarioPorVoz(texto)) return;
+    }
+    if (seleccionarOperarioPorVoz(texto)) return; // Intento sin comando explícito
+
+    // HORÓMETRO: número o estado como "dañado", "no marca", etc.
+    const horometroValor = extraerValorDespuesDeComando(texto, ['horometro', 'horómetro']);
+    if (horometroValor) {
+      // Estos textos no numéricos harán que el servidor cree una alerta de
+      // "horómetro irregular" al guardar (ver record.service.js).
+      const estadosHorometro = {
+        'horometro danado': 'Horometro dañado',
+        'danado': 'Horometro dañado',
+        'danada': 'Horometro dañado',
+        'no marca': 'No marca',
+        'en revision': 'En revision',
+        'problema con la maquina': 'Problema con la maquina'
+      };
+      const estado = estadosHorometro[horometroValor];
+      const numero = convertirNumeroVoz(horometroValor);
+      if (estado) {
+        horometro.value = estado;
+        estadoVoz.textContent = `Horómetro: ${estado}`;
+        return;
+      }
+      if (numero) {
+        horometro.value = numero;
+        estadoVoz.textContent = `Horómetro: ${horometro.value}`;
+        return;
+      }
+    }
+
+    // También acepta "dañado" / "no marca" como comando de horómetro.
+    const estadoSolo = {
+      'danado': 'Horometro dañado',
+      'no marca': 'No marca',
+      'en revision': 'En revision',
+      'problema con la maquina': 'Problema con la maquina'
+    }[normalizado];
+    if (estadoSolo) {
+      horometro.value = estadoSolo;
+      estadoVoz.textContent = `Horómetro: ${estadoSolo}`;
+      return;
+    }
+
+    // CANTIDAD: "cantidad 50", "50 galones" o "cantidad cincuenta".
+    let cantidadTexto = extraerValorDespuesDeComando(texto, ['cantidad', 'galones', 'galon']);
+    if (!cantidadTexto) {
+      const cantidadConUnidad = normalizado.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:galones|galon)$/);
+      if (cantidadConUnidad) cantidadTexto = cantidadConUnidad[1];
+    }
+    if (cantidadTexto) {
+      cantidadTexto = cantidadTexto.replace(/\s*(?:galones|galon)\s*$/i, '').trim(); // Quita la unidad
+      const valorCantidad = convertirNumeroVoz(cantidadTexto);
+      if (valorCantidad) {
+        cantidad.value = valorCantidad;
+        estadoVoz.textContent = `Cantidad: ${cantidad.value} galones`;
+        return;
+      }
+    }
+
+    // CÉDULA: normalmente se obtiene automáticamente al decir el nombre del operario,
+    // pero también permite indicar una cédula directamente.
+    const cedulaTexto = extraerValorDespuesDeComando(texto, ['cedula', 'cédula']);
+    if (cedulaTexto) {
+      const numeroCedula = convertirNumeroVoz(cedulaTexto.replace(/\s+/g, '')) || cedulaTexto.replace(/\D/g, '');
+      if (numeroCedula) {
+        cedulaOperario.value = numeroCedula;
+        estadoVoz.textContent = `Cédula: ${cedulaOperario.value}`;
+        return;
+      }
+    }
+
+    // No. SAI.
+    const saiMatch = normalizado.match(/(?:sai|numero sai|numero de sai)\s+(.+)/);
+    if (saiMatch) {
+      numeroSai.value = saiMatch[1].trim();
+      estadoVoz.textContent = `No. SAI: ${numeroSai.value}`;
+      return;
+    }
+
+    // Observaciones: conserva la frase original para no perder acentos ni formato.
+    const observacionMatch = texto.match(/^(?:observacion|observaciones)\s+(.+)$/i);
+    if (observacionMatch) {
+      observaciones.value = observacionMatch[1].trim();
+      estadoVoz.textContent = 'Observación registrada.';
+      return;
+    }
+
+    // Ningún comando encajó: se le recuerda al usuario qué puede decir.
+    estadoVoz.textContent = `No entendí el comando: ${texto}. Usa: máquina, operario, horómetro, cantidad, cédula, SAI u observación.`;
+  }
+
+  // Configura el reconocimiento de voz del navegador y el botón del micrófono de ESTE puesto.
+  function configurarComandoVoz() {
+    // Compatibilidad: Chrome lo expone con el prefijo webkit.
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      botonVoz.disabled = true;
+      estadoVoz.textContent = 'El reconocimiento de voz no está disponible en este navegador.';
+      return;
+    }
+
+    reconocimientoVoz = new SpeechRecognition();
+    reconocimientoVoz.lang = 'es-CO'; // Español de Colombia
+    reconocimientoVoz.continuous = false; // Escucha una frase y se detiene
+    reconocimientoVoz.interimResults = false; // Solo el resultado final
+    reconocimientoVoz.maxAlternatives = 5; // Varias interpretaciones posibles
+
+    // Mientras escucha: el botón cambia de aspecto y se muestra la ayuda.
+    reconocimientoVoz.onstart = () => {
+      botonVoz.classList.add('escuchando');
+      botonVoz.textContent = '🛑 Escuchando...';
+      estadoVoz.textContent = 'Di: máquina, operario, horómetro, cantidad, cédula, SAI u observación.';
+    };
+
+    // Al obtener resultado: se prueban las alternativas hasta que una funcione.
+    reconocimientoVoz.onresult = (evento) => {
+      const resultados = Array.from(evento.results[0] || []);
+      const frases = resultados.map(r => r.transcript).filter(Boolean);
+      for (const frase of frases) {
+        ejecutarComandoVoz(frase);
+        // Con las máquinas se corta en la primera alternativa procesada para no
+        // sobrescribir la selección con una interpretación peor.
+        if (normalizarTextoVoz(frase).includes('maquina') || normalizarTextoVoz(frase).includes('tractor')) {
+          break;
+        }
+      }
+    };
+
+    // Errores frecuentes traducidos a mensajes entendibles.
+    reconocimientoVoz.onerror = (evento) => {
+      const mensajes = {
+        'not-allowed': 'Permiso de micrófono denegado.',
+        'no-speech': 'No se detectó voz. Intenta nuevamente.',
+        'network': 'El reconocimiento de voz necesita conexión a internet en este navegador.'
+      };
+      estadoVoz.textContent = mensajes[evento.error] || `Error de voz: ${evento.error}`;
+    };
+
+    // Al terminar: el botón vuelve a su estado normal.
+    reconocimientoVoz.onend = () => {
+      botonVoz.classList.remove('escuchando');
+      botonVoz.textContent = '🎙️ Voz';
+    };
+
+    // El botón alterna entre iniciar y detener la escucha.
+    botonVoz.addEventListener('click', () => {
+      if (botonVoz.classList.contains('escuchando')) {
+        reconocimientoVoz.stop();
+        return;
+      }
+      try {
+        reconocimientoVoz.start();
+      } catch (error) {
+        // Evita el error si el navegador todavía está cerrando una sesión anterior.
+      }
+    });
+  }
+
+  // --- Eventos de este puesto ---
+  maquina.addEventListener('change', mostrarDatosTractorSeleccionado);
+  maquina.addEventListener('input', mostrarDatosTractorSeleccionado);
+  nombreOperario.addEventListener('change', mostrarDatosOperarioSeleccionado);
+  nombreOperario.addEventListener('input', mostrarDatosOperarioSeleccionado);
+  cantidad.addEventListener('input', actualizarIndicadorCapacidad);
+
+  // Botón "Firmar": este puesto pasa a ser el dueño del lienzo compartido.
+  botonAbrirFirma.addEventListener('click', () => {
+    instanciaFirmaActiva = api;
+    dibujoFirma.clearRect(0, 0, lienzoFirma.width, lienzoFirma.height);
+    firmaDibujada = false;
+    fondoFirma.hidden = false;
+  });
+
+  // Buscador de máquinas: filtra al escribir y, si el texto coincide exactamente
+  // con una máquina, la selecciona sola.
+  buscadorMaquina?.addEventListener('input', e => {
+    renderizarMaquinas(tractoresDisponibles, e.target.value);
+    const exacta = tractoresDisponibles.find(t => normalizarBusquedaMaquina(t.maquina) === normalizarBusquedaMaquina(e.target.value));
+    if (exacta) {
+      maquina.value = exacta.maquina;
+      mostrarDatosTractorSeleccionado();
+      renderizarMaquinas(tractoresDisponibles, e.target.value);
+    }
+  });
+  // Enter en el buscador: selecciona la coincidencia o avisa que no existe.
+  buscadorMaquina?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Evita que Enter envíe el formulario
+      if (!seleccionarMaquinaDesdeBusqueda(e.currentTarget.value)) {
+        mostrarAlertaError('Máquina no encontrada', 'No hay una máquina registrada que coincida con esa búsqueda. Verifica el código o la descripción.');
+      }
+    }
+  });
+  // Buscador de operarios (solo filtra la lista).
+  buscadorOperario?.addEventListener('input', e => renderizarOperarios(operariosDisponibles, e.target.value));
+
+  // Botones "Siguiente" (validan antes de avanzar) y "Anterior", solo los de este puesto.
+  contenedorInstancia.querySelectorAll('.boton-siguiente').forEach(b => b.addEventListener('click', () => {
+    const n = Number(b.closest('.paso-formulario').dataset.paso);
+    if (validarPaso(n)) irAPaso(Number(b.dataset.next));
+  }));
+  contenedorInstancia.querySelectorAll('.boton-anterior').forEach(b => b.addEventListener('click', () => irAPaso(Number(b.dataset.prev))));
+
+  configurarComandoVoz();
+
+  // --- ENVÍO DEL FORMULARIO: guardar el suministro de este puesto ------------
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+
+    // Se arma el objeto con todos los datos del registro.
+    const fila = document.createElement('tr');
+    const registro = {
+      fecha: fecha.value,
+      m1Inicial: m1Inicial.value,
+      m1Final: m1Final.value,
+      m2Inicial: m2Inicial.value,
+      m2Final: m2Final.value,
+      galonesM1: galonesM1.value,
+      galonesM2: galonesM2.value,
+      totalGalones: totalGalones.value,
+      fugaBiodiesel: obtenerValorChequeo('fuga-biodiesel'),
+      sistemaElectrico: obtenerValorChequeo('sistema-electrico'),
+      paradaEmergencia: obtenerValorChequeo('parada-emergencia'),
+      cierreDia: false, // Este NO es un cierre de día, es un suministro
+      operario: nombreOperario.value,
+      cedula: cedulaOperario.value,
+      maquina: maquina.value,
+      horometro: horometro.value,
+      cantidad: cantidad.value,
+      numeroSai: numeroSai.value,
+      firma: firmaOperario.value,
+      observaciones: observaciones.value,
+      registradoEn: new Date().toISOString()
+    };
+
+    // Si alguna validación falla, no se envía nada.
+    if (!(await validarRegistroAntesDeGuardar(registro))) {
+      return;
+    }
+
+    // Estos datos se guardan en el mismo orden de las columnas de la tabla.
+    const datos = [
+      registro.operario,
+      registro.cedula,
+      registro.maquina,
+      registro.horometro,
+      registro.cantidad,
+      registro.numeroSai
+    ];
+
+    // Crea una celda por cada dato y la agrega a la fila.
+    datos.forEach((dato) => {
+      const celda = document.createElement('td');
+      celda.textContent = dato;
+      fila.appendChild(celda);
+    });
+
+    // Celda de la firma: se muestra la imagen en miniatura.
+    const celdaFirma = document.createElement('td');
+
+    if (registro.firma) {
+      const imagenFirma = document.createElement('img');
+      imagenFirma.src = registro.firma;
+      imagenFirma.alt = 'Firma del operario';
+      imagenFirma.className = 'firma-tabla';
+      celdaFirma.appendChild(imagenFirma);
+    } else {
+      celdaFirma.textContent = 'Sin firma';
+    }
+
+    fila.appendChild(celdaFirma);
+
+    const celdaObservaciones = document.createElement('td');
+    celdaObservaciones.textContent = registro.observaciones;
+    fila.appendChild(celdaObservaciones);
+
+    try {
+      const registroGuardado = await guardarRegistroServidor(registro);
+      guardarRegistroLocal(registroGuardado); // Copia local
+      // El servidor informa si se generó alerta de sobrecapacidad.
+      const extra = registroGuardado.alertaSobrecapacidad ? ' Se generó una alerta por sobrecapacidad.' : '';
+      await mostrarAlertaExito('✓ Registro guardado', `${Number(registro.cantidad || 0).toFixed(2)} GAL · ${registro.maquina} · ${registro.operario}. Registro #${registroGuardado.id}.${extra}`);
+    } catch (error) {
+      // Si falla el guardado, la fila NO se agrega a la tabla de pantalla.
+      await mostrarAlertaError('No se pudo guardar', error.message);
+      return;
+    }
+
+    // Se agrega la fila a la tabla COMPARTIDA de la sesión y se actualiza el acumulado.
+    tablaRegistros.appendChild(fila);
+    totalSuministrado += Number(cantidad.value) || 0;
+    resumenTotalPantalla.textContent = totalSuministrado.toFixed(2);
+
+    // Limpia solo los campos de ESTE puesto para ingresar otro registro.
+    // Las lecturas de M1/M2 y la fecha se conservan: son del día completo y
+    // el otro puesto puede seguir con lo suyo sin que esto lo afecte.
+    nombreOperario.value = '';
+    cedulaOperario.value = '';
+    maquina.value = '';
+    tractorDescripcion.value = '';
+    tractorCentroCosto.value = '';
+    horometro.value = '';
+    cantidad.value = '';
+    numeroSai.value = '';
+    observaciones.value = '';
+    limpiarFirma(api);
+    nombreOperario.focus();
+    // Se redibujan los selectores de ESTE puesto y se vuelve a su primer paso.
+    renderizarMaquinas(tractoresDisponibles); renderizarOperarios(operariosDisponibles); irAPaso(1);
+  });
+
+  instanciasRegistro.push(api);
+  return api;
+}
+
 // --- Arranque de la pantalla ------------------------------------------------
 desactivarAutocompletadoNavegador();
 prepararLienzoFirma();
+crearPuestoRegistro('1', 'Puesto 1');
+crearPuestoRegistro('2', 'Puesto 2');
 cargarOperariosEnFormulario();
 cargarTractoresEnFormulario();
-configurarComandoVoz();
 
-// Ventana de firma: abrir, cerrar, limpiar y guardar.
-botonAbrirFirma.addEventListener('click', () => {
-  fondoFirma.hidden = false;
-});
+// --- Eventos de los medidores (compartidos, un solo M1/M2 por día) ---------
+// Cada cambio recalcula los galones y marca el cierre como pendiente de guardar.
+m1Inicial.addEventListener('input', calcularGalones);
+m1Inicial.addEventListener('input', marcarCierrePendiente);
+m1Final.addEventListener('input', calcularGalones);
+m1Final.addEventListener('input', marcarCierrePendiente);
+m2Inicial.addEventListener('input', calcularGalones);
+m2Inicial.addEventListener('input', marcarCierrePendiente);
+m2Final.addEventListener('input', calcularGalones);
+m2Final.addEventListener('input', marcarCierrePendiente);
+// Cambiar la fecha recarga el estado de los medidores de ese día.
+fecha.addEventListener('change', cargarLecturasInicialesDesdeUltimoCierre);
 
+// Ventana de firma (compartida): abrir ya lo hace cada puesto en su propio
+// botón; aquí solo cerrar, limpiar y guardar sobre el puesto activo.
 botonCerrarFirma.addEventListener('click', () => {
   fondoFirma.hidden = true;
 });
 
-botonLimpiarFirma.addEventListener('click', limpiarFirma);
+botonLimpiarFirma.addEventListener('click', () => limpiarFirma());
 
 botonGuardarFirma.addEventListener('click', () => {
-  if (!firmaDibujada) {
+  if (!firmaDibujada || !instanciaFirmaActiva) {
     return; // No se guarda un lienzo en blanco
   }
 
   // toDataURL convierte el dibujo en una imagen PNG en base64.
-  firmaOperario.value = lienzoFirma.toDataURL('image/png');
-  botonAbrirFirma.textContent = 'Firma guardada';
+  instanciaFirmaActiva.firmaOperario.value = lienzoFirma.toDataURL('image/png');
+  instanciaFirmaActiva.botonAbrirFirma.textContent = 'Firma guardada';
   fondoFirma.hidden = true;
 });
 
@@ -1054,160 +1281,4 @@ lienzoFirma.addEventListener('pointermove', dibujarFirma);
 lienzoFirma.addEventListener('pointerup', terminarFirma);
 lienzoFirma.addEventListener('pointerleave', terminarFirma); // Si sale del área, corta el trazo
 
-
-// El indicador de capacidad se actualiza mientras se escribe la cantidad.
-document.getElementById('cantidad')?.addEventListener('input',actualizarIndicadorCapacidad);
-
-// Normaliza el texto del buscador de máquinas: sin acentos, sin signos y en
-// minúsculas, para que "MA-05", "ma 05" y "ma05" se consideren iguales.
-function normalizarBusquedaMaquina(valor){
-  return String(valor||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-}
-
-// Selecciona la máquina que coincida con lo escrito (primero exacta, luego parcial).
-function seleccionarMaquinaDesdeBusqueda(valor){
-  const q=normalizarBusquedaMaquina(valor);
-  if(!q) return false;
-  const tractor=tractoresDisponibles.find(t=>normalizarBusquedaMaquina(t.maquina)===q)
-    || tractoresDisponibles.find(t=>normalizarBusquedaMaquina(t.maquina).includes(q));
-  if(!tractor) return false;
-  maquina.value=tractor.maquina;
-  mostrarDatosTractorSeleccionado();
-  renderizarMaquinas(tractoresDisponibles, valor);
-  const buscador=document.getElementById('maquina-busqueda');
-  if(buscador) buscador.value=tractor.maquina; // Completa el texto con el código real
-  return true;
-}
-
-// Buscador de máquinas: filtra al escribir y, si el texto coincide exactamente
-// con una máquina, la selecciona sola.
-const buscadorMaquina=document.getElementById('maquina-busqueda');
-buscadorMaquina?.addEventListener('input',e=>{
-  renderizarMaquinas(tractoresDisponibles,e.target.value);
-  const exacta=tractoresDisponibles.find(t=>normalizarBusquedaMaquina(t.maquina)===normalizarBusquedaMaquina(e.target.value));
-  if(exacta){
-    maquina.value=exacta.maquina;
-    mostrarDatosTractorSeleccionado();
-    renderizarMaquinas(tractoresDisponibles,e.target.value);
-  }
-});
-// Enter en el buscador: selecciona la coincidencia o avisa que no existe.
-buscadorMaquina?.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){
-    e.preventDefault(); // Evita que Enter envíe el formulario
-    if(!seleccionarMaquinaDesdeBusqueda(e.currentTarget.value)){
-      mostrarAlertaError('Máquina no encontrada','No hay una máquina registrada que coincida con esa búsqueda. Verifica el código o la descripción.');
-    }
-  }
-});
-// Buscador de operarios (solo filtra la lista).
-document.getElementById('operario-busqueda')?.addEventListener('input',e=>renderizarOperarios(operariosDisponibles,e.target.value));
-// Botones "Siguiente" (validan antes de avanzar) y "Anterior" del asistente.
-document.querySelectorAll('.boton-siguiente').forEach(b=>b.addEventListener('click',()=>{const n=Number(b.closest('.paso-formulario').dataset.paso);if(validarPaso(n))irAPaso(Number(b.dataset.next));}));
-document.querySelectorAll('.boton-anterior').forEach(b=>b.addEventListener('click',()=>irAPaso(Number(b.dataset.prev))));
 actualizarEstadoMangueras();
-
-// --- ENVÍO DEL FORMULARIO: guardar el suministro ---------------------------
-formulario.addEventListener('submit', async (evento) => {
-  evento.preventDefault();
-
-  // Se arma el objeto con todos los datos del registro.
-  const fila = document.createElement('tr');
-  const registro = {
-    fecha: fecha.value,
-    m1Inicial: m1Inicial.value,
-    m1Final: m1Final.value,
-    m2Inicial: m2Inicial.value,
-    m2Final: m2Final.value,
-    galonesM1: galonesM1.value,
-    galonesM2: galonesM2.value,
-    totalGalones: totalGalones.value,
-    fugaBiodiesel: obtenerValorChequeo('fuga-biodiesel'),
-    sistemaElectrico: obtenerValorChequeo('sistema-electrico'),
-    paradaEmergencia: obtenerValorChequeo('parada-emergencia'),
-    cierreDia: false, // Este NO es un cierre de día, es un suministro
-    operario: nombreOperario.value,
-    cedula: cedulaOperario.value,
-    maquina: maquina.value,
-    horometro: horometro.value,
-    cantidad: cantidad.value,
-    numeroSai: numeroSai.value,
-    firma: firmaOperario.value,
-    observaciones: observaciones.value,
-    registradoEn: new Date().toISOString()
-  };
-
-  // Si alguna validación falla, no se envía nada.
-  if (!(await validarRegistroAntesDeGuardar(registro))) {
-    return;
-  }
-
-  // Estos datos se guardan en el mismo orden de las columnas de la tabla.
-  const datos = [
-    registro.operario,
-    registro.cedula,
-    registro.maquina,
-    registro.horometro,
-    registro.cantidad,
-    registro.numeroSai
-  ];
-
-  // Crea una celda por cada dato y la agrega a la fila.
-  datos.forEach((dato) => {
-    const celda = document.createElement('td');
-    celda.textContent = dato;
-    fila.appendChild(celda);
-  });
-
-  // Celda de la firma: se muestra la imagen en miniatura.
-  const celdaFirma = document.createElement('td');
-
-  if (registro.firma) {
-    const imagenFirma = document.createElement('img');
-    imagenFirma.src = registro.firma;
-    imagenFirma.alt = 'Firma del operario';
-    imagenFirma.className = 'firma-tabla';
-    celdaFirma.appendChild(imagenFirma);
-  } else {
-    celdaFirma.textContent = 'Sin firma';
-  }
-
-  fila.appendChild(celdaFirma);
-
-  const celdaObservaciones = document.createElement('td');
-  celdaObservaciones.textContent = registro.observaciones;
-  fila.appendChild(celdaObservaciones);
-
-  try {
-    const registroGuardado = await guardarRegistroServidor(registro);
-    guardarRegistroLocal(registroGuardado); // Copia local
-    // El servidor informa si se generó alerta de sobrecapacidad.
-    const extra=registroGuardado.alertaSobrecapacidad?' Se generó una alerta por sobrecapacidad.':'';
-    await mostrarAlertaExito('✓ Registro guardado',`${Number(registro.cantidad||0).toFixed(2)} GAL · ${registro.maquina} · ${registro.operario}. Registro #${registroGuardado.id}.${extra}`);
-  } catch (error) {
-    // Si falla el guardado, la fila NO se agrega a la tabla de pantalla.
-    await mostrarAlertaError('No se pudo guardar', error.message);
-    return;
-  }
-
-  // Se agrega la fila a la tabla de la sesión y se actualiza el acumulado.
-  tablaRegistros.appendChild(fila);
-  totalSuministrado += Number(cantidad.value) || 0;
-  resumenTotalPantalla.textContent = totalSuministrado.toFixed(2);
-
-  // Limpia solo los campos del suministro para ingresar otro registro.
-  // Las lecturas de M1/M2 y la fecha se conservan: son del día completo.
-  nombreOperario.value = '';
-  cedulaOperario.value = '';
-  maquina.value = '';
-  tractorDescripcion.value = '';
-  tractorCentroCosto.value = '';
-  horometro.value = '';
-  cantidad.value = '';
-  numeroSai.value = '';
-  observaciones.value = '';
-  limpiarFirma();
-  nombreOperario.focus();
-  // Se redibujan los selectores y se vuelve al primer paso del asistente.
-  renderizarMaquinas(tractoresDisponibles); renderizarOperarios(operariosDisponibles); irAPaso(1);
-});
