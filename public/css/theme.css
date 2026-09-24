@@ -169,6 +169,8 @@ label { color:var(--cc-texto);font-weight:700 }
 @media print {
   body { background:#fff;color:#111 }
   .encabezado,.controles-tabla,.menu-lateral,.menu-overlay,.nav-movil-inferior,.acciones-tarjeta-registro { display:none!important }
+  /* Avisos de instalar app/notificaciones y barra de navegación: no van en el PDF */
+  .barra-avisos,.barra-aviso,.boton-tres-puntos,.bottom-nav,.rail { display:none!important }
   .panel { box-shadow:none;border:0;background:#fff;color:#111 }
   .grid-registros-tarjetas { display:block }
   .registro-tarjeta { break-inside:avoid;box-shadow:none;border:1px solid #bbb;margin-bottom:12px;background:#fff;color:#111 } /* break-inside: no parte una tarjeta entre dos hojas */

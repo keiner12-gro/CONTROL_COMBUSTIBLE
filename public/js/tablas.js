@@ -56,21 +56,17 @@ function crearTarjeta(registro){
  const obs=campoTarjeta('Observaciones','observaciones',registro.observaciones);grid.appendChild(obs);card.appendChild(grid);
  // Indicador de firma (la firma en sí no se edita desde aquí).
  const soporte=document.createElement('div');soporte.className='registro-soporte';soporte.innerHTML=`<span>Firma</span><strong>${registro.firma?'✓ Firma registrada':'— Sin firma'}</strong>`;card.appendChild(soporte);
- // Botonera: Editar / Guardar (oculto al inicio) / Eliminar.
+ // Botonera: Editar / Guardar (oculto al inicio). Sin botón de eliminar/anular a propósito: quien revisa esta vista solo puede editar.
  const acciones=document.createElement('div');acciones.className='acciones-tarjeta-registro';
  const editar=document.createElement('button');editar.type='button';editar.className='boton-secundario';editar.textContent='✏ Editar';
  const guardar=document.createElement('button');guardar.type='button';guardar.className='boton-principal';guardar.textContent='✓ Guardar';guardar.hidden=true;
- const eliminar=document.createElement('button');eliminar.type='button';eliminar.className='boton-eliminar';eliminar.textContent='Eliminar';
  const inputs=[...grid.querySelectorAll('input')];
  // "Editar": habilita los campos, cambia los botones y pone el cursor en el primero.
  editar.onclick=()=>{inputs.forEach(i=>i.disabled=false);editar.hidden=true;guardar.hidden=false;inputs[0]?.focus();};
  // "Guardar": arma el objeto de cambios leyendo cada data-campo, lo envía al
  // servidor, actualiza la copia local y recarga el listado.
  guardar.onclick=async()=>{const cambios={};inputs.forEach(i=>cambios[i.dataset.campo]=i.value);guardar.disabled=true;try{await actualizarRegistroServidor(registro,cambios);actualizarRegistroLocal(registro.indiceOriginal,cambios);await mostrarAlertaExito('Registro actualizado','Los cambios fueron guardados correctamente.');await cargarRegistros();}catch(e){guardar.disabled=false;await mostrarAlertaError('No se pudo guardar',e.message);}};
- // "Eliminar": en realidad ANULA. Pide motivo obligatorio, llama al DELETE de
- // la API (que solo marca el registro como ANULADO) y lo quita de la vista.
- eliminar.onclick=async()=>{const motivo=await solicitarMotivoAnulacion('Anular registro','El registro no se borrará: quedará anulado y disponible en auditoría, y dejará de aparecer en el historial.');if(!motivo)return;try{if(registro.id){const r=await fetch(`/api/registros/${registro.id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo})});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.mensaje||'No se pudo anular el registro.');}}const registros=obtenerRegistrosGuardados();registros.splice(registro.indiceOriginal,1);guardarRegistrosLocales(registros);await cargarRegistros();await mostrarAlertaExito('Registro anulado','El suministro fue anulado y quedó fuera del historial.');}catch(e){await mostrarAlertaError('No se pudo anular',e.message);}};
- acciones.append(editar,guardar,eliminar);card.appendChild(acciones);return card;
+ acciones.append(editar,guardar);card.appendChild(acciones);return card;
 }
 
 // Descarga del servidor y repinta. El catch vacío es intencional: si no hay
