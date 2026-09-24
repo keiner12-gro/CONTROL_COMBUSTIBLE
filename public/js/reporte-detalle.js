@@ -204,6 +204,9 @@ function agruparConsumoPorMaquina(registros) {
     // para esta grafica.
     const maquina = String(registro.maquina || '').trim().toUpperCase();
     if (!maquina || esCierreDia(registro)) return;
+    // El tanque móvil es un depósito que se rellena, no una máquina que consume:
+    // no entra en el ranking ni en "Máquina con mayor consumo".
+    if (/^TANQUE M[OÓ][VB]IL/.test(maquina)) return; // MOVIL o MOBILE
 
     const consumo = obtenerConsumoMaquina(registro);
     if (!Number.isFinite(consumo) || consumo === 0) return;

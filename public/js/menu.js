@@ -151,6 +151,7 @@ function dibujarConsumoPorMaquina(registros) {
     .filter((r) => !Number(r.cierreDia) && String(r.fecha || '').slice(0, 7) === mesActual)
     .forEach((r) => {
       const nombre = String(r.maquina || 'Sin máquina').trim() || 'Sin máquina';
+      if (/^TANQUE M[OÓ][VB]IL/i.test(nombre)) return; // Depósito, no una máquina que consume
       totalesPorMaquina.set(nombre, (totalesPorMaquina.get(nombre) || 0) + Number(r.cantidad || 0));
     });
 

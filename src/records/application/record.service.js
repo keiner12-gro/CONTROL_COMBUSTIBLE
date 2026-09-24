@@ -102,7 +102,14 @@ class RecordService {
 
       const cantidad = Number(datos.cantidad || 0); // Galones cargados
 
-      if (this.alertService) {
+      // El tanque móvil es un depósito que se rellena: no genera alertas de
+      // ningún tipo (ni sobrecapacidad, ni promedio, ni horómetro).
+      const esTanqueMovil =
+        Number(tractor?.item) === 73 ||
+        /^TANQUE M[OÓ][VB]IL/.test(datos.maquina) ||
+        /^TANQUE M[OÓ][VB]IL/.test(String(tractor?.descripcion || '').trim().toUpperCase());
+
+      if (this.alertService && !esTanqueMovil) {
         // ALERTA 1 (sobrecapacidad): se cargó más de lo que cabe en el tanque.
         // Si ya excede la capacidad, no se evalúa el promedio (sería redundante).
         if (capacidad > 0 && cantidad > capacidad) {
