@@ -1,0 +1,10 @@
+# Archivos que NO se suben a Vercel (no hacen falta en producción y solo
+# engordan el despliegue). OJO: airtable/, data/ y supabase/ SÍ se suben:
+# airtable/schema.js lo usa la app en caliente y los otros dos, los scripts.
+node_modules
+test
+docs
+.claude
+uploads
+*.log
+.pglite-data

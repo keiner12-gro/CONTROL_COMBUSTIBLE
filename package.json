@@ -3,13 +3,16 @@
   "version": "2.0.0",
   "description": "Control empresarial de combustible: Node, base de datos en Postgres/Supabase o Airtable (a elegir), sesiones seguras, permisos, analítica y app instalable (PWA)",
   "main": "server.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node server.js",
     "db:migrar": "node scripts/db-migrar.js",
     "db:sembrar": "node scripts/db-sembrar.js",
     "generar-vapid": "node scripts/generar-vapid.js",
     "migrar-datos": "node scripts/migrar-datos.js",
-    "test": "node --test test/",
+    "test": "node --test \"test/**/*.test.js\"",
     "dev:local": "node scripts/dev-local.js",
     "importar-operarios": "node scripts/importar-operarios.js",
     "airtable:migrar": "node scripts/airtable-migrar.js",

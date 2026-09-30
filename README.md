@@ -22,6 +22,7 @@ notificaciones push).
 
 ```
 server.js                 Punto de entrada (Express, seguridad, montaje de módulos, interruptor DB_PROVIDER)
+api/index.js              Punto de entrada en Vercel: reexporta la app de server.js (no tiene lógica propia)
 src/<módulo>/             domain (contratos) · application (reglas) · infrastructure (pg-*/airtable-* + rutas HTTP)
   jornadas/  records/  reports/  alerts/  auditoria/  users/  tractors/  operators/  push/  tareas/
 src/shared/               db.js · airtable-client.js · storage.js · security.js · fechas.js · audit.js
@@ -30,7 +31,8 @@ airtable/schema.js        Esquema de Airtable (13 tablas: una extra para los arc
 public/                   Frontend (html, css, js), manifest.webmanifest, sw.js, íconos y librerías (vendor/)
 scripts/                  db-migrar · db-sembrar · airtable-migrar · airtable-sembrar · migrar-datos · generar-vapid · dev-local
 test/                     Pruebas automáticas (más de 120, incluye un Airtable simulado en memoria)
-docs/                     GUIA-SUPABASE.md · GUIA-AIRTABLE.md · GUIA-APP-MOVIL.md
+docs/                     GUIA-SUPABASE.md · GUIA-AIRTABLE.md · GUIA-VERCEL.md · GUIA-APP-MOVIL.md
+vercel.json               Despliegue: public/ por CDN, el resto a la función, cabeceras y cron jobs
 ```
 
 ## Puesta en marcha rápida
@@ -44,7 +46,8 @@ npm test                 # pruebas automáticas
 La base de datos se elige con `DB_PROVIDER` (`postgres`, por defecto, o `airtable`) — es un interruptor, no dos
 versiones de la app. Para producción sigue **`docs/GUIA-SUPABASE.md`** o **`docs/GUIA-AIRTABLE.md`** según cuál
 uses (montaje, variables de entorno, y traspaso a otra cuenta). Para instalar la app, activar avisos o generar el
-APK: **`docs/GUIA-APP-MOVIL.md`**.
+APK: **`docs/GUIA-APP-MOVIL.md`**. Para publicarla (importar el repositorio, variables de entorno, región y
+_cron jobs_): **`docs/GUIA-VERCEL.md`**.
 
 Comandos:
 

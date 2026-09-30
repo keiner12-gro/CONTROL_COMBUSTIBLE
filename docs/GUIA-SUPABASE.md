@@ -63,6 +63,9 @@ El administrador deberá cambiar la contraseña en su primer ingreso. En Windows
 
 ## 4. Publicar en Vercel
 
+> Paso a paso del despliegue (importar el repositorio, región, dominio, problemas frecuentes):
+> **`docs/GUIA-VERCEL.md`**.
+
 1. Importa el repositorio en Vercel (o usa el proyecto existente).
 2. **Settings → Environment Variables** (marca Production y Preview) con **todas** las de `.env.example`:
    `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`,

@@ -63,6 +63,9 @@ npm test            # pruebas automáticas (con un Airtable SIMULADO: no toca tu
 
 ## 4. Publicar en Vercel
 
+> Paso a paso del despliegue (importar el repositorio, región, dominio, problemas frecuentes):
+> **`docs/GUIA-VERCEL.md`**.
+
 1. **Settings → Environment Variables**: agrega `DB_PROVIDER=airtable`, `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`,
    más las que ya usa cualquier instalación (`CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
    `VAPID_SUBJECT`, `ZONA_HORARIA`, `HORA_LIMITE_CIERRE`). Las de Supabase (`DATABASE_URL`, `SUPABASE_*`) se
