@@ -649,7 +649,10 @@ test('análisis por máquina: horómetro, horas trabajadas, gal/hora y máquinas
   assert.equal(r.estado, 200, JSON.stringify(r.datos));
   const ma65 = r.datos.find((x) => x.maquina === 'MA65');
   assert.ok(ma65.horometroFinal >= ma65.horometroInicial);
-  assert.equal(ma65.horasTrabajadas, ma65.horometroFinal - ma65.horometroInicial);
+  // Regla de 24 h por día: nunca más que la diferencia del horómetro ni que el tope.
+  assert.ok(ma65.horasTrabajadas > 0);
+  assert.ok(ma65.horasTrabajadas <= ma65.horometroFinal - ma65.horometroInicial);
+  assert.ok(ma65.horasTrabajadas <= 24); // En la prueba todas las cargas son del mismo día
   const bomba = r.datos.find((x) => x.maquina === 'BOMBA1');
   assert.equal(bomba.sinHorometro, true);
   assert.equal(bomba.horasTrabajadas, null);

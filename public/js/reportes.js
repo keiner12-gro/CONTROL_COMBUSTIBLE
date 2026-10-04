@@ -166,9 +166,11 @@ async function cargarAnaliticaMaquinas(){
       if(x.sinHorometro)return '<span>Horómetro <strong>No aplica</strong></span>';
       if(x.horometroInicial===null||x.horometroInicial===undefined)return '<span>Horómetro <strong>Sin lecturas</strong></span>';
       const lecturas=`<span>Horómetro <strong>${fmt(x.horometroInicial)} → ${fmt(x.horometroFinal)}</strong></span>`;
-      if(x.lecturasInconsistentes)return `${lecturas}<span class="metrica-revisar" title="Más horas de las posibles entre la primera y la última carga: revisa las lecturas (error de digitación u odómetro en km).">⚠ <strong>Revisar lecturas</strong></span>`;
       if(x.horasTrabajadas===null||x.horasTrabajadas===undefined)return `${lecturas}<span>Horas trabajadas <strong>— (1 lectura)</strong></span>`;
-      return `${lecturas}<span>Horas trabajadas <strong>${fmt(x.horasTrabajadas)} h</strong></span><span>Gal/hora <strong>${x.galonesPorHora===null?'—':fmt(x.galonesPorHora,2)}</strong></span>`;
+      // Tramos recortados a 24 h por día (o con horómetro que bajó): se avisa, pero el cálculo sigue.
+      const avisos=(x.tramosAjustados||0)+(x.tramosQueRetroceden||0);
+      const aviso=avisos?`<span class="metrica-revisar" title="El horómetro marcó más de 24 h por día (o bajó) en ${avisos} tramo(s): se usó el máximo de 24 h por día. Revisa esas lecturas en el reporte de horómetros.">⚠ <strong>${avisos} tramo(s) ajustado(s)</strong></span>`:'';
+      return `${lecturas}<span>Horas trabajadas <strong>${fmt(x.horasTrabajadas)} h</strong></span><span>Gal/hora <strong>${x.galonesPorHora===null?'—':fmt(x.galonesPorHora,2)}</strong></span>${aviso}`;
     };
     maquinas.slice(0,8).forEach((x,i)=>{
       const card=document.createElement('article');

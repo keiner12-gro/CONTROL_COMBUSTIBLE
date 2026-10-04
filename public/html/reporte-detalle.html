@@ -171,7 +171,9 @@
             </div>
             <button type="button" class="boton-secundario" id="boton-exportar-horometros">Exportar Excel</button>
           </div>
-          <div style="overflow-x:auto;">
+          <!-- La tabla se desplaza DENTRO de este cuadro: así los títulos de las
+               columnas quedan fijos arriba mientras se bajan los registros. -->
+          <div class="contenedor-tabla-horometros">
             <table class="tabla-reportes tabla-horometros">
               <thead>
                 <tr>
@@ -367,6 +369,6 @@
       aplicarPermisosEnlaces();
     }
   </script>
-  <script src="../js/reporte-detalle.js?v=20261002-3"></script>
+  <script src="../js/reporte-detalle.js?v=20261003-1"></script>
 </body>
 </html>
