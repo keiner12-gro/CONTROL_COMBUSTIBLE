@@ -659,3 +659,26 @@ test('análisis por máquina: horómetro, horas trabajadas, gal/hora y máquinas
   const tanque = r.datos.find((x) => x.maquina === 'TANQUE MOVILE');
   assert.equal(tanque.esTanqueMovil, true);
 });
+
+test('vista de horómetros: todas las máquinas con sus tanqueos y la regla de 24 h por día', async () => {
+  const r = await api('GET', '/api/horometros', undefined, admin);
+  assert.equal(r.estado, 200, JSON.stringify(r.datos));
+  const ma65 = r.datos.find((m) => m.maquina === 'MA65');
+  assert.equal(ma65.cantidadTanqueos, ma65.tanqueos.length);
+  assert.ok(ma65.horasTrabajadas <= 24); // Todas las cargas de la prueba son del mismo día
+  assert.equal(r.datos.find((m) => m.maquina === 'BOMBA1').estado, 'sin-horometro');
+  assert.equal(r.datos.find((m) => m.maquina === 'TANQUE MOVILE').estado, 'tanque');
+  // Sin permiso de reportes no se puede consultar, y un rango inválido responde 400.
+  assert.equal((await api('GET', '/api/horometros', undefined, op)).estado, 403);
+  assert.equal(
+    (
+      await api(
+        'GET',
+        '/api/horometros?fechaInicio=2026-12-01&fechaFin=2026-01-01',
+        undefined,
+        admin
+      )
+    ).estado,
+    400
+  );
+});

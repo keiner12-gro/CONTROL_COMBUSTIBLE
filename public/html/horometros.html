@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- ==========================================================================
+     horometros.html — HORÓMETROS POR MÁQUINA (se entra desde Reportes)
+     Una carta por máquina con sus tanqueos, horas trabajadas y galones por
+     hora (máximo 24 h por día en cada tramo). Los datos ya vienen calculados
+     del servidor (GET /api/horometros). Lógica en ../js/horometros.js.
+     Requiere el permiso 'reportes'.
+     ========================================================================== -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/theme.css?v=20261003-4">
+  <title>Horómetros por máquina</title>
+  <!-- App instalable (PWA): manifiesto, color de la barra y íconos -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1f4d36">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Combustible">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script src="/js/pwa.js" defer></script>
+</head>
+<body>
+  <main class="pantalla">
+    <!-- Encabezado estándar de las pantallas internas -->
+    <header class="encabezado encabezado-compacto">
+      <div class="encabezado-control">
+        <div class="logo encabezado-logo"><img src="../assets/WhatsApp Image 2026-08-11 at 6.40.45 AM.jpeg" alt="Logo Guaicaramo SAS"></div>
+        <div><span class="eyebrow-dashboard">REPORTES</span><h1>Horómetros por máquina</h1></div>
+      </div>
+      <div class="ubicacion ubicacion-compacta"><strong>Barranca de Upía, Meta</strong><span data-fecha-encabezado></span></div>
+      <button class="boton-tres-puntos" type="button" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+    </header>
+
+    <!-- FILTROS: rango de fechas, máquina y estado. Las fechas consultan al
+         servidor; la máquina y el estado filtran en el navegador. -->
+    <section class="panel controles-horometros">
+      <div><label for="horometros-desde">Desde</label><input type="date" id="horometros-desde" autocomplete="off"></div>
+      <div><label for="horometros-hasta">Hasta</label><input type="date" id="horometros-hasta" autocomplete="off"></div>
+      <div><label for="horometros-buscar">Máquina</label><input type="search" id="horometros-buscar" placeholder="Código o tipo de máquina" autocomplete="off"></div>
+      <div>
+        <label for="horometros-estado">Estado</label>
+        <select id="horometros-estado">
+          <option value="">Todas</option>
+          <option value="ok">✓ OK</option>
+          <option value="ajustado">⚠ Con tramos ajustados</option>
+          <option value="sin-datos">Sin horas (sin lecturas o una sola)</option>
+          <option value="na">Sin horómetro / tanque móvil</option>
+        </select>
+      </div>
+      <div class="botones-tabla">
+        <a class="boton-secundario boton-enlace" href="reportes">← Reportes</a>
+        <button type="button" id="horometros-exportar">Exportar Excel</button>
+      </div>
+    </section>
+
+    <!-- LISTADO: totales arriba y una carta por máquina (horometros.js) -->
+    <section class="panel registros tarjetas-registros-panel">
+      <div class="titulo-tabla titulo-tarjetas-registros">
+        <div>
+          <span class="eyebrow-dashboard">HORAS TRABAJADAS Y CONSUMO</span>
+          <h2>Máquinas del periodo</h2>
+          <p class="texto-secundario">Horas = diferencia del horómetro, con máximo 24 h por día. Gal/hora = galones cargados después de la primera lectura ÷ horas trabajadas.</p>
+        </div>
+        <div class="resumen-tarjetas"><strong id="horometros-total-maquinas">0</strong><small>máquinas</small><strong id="horometros-total-tanqueos">0</strong><small>tanqueos</small></div>
+      </div>
+      <div id="horometros-tarjetas" class="grid-registros-tarjetas"></div>
+      <p class="tabla-vacia" id="horometros-vacio" hidden>No hay tanqueos que coincidan con los filtros.</p>
+    </section>
+  </main>
+
+  <script src="/vendor/sweetalert2.all.min.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/shell.js"></script>
+  <!-- Control de acceso: es parte de Reportes, exige el mismo permiso -->
+  <script>if (protegerVista('reportes')) { aplicarPermisosEnlaces(); }</script>
+  <script src="../js/horometros.js?v=20261003-2"></script>
+</body>
+</html>

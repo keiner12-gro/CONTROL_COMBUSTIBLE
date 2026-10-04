@@ -223,25 +223,31 @@ label { color:var(--cc-texto);font-weight:700 }
 .metrica-revisar { color:#9d3027 }
 .nota-grafica { margin:-4px 0 8px;color:var(--cc-muted);font-size:.78rem }
 .nota-grafica strong { color:var(--cc-texto) }
-/* Reporte de horómetros (reporte-detalle.js -> renderizarReporteHorometros) */
-/* Cuadro con desplazamiento propio: los títulos (th) quedan pegados arriba al bajar. */
-.contenedor-tabla-horometros { max-height:70vh;overflow:auto;border:1px solid var(--cc-borde);border-radius:12px }
-/* overflow:visible es OBLIGATORIO: la regla general "table { overflow:hidden }"
-   (styles.css) convierte la tabla en el contenedor y los títulos dejan de quedarse fijos. */
-.tabla-horometros,.tabla-tanqueos { overflow:visible }
-.tabla-horometros > thead th { position:sticky;top:0;z-index:3;box-shadow:0 2px 0 rgba(23,47,32,.12) }
-.motivo-ajuste { display:block;color:#9d3027;font-size:.72rem;font-weight:700 }
-.fila-maquina-horometro.estado-ajustado td:last-child { color:#9d3027;font-weight:800 }
-@media print { .contenedor-tabla-horometros { max-height:none;overflow:visible;border:0 } }
-.fila-maquina-horometro { cursor:pointer }
-.fila-maquina-horometro:hover td,.fila-maquina-horometro:focus td { background:var(--cc-verde-suave) }
-.fila-maquina-horometro.estado-revisar td:last-child { color:#9d3027;font-weight:800 }
-.fila-maquina-horometro.estado-ok td:last-child { color:var(--cc-verde-oscuro);font-weight:800 }
-.detalle-horometro > td { background:#f7faf7;padding:10px 12px }
-.tabla-tanqueos { width:100%;border-collapse:collapse;font-size:.8rem }
-.tabla-tanqueos th { position:sticky;top:var(--alto-encabezado-horometros,40px);z-index:2;background:var(--cc-verde-suave);color:var(--cc-verde-oscuro);font-size:.68rem } /* Pegados bajo los títulos principales */
-.tabla-tanqueos th,.tabla-tanqueos td { padding:6px 8px;border-bottom:1px solid var(--cc-borde);text-align:left }
-.tabla-tanqueos .tramo-revisar td { background:var(--cc-rojo-suave) }
+/* Vista "Horómetros por máquina" (horometros.html / horometros.js).
+   Reutiliza las cartas de Historial (.registro-tarjeta, .campo-registro-tarjeta). */
+.controles-horometros { display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end }
+.controles-horometros .botones-tabla { display:flex;gap:8px;flex-wrap:wrap }
+.acceso-horometros { display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap }
+.acceso-horometros h2 { margin:4px 0 }
+.boton-enlace { display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:11px;font-weight:700;text-decoration:none }
+.tarjeta-horometro .campo-registro-tarjeta strong { padding:8px 10px;border-radius:10px;background:#f2f7f3;border:1px solid var(--cc-borde);color:var(--cc-texto);font-size:.95rem }
+.tarjeta-horometro .dato-destacado strong { background:var(--cc-verde-suave);color:var(--cc-verde-oscuro) }
+.tarjeta-horometro.estado-ajustado { border-color:#e8b4ae }
+.estado-horometro-ok strong { color:var(--cc-verde-oscuro) }
+.estado-horometro-ajustado { background:var(--cc-rojo-suave)!important;border-color:#f0c5c1!important }
+.estado-horometro-ajustado strong { color:#9d3027 }
+.lista-tanqueos { list-style:none;margin:0;padding:0;display:grid;gap:10px }
+.lista-tanqueos[hidden] { display:none } /* Sin esto, display:grid anula el atributo hidden y la lista nunca se oculta */
+.tanqueo-item { border:1px solid var(--cc-borde);border-radius:12px;padding:10px 12px;background:#f7faf7 }
+.tanqueo-item.tanqueo-ajustado { background:var(--cc-rojo-suave);border-color:#f0c5c1 }
+.tanqueo-cabecera { display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:.85rem;color:var(--cc-muted) }
+.tanqueo-cabecera strong { color:var(--cc-texto) }
+.tanqueo-datos { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px }
+.tanqueo-datos .campo-registro-tarjeta strong { padding:6px 8px;font-size:.85rem;background:#ffffff }
+.tanqueo-motivo { margin:8px 0 0;color:#9d3027;font-size:.8rem;font-weight:700 }
+.tanqueo-observacion { margin:6px 0 0;color:var(--cc-muted);font-size:.8rem }
+@media(max-width:900px) { .controles-horometros { grid-template-columns:1fr 1fr } .controles-horometros .botones-tabla { grid-column:1/-1 } }
+@media(max-width:650px) { .tanqueo-datos { grid-template-columns:1fr 1fr } }
 .metrica-revisar strong { color:#9d3027 }
 @media(max-width:700px) {
   .grid-analitica-maquinas { grid-template-columns:1fr }

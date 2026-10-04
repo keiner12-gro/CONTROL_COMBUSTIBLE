@@ -2,6 +2,7 @@
 // record.routes.js (INFRAESTRUCTURA) — ENDPOINTS HTTP DE REGISTROS
 // ----------------------------------------------------------------------------
 //   GET    /api/analitica/maquinas -> estadísticas de consumo por máquina
+//   GET    /api/horometros         -> horómetros, horas trabajadas y gal/hora por máquina
 //   GET    /api/registros          -> listado completo
 //   POST   /api/registros          -> crear carga de combustible
 // (El cierre del día y las lecturas M1/M2 están en src/jornadas/.)
@@ -12,7 +13,7 @@
 const express = require('express');
 const { requireAnyPermission, requirePermission } = require('../../shared/infrastructure/security');
 const { registrarAuditoria } = require('../../shared/infrastructure/audit');
-const { hoyLocal } = require('../../shared/application/fechas');
+const { hoyLocal, esFechaValida } = require('../../shared/application/fechas');
 const { motivoDeRechazoPorFecha } = require('../../shared/application/retroactivo');
 
 function crearRutasRegistros(service, auditRepository) {
@@ -26,6 +27,22 @@ function crearRutasRegistros(service, auditRepository) {
       const inicio = req.query.fechaInicio || `${anio}-01-01`; // 1 de enero por defecto
       const fin = req.query.fechaFin || `${anio}-12-31`; // 31 de diciembre por defecto
       res.json(await service.machineConsumptionStats(inicio, fin));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // --- GET /api/horometros -------------------------------------------------
+  // Vista "Horómetros por máquina": todas las máquinas con cada tanqueo, horas
+  // trabajadas (máx. 24 h por día) y gal/hora. Sin parámetros, el año en curso.
+  router.get('/horometros', requirePermission('reportes'), async (req, res, next) => {
+    try {
+      const anio = hoyLocal().slice(0, 4);
+      const inicio = String(req.query.fechaInicio || `${anio}-01-01`).slice(0, 10);
+      const fin = String(req.query.fechaFin || `${anio}-12-31`).slice(0, 10);
+      if (!esFechaValida(inicio) || !esFechaValida(fin) || inicio > fin)
+        return res.status(400).json({ mensaje: 'El rango de fechas no es válido.' });
+      res.json(await service.horometrosPorMaquina(inicio, fin));
     } catch (error) {
       next(error);
     }

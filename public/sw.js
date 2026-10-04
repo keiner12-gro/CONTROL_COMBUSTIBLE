@@ -13,7 +13,7 @@
 // avisa si falta).
 // ============================================================================
 
-const VERSION = 'v4-2026-10-02';
+const VERSION = 'v5-2026-10-03';
 const CACHE = `combustible-${VERSION}`;
 
 const PAGINAS = [
@@ -26,6 +26,7 @@ const PAGINAS = [
   '/operarios',
   '/reportes',
   '/reporte-detalle',
+  '/horometros',
   '/alertas',
   '/auditoria',
   '/cambiar-contrasena'
@@ -46,6 +47,7 @@ const PRECACHE = [
   '/js/auditoria.js',
   '/js/auth.js',
   '/js/cambiar-contrasena.js',
+  '/js/horometros.js',
   '/js/jornada-borrador.js',
   '/js/login.js',
   '/js/menu.js',

@@ -259,6 +259,81 @@ class RecordService {
     });
   }
 
+  // Reporte de horómetros (vista /horometros): TODAS las máquinas que tanquearon
+  // en el rango, sin excepción, con cada tanqueo y la regla de 24 h por día
+  // (src/records/domain/horometro.js). El tanque móvil y las máquinas marcadas
+  // sin horómetro aparecen, pero sin horas ni gal/hora.
+  async horometrosPorMaquina(inicio, fin) {
+    const [registros, tractores] = await Promise.all([
+      this.repository.findByDateRange(inicio, fin, ''),
+      this.tractorRepository.list()
+    ]);
+    const tractorDe = new Map(tractores.map((t) => [String(t.maquina || '').toUpperCase(), t]));
+
+    const porMaquina = new Map();
+    for (const r of registros) {
+      const clave = String(r.maquina || '').trim().toUpperCase();
+      if (!clave) continue;
+      if (!porMaquina.has(clave)) porMaquina.set(clave, []);
+      porMaquina.get(clave).push({
+        fecha: String(r.fecha || '').slice(0, 10),
+        registradoEn: r.registrado_en ? new Date(r.registrado_en).toISOString() : '',
+        operario: r.operario || '',
+        horometro: r.horometro ?? '',
+        cantidad: Number(r.cantidad) || 0,
+        observaciones: r.observaciones || ''
+      });
+    }
+
+    const redondear = (n) => Math.round(n * 100) / 100;
+    return [...porMaquina.entries()]
+      .map(([maquina, tanqueos]) => {
+        const tractor = tractorDe.get(maquina);
+        const tanqueMovil = esTanqueMovil(maquina, tractor);
+        const sinHorometro = tanqueMovil || Boolean(tractor?.sin_horometro);
+        // Sin horómetro: se calcula igual (orden, galones) pero sin lecturas.
+        const calculo = calcularHorometro(
+          sinHorometro ? tanqueos.map((t) => ({ ...t, horometro: '' })) : tanqueos
+        );
+        const galones = tanqueos.reduce((total, t) => total + t.cantidad, 0);
+        let estado = 'ok';
+        if (tanqueMovil) estado = 'tanque';
+        else if (sinHorometro) estado = 'sin-horometro';
+        else if (calculo.horometroInicial === null) estado = 'sin-lecturas';
+        else if (calculo.horasTrabajadas === null) estado = 'una-lectura';
+        else if (calculo.tramosAjustados || calculo.tramosQueRetroceden) estado = 'ajustado';
+        return {
+          maquina,
+          descripcion: tractor?.descripcion || '',
+          tipo: String(tractor?.descripcion || '').trim().split(/\s+/)[0] || '',
+          estado,
+          cantidadTanqueos: tanqueos.length,
+          galones: redondear(galones),
+          promedio: tanqueos.length ? redondear(galones / tanqueos.length) : 0,
+          horometroInicial: calculo.horometroInicial,
+          horometroFinal: calculo.horometroFinal,
+          horasTrabajadas: calculo.horasTrabajadas,
+          galonesPorHora: calculo.galonesPorHora,
+          tramosAjustados: calculo.tramosAjustados,
+          tramosQueRetroceden: calculo.tramosQueRetroceden,
+          tanqueos: calculo.tanqueos.map((t) => ({
+            fecha: t.fecha,
+            operario: t.operario,
+            horometro: sinHorometro ? 'N/A' : t.horometro,
+            cantidad: t.cantidad,
+            observaciones: t.observaciones,
+            horasHorometro: t.horasHorometro,
+            topeHoras: t.topeHoras,
+            horasTramo: t.horasTramo,
+            galonesPorHoraTramo: t.horasTramo > 0 ? redondear(t.cantidad / t.horasTramo) : null,
+            ajustado: t.ajustado,
+            retrocede: t.retrocede
+          }))
+        };
+      })
+      .sort((a, b) => b.galones - a.galones);
+  }
+
   // Consulta filtrada por fechas y texto libre (pantalla de Tablas y reportes).
   listByDateRange(inicio, fin, busqueda) {
     return this.repository

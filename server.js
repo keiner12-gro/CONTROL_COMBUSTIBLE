@@ -185,6 +185,7 @@ const paginas = [
   'operarios', // Administración de operarios
   'reportes', // Listado de cierres mensuales
   'reporte-detalle', // Detalle/exportación de un reporte mensual
+  'horometros', // Horómetros por máquina: horas trabajadas y gal/hora (se entra desde Reportes)
   'alertas', // Bandeja de alertas de consumo
   'auditoria', // Bitácora de acciones
   'cambiar-contrasena' // Cambio obligatorio/voluntario de contraseña
