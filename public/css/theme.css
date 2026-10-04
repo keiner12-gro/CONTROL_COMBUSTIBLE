@@ -226,6 +226,9 @@ label { color:var(--cc-texto);font-weight:700 }
 /* Reporte de horómetros (reporte-detalle.js -> renderizarReporteHorometros) */
 /* Cuadro con desplazamiento propio: los títulos (th) quedan pegados arriba al bajar. */
 .contenedor-tabla-horometros { max-height:70vh;overflow:auto;border:1px solid var(--cc-borde);border-radius:12px }
+/* overflow:visible es OBLIGATORIO: la regla general "table { overflow:hidden }"
+   (styles.css) convierte la tabla en el contenedor y los títulos dejan de quedarse fijos. */
+.tabla-horometros,.tabla-tanqueos { overflow:visible }
 .tabla-horometros > thead th { position:sticky;top:0;z-index:3;box-shadow:0 2px 0 rgba(23,47,32,.12) }
 .motivo-ajuste { display:block;color:#9d3027;font-size:.72rem;font-weight:700 }
 .fila-maquina-horometro.estado-ajustado td:last-child { color:#9d3027;font-weight:800 }
